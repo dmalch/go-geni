@@ -1,4 +1,6 @@
-## 0.1.0 (Unreleased)
+## 0.1.1 (Unreleased)
+
+## 0.1.0
 
 Initial release. Extracted from
 [`terraform-provider-genealogy`](https://github.com/dmalch/terraform-provider-genealogy)
