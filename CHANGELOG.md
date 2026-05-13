@@ -1,4 +1,6 @@
-## 0.1.1 (Unreleased)
+## 0.1.1
+
+- Bumped `golang.org/x/oauth2` from 0.31.0 to 0.36.0 (#1).
 
 ## 0.1.0
 
