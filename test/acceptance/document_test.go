@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -92,22 +93,27 @@ var _ = Describe("Document API", func() {
 	})
 
 	Describe("Bulk reads", func() {
-		It("GetDocuments returns both ids in one call", func() {
+		// Eventually-polled: sandbox sometimes returns an empty
+		// bulk-document result for fresh ids on the first call. The
+		// retry catches the propagation lag without papering over a
+		// hard regression — if the ids never appear, the spec fails
+		// at the timeout.
+		It("GetDocuments eventually returns both ids in one call", func() {
 			a := createFixtureDocument(ctx, client, "AccBulkA", "a")
 			b := createFixtureDocument(ctx, client, "AccBulkB", "b")
 
-			res, err := client.GetDocuments(ctx, []string{a.Id, b.Id})
-			Expect(err).ToNot(HaveOccurred())
-			// Some sandbox dispatch paths return a partial bulk
-			// result; document but don't fail if so.
-			if len(res.Results) == 0 {
-				Skip("sandbox returned an empty bulk-document result (known flake)")
-			}
-			gotIds := make([]string, 0, len(res.Results))
-			for _, d := range res.Results {
-				gotIds = append(gotIds, d.Id)
-			}
-			Expect(gotIds).To(ContainElements(a.Id, b.Id))
+			Eventually(func(g Gomega) {
+				res, err := client.GetDocuments(ctx, []string{a.Id, b.Id})
+				g.Expect(err).ToNot(HaveOccurred())
+				gotIds := make([]string, 0, len(res.Results))
+				for _, d := range res.Results {
+					gotIds = append(gotIds, d.Id)
+				}
+				g.Expect(gotIds).To(ContainElements(a.Id, b.Id))
+			}).
+				WithTimeout(30 * time.Second).
+				WithPolling(2 * time.Second).
+				Should(Succeed())
 		})
 
 		It("GetUploadedDocuments returns the caller's uploads page", func() {
@@ -120,23 +126,36 @@ var _ = Describe("Document API", func() {
 	})
 
 	Describe("Comments", func() {
-		// In the sandbox, both AddDocumentComment and
-		// GetDocumentComments return a paginated envelope with an
-		// empty `results` array even after a successful add — the
-		// HTTP call succeeds but the comment doesn't surface in the
-		// returned page. The public docs don't describe the rule.
-		// We assert the call shapes succeed; membership of the
-		// just-added comment is not load-bearing for this client.
-		It("posts a comment and lists comments without error", func() {
+		// Skipped: AddDocumentComment returns success immediately,
+		// but the comment never surfaces on GetDocumentComments in
+		// the sandbox — verified by polling for 30s. Behaviour
+		// matches the profile-media listings: the documented
+		// listing semantics don't include the freshly-posted item,
+		// or there's a filter/scope we don't have. The intended
+		// Eventually assertion is preserved below so unskipping is a
+		// one-line change once the sandbox starts propagating (or
+		// once we understand the missing filter).
+		It("posts a comment and eventually lists it back", func() {
+			Skip("AddDocumentComment doesn't propagate to GetDocumentComments in the sandbox (polled 30s; comment never appeared)")
+
 			doc := createFixtureDocument(ctx, client, "AccCommentDoc", "to-be-commented")
+			body := "first comment"
 
-			added, err := client.AddDocumentComment(ctx, doc.Id, "first comment", "title-1")
+			_, err := client.AddDocumentComment(ctx, doc.Id, body, "title-1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(added).ToNot(BeNil())
 
-			listed, err := client.GetDocumentComments(ctx, doc.Id, 0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(listed).ToNot(BeNil())
+			Eventually(func(g Gomega) {
+				listed, err := client.GetDocumentComments(ctx, doc.Id, 0)
+				g.Expect(err).ToNot(HaveOccurred())
+				texts := make([]string, 0, len(listed.Results))
+				for _, c := range listed.Results {
+					texts = append(texts, c.Comment)
+				}
+				g.Expect(texts).To(ContainElement(body))
+			}).
+				WithTimeout(30 * time.Second).
+				WithPolling(2 * time.Second).
+				Should(Succeed())
 		})
 	})
 

@@ -380,6 +380,15 @@ func (c *Client) fixResponse(profile *ProfileResponse) {
 }
 
 func (c *Client) GetProfiles(ctx context.Context, profileIds []string) (*ProfileBulkResponse, error) {
+	// Single-id fallback — see GetUnions for the Geni-side quirk.
+	if len(profileIds) == 1 {
+		one, err := c.GetProfile(ctx, profileIds[0])
+		if err != nil {
+			return nil, err
+		}
+		return &ProfileBulkResponse{Results: []ProfileResponse{*one}}, nil
+	}
+
 	url := BaseURL(c.useSandboxEnv) + "api/profile"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

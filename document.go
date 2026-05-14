@@ -123,6 +123,15 @@ func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentR
 }
 
 func (c *Client) GetDocuments(ctx context.Context, documentIds []string) (*DocumentBulkResponse, error) {
+	// Single-id fallback — see GetUnions for the Geni-side quirk.
+	if len(documentIds) == 1 {
+		one, err := c.GetDocument(ctx, documentIds[0])
+		if err != nil {
+			return nil, err
+		}
+		return &DocumentBulkResponse{Results: []DocumentResponse{*one}}, nil
+	}
+
 	url := BaseURL(c.useSandboxEnv) + "api/document"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

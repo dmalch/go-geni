@@ -63,6 +63,20 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 }
 
 func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*UnionBulkResponse, error) {
+	// Geni's bulk endpoint returns an empty results array when
+	// `ids=` carries exactly one identifier — the server appears to
+	// route single-id bulk requests through a search/filter path
+	// rather than a fetch-by-id path. Fall back to the singular
+	// endpoint and wrap the result so the caller sees a consistent
+	// envelope regardless of input size.
+	if len(unionIds) == 1 {
+		one, err := c.GetUnion(ctx, unionIds[0])
+		if err != nil {
+			return nil, err
+		}
+		return &UnionBulkResponse{Results: []UnionResponse{*one}}, nil
+	}
+
 	url := BaseURL(c.useSandboxEnv) + "api/union"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
