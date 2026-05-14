@@ -1,0 +1,24 @@
+{
+  "results": [
+    {
+      "id": "profile-101",
+      "guid": "g-aaaa-1",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "gender": "female",
+      "is_alive": true,
+      "public": true
+    },
+    {
+      "id": "profile-102",
+      "guid": "g-aaaa-2",
+      "first_name": "John",
+      "last_name": "Smith",
+      "gender": "male",
+      "is_alive": true,
+      "public": true
+    }
+  ],
+  "page": 1,
+  "next_page": "https://www.geni.com/api/profile/search?names=Smith&page=2"
+}

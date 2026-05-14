@@ -68,6 +68,10 @@ type ProfileBulkResponse struct {
 	Results    []ProfileResponse `json:"results,omitempty"`
 	Page       int               `json:"page,omitempty"`
 	TotalCount int               `json:"total_count,omitempty"`
+	// NextPage / PrevPage are populated by paginated endpoints
+	// (search, managed-profiles, …) when more pages are available.
+	NextPage string `json:"next_page,omitempty"`
+	PrevPage string `json:"prev_page,omitempty"`
 }
 
 type ProfileResponse struct {
