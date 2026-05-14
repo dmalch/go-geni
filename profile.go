@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -444,6 +445,20 @@ func (c *Client) GetManagedProfiles(ctx context.Context, page int) (*ProfileBulk
 	}
 
 	return &profile, nil
+}
+
+// IterManagedProfiles walks every page of the caller's managed
+// profiles and yields each profile in turn. Iteration stops at the
+// first error or when the caller breaks out of the range loop. See
+// [Client.GetManagedProfiles] for the page-by-page variant.
+func (c *Client) IterManagedProfiles(ctx context.Context) iter.Seq2[*ProfileResponse, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]ProfileResponse, bool, error) {
+		res, err := c.GetManagedProfiles(ctx, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
 }
 
 func (c *Client) UpdateProfile(ctx context.Context, profileId string, request *ProfileRequest) (*ProfileResponse, error) {

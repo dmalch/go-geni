@@ -124,6 +124,24 @@ var _ = Describe("Profile API", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).ToNot(BeEmpty())
 		})
+
+		It("IterManagedProfiles walks at least the first page without error", func() {
+			createFixtureProfile(ctx, client, "IterManagedFixture")
+
+			// Hard-cap so a sandbox account with hundreds of managed
+			// profiles doesn't make this spec run forever. We just
+			// want to confirm the iterator yields and terminates
+			// cleanly.
+			count := 0
+			for _, err := range client.IterManagedProfiles(ctx) {
+				Expect(err).ToNot(HaveOccurred())
+				count++
+				if count >= 5 {
+					break
+				}
+			}
+			Expect(count).To(BeNumerically(">", 0))
+		})
 	})
 
 	Describe("MergeProfiles", func() {

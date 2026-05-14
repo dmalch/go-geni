@@ -3,6 +3,7 @@ package geni
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -18,6 +19,20 @@ import (
 // The response is a [ProfileBulkResponse]; its Results, Page,
 // NextPage, and PrevPage fields describe the current page and how to
 // navigate forward/backward.
+// IterSearchProfiles walks every page of a name-based profile search
+// and yields each profile in turn. See [Client.SearchProfiles] for the
+// page-by-page variant — including its constraint that `names` must
+// be non-empty.
+func (c *Client) IterSearchProfiles(ctx context.Context, names string) iter.Seq2[*ProfileResponse, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]ProfileResponse, bool, error) {
+		res, err := c.SearchProfiles(ctx, names, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
+}
+
 func (c *Client) SearchProfiles(ctx context.Context, names string, page int) (*ProfileBulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/profile/search"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
