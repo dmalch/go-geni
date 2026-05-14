@@ -65,13 +65,6 @@ func tokenSource() oauth2.TokenSource {
 			auth.NewAuthTokenSource(&oauth2.Config{
 				ClientID: sandboxClientId,
 				Endpoint: oauth2.Endpoint{AuthURL: sandboxAuthURL()},
-				// "family" is required for ancestor / tree-walking
-				// endpoints; without it Geni returns 403. If you see
-				// a 403 unexpectedly after upgrading, delete the
-				// cached token at the path returned by
-				// sandboxTokenCachePath() to force a re-authorization
-				// with the broader scope.
-				Scopes: []string{"family"},
 			})))
 }
 
