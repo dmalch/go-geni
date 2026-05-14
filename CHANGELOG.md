@@ -1,4 +1,4 @@
-## 0.3.0 (Unreleased)
+## 0.3.0
 
 - Discovery: added `Client.SearchProfiles(ctx, names, page)` for
   Geni's `/profile/search` endpoint. Returns the existing
