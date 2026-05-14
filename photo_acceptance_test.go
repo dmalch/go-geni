@@ -13,6 +13,120 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Client photo CRUD endpoints", func() {
+	var (
+		ctx      context.Context
+		server   *httptest.Server
+		client   *Client
+		recorded *http.Request
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		recorded = nil
+	})
+
+	AfterEach(func() {
+		if server != nil {
+			server.Close()
+		}
+	})
+
+	serve := func(status int, body []byte, wantMethod, wantPath string) {
+		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			recorded = r.Clone(r.Context())
+			Expect(r.Method).To(Equal(wantMethod))
+			Expect(r.URL.Path).To(Equal(wantPath))
+			Expect(r.URL.Query().Get("access_token")).To(Equal("acc-test"))
+			w.WriteHeader(status)
+			_, _ = w.Write(body)
+		}))
+		client = newClientFor(server)
+	}
+
+	Describe("UpdatePhoto", func() {
+		It("POSTs the JSON body and decodes the updated photo", func() {
+			serve(http.StatusOK,
+				[]byte(`{"id":"photo-1","title":"After","description":"updated"}`),
+				http.MethodPost, "/api/photo-1/update")
+
+			photo, err := client.UpdatePhoto(ctx, "photo-1", &PhotoRequest{
+				Title:       "After",
+				Description: "updated",
+			})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(photo.Title).To(Equal("After"))
+			Expect(photo.Description).To(Equal("updated"))
+		})
+	})
+
+	Describe("TagPhoto / UntagPhoto", func() {
+		It("targets the path-based tag endpoint and surfaces the updated tags", func() {
+			serve(http.StatusOK,
+				[]byte(`{"id":"photo-1","tags":["profile-9"]}`),
+				http.MethodPost, "/api/photo-1/tag/profile-9")
+
+			photo, err := client.TagPhoto(ctx, "photo-1", "profile-9")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(photo.Tags).To(ConsistOf("profile-9"))
+		})
+
+		It("targets the path-based untag endpoint", func() {
+			serve(http.StatusOK,
+				[]byte(`{"id":"photo-1","tags":[]}`),
+				http.MethodPost, "/api/photo-1/untag/profile-9")
+
+			photo, err := client.UntagPhoto(ctx, "photo-1", "profile-9")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(photo.Tags).To(BeEmpty())
+		})
+	})
+
+	Describe("GetPhotoTags", func() {
+		It("decodes a paginated profile list", func() {
+			serve(http.StatusOK,
+				[]byte(`{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"next_page":"…?page=2"}`),
+				http.MethodGet, "/api/photo-1/tags")
+
+			res, err := client.GetPhotoTags(ctx, "photo-1", 1)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
+			Expect(res.Results).To(HaveLen(2))
+			Expect(res.NextPage).To(ContainSubstring("page=2"))
+		})
+	})
+
+	Describe("AddPhotoComment + GetPhotoComments", func() {
+		It("posts a comment and lists comments", func() {
+			serve(http.StatusOK,
+				[]byte(`{"results":[{"id":"c-1","comment":"hi"}],"page":1}`),
+				http.MethodPost, "/api/photo-1/comment")
+
+			res, err := client.AddPhotoComment(ctx, "photo-1", "hi", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(recorded.URL.Query().Get("text")).To(Equal("hi"))
+			Expect(res.Results).To(HaveLen(1))
+			Expect(res.Results[0].Comment).To(Equal("hi"))
+		})
+
+		It("GetPhotoComments decodes the CommentBulkResponse envelope", func() {
+			serve(http.StatusOK,
+				[]byte(`{"results":[{"id":"c-1","comment":"hi"}],"page":1}`),
+				http.MethodGet, "/api/photo-1/comments")
+
+			res, err := client.GetPhotoComments(ctx, "photo-1", 0)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.Results).To(HaveLen(1))
+		})
+	})
+})
+
 var _ = Describe("Client.CreatePhoto end-to-end", func() {
 	var (
 		ctx    context.Context
