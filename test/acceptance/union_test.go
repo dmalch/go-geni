@@ -98,4 +98,68 @@ var _ = Describe("Union API", func() {
 			Expect(*updated.Marriage.Date.Year).To(BeEquivalentTo(1925))
 		})
 	})
+
+	Describe("AddPartnerToUnion", func() {
+		// Geni rejects a 3rd partner on a marriage with "Marriage
+		// already has two partners", so the spec starts with a
+		// single-parent union (created by adding a child to a fresh
+		// profile) and adds a co-parent to it. Geni's docs claim this
+		// endpoint returns a union; the live API returns the new
+		// partner profile.
+		It("creates a new partner profile bound to the union", func() {
+			focus := createFixtureProfile(ctx, client, "PartnerToUnion")
+
+			// AddChild on a sole profile creates a single-parent
+			// union (focus as the only partner, new child as the
+			// only child).
+			child, err := client.AddChild(ctx, focus.Id)
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+
+			got, err := client.GetProfile(ctx, focus.Id)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Unions).ToNot(BeEmpty())
+			unionId := got.Unions[0]
+
+			partner, err := client.AddPartnerToUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(partner.Id).To(HavePrefix("profile-"))
+			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), partner.Id) })
+
+			after, err := client.GetUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.Partners).To(ContainElement(partner.Id))
+		})
+	})
+
+	Describe("AddChildToUnion", func() {
+		It("creates a new child profile bound to the union", func() {
+			_, _, unionId := createCoupleAndUnion(ctx, client)
+
+			before, err := client.GetUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+
+			child, err := client.AddChildToUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(child.Id).To(HavePrefix("profile-"))
+			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+
+			after, err := client.GetUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.Children).To(ContainElement(child.Id))
+			Expect(len(after.Children)).To(Equal(len(before.Children) + 1))
+		})
+
+		It("records `adopt` on the union's adopted_children list", func() {
+			_, _, unionId := createCoupleAndUnion(ctx, client)
+
+			child, err := client.AddChildToUnion(ctx, unionId, geni.WithModifier("adopt"))
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+
+			after, err := client.GetUnion(ctx, unionId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.AdoptedChildren).To(ContainElement(child.Id))
+		})
+	})
 })

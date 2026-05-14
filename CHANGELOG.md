@@ -1,3 +1,14 @@
+## 0.4.0 (Unreleased)
+
+- Union API: added `Client.AddPartnerToUnion(ctx, unionId)` and
+  `Client.AddChildToUnion(ctx, unionId, opts...)` for the
+  union-scoped add-* variants. Both return the **new profile** even
+  though Geni's docs page describes the response as a union — the
+  live endpoint returns a `ProfileResponse`, so the godoc and
+  signatures match observed behaviour. `AddChildToUnion` accepts
+  `WithModifier("adopt" | "foster")` to drop the new child into the
+  union's `adopted_children` / `foster_children` list.
+
 ## 0.3.0
 
 - Discovery: added `Client.SearchProfiles(ctx, names, page)` for
