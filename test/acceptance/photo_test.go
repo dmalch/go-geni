@@ -89,4 +89,26 @@ var _ = Describe("Photo API", func() {
 			}
 		})
 	})
+
+	Describe("CreatePhoto with options", func() {
+		// Verifies that an option set client-side actually reaches the
+		// server and is persisted — the multipart-form fields aren't
+		// merely cosmetic. We upload with a description, read the
+		// photo back, and assert the description round-trips through
+		// Geni's storage.
+		It("persists WithPhotoDescription on the uploaded photo", func() {
+			title := fmt.Sprintf("AccPhotoOpts-%d", time.Now().UnixNano())
+			description := "uploaded by go-geni acceptance suite"
+
+			photo, err := client.CreatePhoto(ctx, title, "opts.png", tinyPng(),
+				geni.WithPhotoDescription(description))
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+
+			got, err := client.GetPhoto(ctx, photo.Id)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Id).To(Equal(photo.Id))
+			Expect(got.Description).To(Equal(description))
+		})
+	})
 })
