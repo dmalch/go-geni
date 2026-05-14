@@ -1,3 +1,13 @@
+## 0.5.0 (Unreleased)
+
+- Document API: added `Client.GetDocumentComments(ctx, docId, page)`,
+  `Client.AddDocumentComment(ctx, docId, text, title)`, and
+  `Client.GetDocumentProjects(ctx, docId, page)`.
+- New `Comment` and `CommentBulkResponse` types covering the
+  paginated comment envelope shared with `*/comment` endpoints.
+- `ProjectBulkResponse` now also carries `Page` / `NextPage` /
+  `PrevPage` so paginated project lists can be walked.
+
 ## 0.4.0
 
 - Union API: added `Client.AddPartnerToUnion(ctx, unionId)` and
