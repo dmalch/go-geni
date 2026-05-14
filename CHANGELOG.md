@@ -1,3 +1,16 @@
+## 0.9.0 (Unreleased)
+
+- Profile API: added `Client.GetProfileDocuments(ctx, profileId, page)`
+  and `Client.GetProfilePhotos(ctx, profileId, page)` for the
+  paginated `/profile/<id>/documents` and `/profile/<id>/photos`
+  sub-listings. Both return existing bulk envelopes
+  (`DocumentBulkResponse` and `PhotoBulkResponse`) and respect Geni's
+  max-50-per-page cap. `profile/videos` is deferred until the Video
+  resource lands.
+- `DocumentBulkResponse` and `PhotoBulkResponse` now carry `NextPage`
+  / `PrevPage` so paginated listings can be walked the same way
+  `ProfileBulkResponse` and `ProjectBulkResponse` already support.
+
 ## 0.8.0
 
 - User API: added `Client.GetUser(ctx)` for the `GET /api/user`
