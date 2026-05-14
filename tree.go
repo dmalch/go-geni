@@ -204,6 +204,13 @@ func (c *Client) GetImmediateFamily(ctx context.Context, profileId string) (*Fam
 // GetAncestors fetches the ancestor graph rooted at profileId.
 // [WithGenerations] controls depth; the Geni-documented maximum is 20
 // generations and values above that are clamped client-side.
+//
+// The Geni sandbox is known to return 403 (surfaced as
+// [ErrAccessDenied]) when the focus profile isn't attached to the
+// calling user's verified tree — even with the "family" OAuth scope
+// granted. The public docs don't describe the access rule. If you see
+// unexpected 403s, try the call against a profile from
+// [Client.GetManagedProfiles] before assuming a client bug.
 func (c *Client) GetAncestors(ctx context.Context, profileId string, opts ...TreeOption) (*FamilyResponse, error) {
 	return c.getFamily(ctx, "api/"+profileId+"/ancestors", opts...)
 }

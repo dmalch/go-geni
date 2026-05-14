@@ -35,17 +35,13 @@ var _ = Describe("Profile API", func() {
 		})
 
 		It("updates an existing profile", func() {
-			// Geni's update endpoint rejects detail_strings: null with
-			// a 500 (Ruby NoMethodError); sending an empty map keeps
-			// the server-side dispatcher happy.
 			created := createFixtureProfile(ctx, client, "UpdateBefore")
 			about := "Updated bio for acceptance test"
 
 			updated, err := client.UpdateProfile(ctx, created.Id, &geni.ProfileRequest{
-				AboutMe:       &about,
-				DetailStrings: map[string]geni.DetailsString{},
-				IsAlive:       false,
-				Public:        true,
+				AboutMe: &about,
+				IsAlive: false,
+				Public:  true,
 			})
 
 			Expect(err).ToNot(HaveOccurred())
