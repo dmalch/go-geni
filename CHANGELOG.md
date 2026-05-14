@@ -1,4 +1,4 @@
-## 0.2.0 (Unreleased)
+## 0.2.0
 
 - Tree API: added `Client.GetImmediateFamily`, `Client.GetAncestors`, and
   `Client.GetPathTo`. New types: `FamilyResponse` / `FamilyNodes` (with
@@ -7,10 +7,17 @@
   `PathType` and `PathStatus` value objects; `TreeOption` functional
   options (`WithGenerations`, `WithPathType`, `WithRefresh`, `WithSearch`,
   `WithSkipEmail`, `WithSkipNotify`). `GetPathTo` is a thin pass-through
-  — when `Status == PathStatusPending` the caller is expected to back off
-  and re-issue.
+  — when `Status == PathStatusPending` the caller is expected to back
+  off and re-issue.
+- `ProfileRequest.DetailStrings` now uses `omitempty`. A nil map is no
+  longer serialised as `"detail_strings": null` — Geni's update endpoint
+  crashes on that body (`undefined method has_key? for nil:NilClass`).
+  Callers who want to clear all detail strings must send an explicit
+  empty map.
 - Tests: adopted Ginkgo + Gomega for the acceptance suite alongside the
-  existing `testing.T` + Gomega unit tests. `go test ./...` discovers both.
+  existing `testing.T` + Gomega unit tests. Added a sandbox E2E suite
+  under `test/acceptance/` (opt-in via `make test-acceptance`; CI does
+  not run it).
 
 ## 0.1.1
 
