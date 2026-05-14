@@ -1,4 +1,4 @@
-## 0.9.0 (Unreleased)
+## 0.9.0
 
 - Profile API: added `Client.GetProfileDocuments(ctx, profileId, page)`
   and `Client.GetProfilePhotos(ctx, profileId, page)` for the
