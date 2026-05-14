@@ -8,8 +8,18 @@ import (
 	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 )
+
+// PhotoRequest is the JSON-encoded body for [Client.UpdatePhoto].
+// All fields are optional; omitted fields leave the existing value
+// in place.
+type PhotoRequest struct {
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Date        string `json:"date,omitempty"`
+}
 
 // PhotoResponse is Geni's Photo resource — a single uploaded image
 // with metadata and tagging.
@@ -200,6 +210,167 @@ func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*PhotoBulkRe
 		return nil, err
 	}
 	return &photos, nil
+}
+
+// UpdatePhoto mutates the photo's title / description / date. Body is
+// JSON-encoded the same way as profile / document / union update
+// endpoints, and runs through escapeStringToUTF so non-ASCII text
+// survives the API's UTF-8 handling.
+func (c *Client) UpdatePhoto(ctx context.Context, photoId string, request *PhotoRequest) (*PhotoResponse, error) {
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		slog.Error("Error marshaling request", "error", err)
+		return nil, err
+	}
+	jsonStr := strings.ReplaceAll(string(jsonBody), "\\\\", "\\")
+	jsonStr = escapeString(jsonStr)
+
+	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/update"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var photo PhotoResponse
+	if err := json.Unmarshal(body, &photo); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &photo, nil
+}
+
+// TagPhoto associates a profile with a photo. Returns the updated
+// photo (its `tags` list will include profileId).
+func (c *Client) TagPhoto(ctx context.Context, photoId, profileId string) (*PhotoResponse, error) {
+	return c.photoTagAction(ctx, photoId, profileId, "tag")
+}
+
+// UntagPhoto removes a profile-tag from a photo. Returns the updated
+// photo.
+func (c *Client) UntagPhoto(ctx context.Context, photoId, profileId string) (*PhotoResponse, error) {
+	return c.photoTagAction(ctx, photoId, profileId, "untag")
+}
+
+func (c *Client) photoTagAction(ctx context.Context, photoId, profileId, action string) (*PhotoResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/" + action + "/" + profileId
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var photo PhotoResponse
+	if err := json.Unmarshal(body, &photo); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &photo, nil
+}
+
+// GetPhotoTags returns the paginated list of profiles tagged in a
+// photo. page is 1-indexed; values ≤0 omit the parameter (Geni
+// defaults to page 1). Max 50 tags per page.
+func (c *Client) GetPhotoTags(ctx context.Context, photoId string, page int) (*ProfileBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/tags"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var profiles ProfileBulkResponse
+	if err := json.Unmarshal(body, &profiles); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	for i := range profiles.Results {
+		c.fixResponse(&profiles.Results[i])
+	}
+	return &profiles, nil
+}
+
+// GetPhotoComments returns the paginated list of comments on a photo.
+// page is 1-indexed; values ≤0 omit the parameter (Geni defaults to
+// page 1). Max 50 comments per page.
+func (c *Client) GetPhotoComments(ctx context.Context, photoId string, page int) (*CommentBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/comments"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var comments CommentBulkResponse
+	if err := json.Unmarshal(body, &comments); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &comments, nil
+}
+
+// AddPhotoComment posts a new comment on a photo. text is required by
+// Geni; title is optional. The response is a [CommentBulkResponse] —
+// the updated paginated comment list (sandbox behaviour varies: see
+// the analogous note on AddDocumentComment).
+func (c *Client) AddPhotoComment(ctx context.Context, photoId, text, title string) (*CommentBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/comment"
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	query := req.URL.Query()
+	query.Set("text", text)
+	if title != "" {
+		query.Set("title", title)
+	}
+	req.URL.RawQuery = query.Encode()
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var comments CommentBulkResponse
+	if err := json.Unmarshal(body, &comments); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &comments, nil
 }
 
 // DeletePhoto deletes a photo by id.

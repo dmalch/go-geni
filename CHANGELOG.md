@@ -13,6 +13,14 @@
   build `multipart/form-data` bodies (the new `CreatePhoto`, plus any
   future photo/video upload endpoints) can pre-set their boundary
   header and have it survive intact through `doRequest`.
+- Photo API: completed the resource. Added `Client.UpdatePhoto(ctx,
+  photoId, *PhotoRequest)` plus a new `PhotoRequest` type;
+  `Client.TagPhoto` / `Client.UntagPhoto` (path-based
+  `/photo-{id}/tag/profile-{id}`); `Client.GetPhotoTags(ctx, photoId,
+  page)` returning a paginated `ProfileBulkResponse`;
+  `Client.AddPhotoComment(ctx, photoId, text, title)` and
+  `Client.GetPhotoComments(ctx, photoId, page)` returning the shared
+  `CommentBulkResponse`.
 
 ## 0.6.0
 
