@@ -1,3 +1,10 @@
+## 0.3.0 (Unreleased)
+
+- Discovery: added `Client.SearchProfiles(ctx, names, page)` for
+  Geni's `/profile/search` endpoint. Returns the existing
+  `ProfileBulkResponse`, which now also carries the `NextPage` /
+  `PrevPage` URL hints surfaced by paginated endpoints.
+
 ## 0.2.0
 
 - Tree API: added `Client.GetImmediateFamily`, `Client.GetAncestors`, and
