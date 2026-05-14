@@ -1,3 +1,10 @@
+## 0.8.0 (Unreleased)
+
+- User API: added `Client.GetUser(ctx)` for the `GET /api/user`
+  self-endpoint. New `User` type covering the documented fields
+  (`Id`, `Guid`, `Name`, `AccountType`); the JSON decoder is
+  permissive so any extra fields Geni surfaces are silently dropped.
+
 ## 0.7.0
 
 - Photo API: added the minimum viable surface for image uploads —
