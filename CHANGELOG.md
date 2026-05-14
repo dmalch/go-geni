@@ -1,4 +1,4 @@
-## 0.4.0 (Unreleased)
+## 0.4.0
 
 - Union API: added `Client.AddPartnerToUnion(ctx, unionId)` and
   `Client.AddChildToUnion(ctx, unionId, opts...)` for the
