@@ -1,3 +1,26 @@
+## 0.7.0 (Unreleased)
+
+- Pagination: added `Iter*` helpers that yield `iter.Seq2[*T, error]`
+  for every paginated `Get*` endpoint:
+  - `IterManagedProfiles`
+  - `IterUploadedDocuments`
+  - `IterDocumentComments` / `IterDocumentProjects`
+  - `IterSearchProfiles`
+  - `IterProjectProfiles` / `IterProjectCollaborators` /
+    `IterProjectFollowers`
+
+  Callers use Go 1.23+ range-over-func:
+  ```go
+  for p, err := range client.IterManagedProfiles(ctx) {
+      if err != nil { return err }
+      // …
+  }
+  ```
+  Error propagation, early break, and end-of-data are all handled
+  uniformly by the shared private `paginate` engine.
+- `DocumentBulkResponse` now also carries `NextPage` / `PrevPage`
+  (matches `ProfileBulkResponse` and the search/project envelopes).
+
 ## 0.6.0
 
 - Project API: added `Client.GetProjectProfiles(ctx, projectId, page)`,

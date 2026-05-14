@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"iter"
 	"net/http"
 	"strconv"
 	"strings"
@@ -38,6 +39,8 @@ type DocumentBulkResponse struct {
 	Results    []DocumentResponse `json:"results,omitempty"`
 	Page       int                `json:"page,omitempty"`
 	TotalCount int                `json:"total_count,omitempty"`
+	NextPage   string             `json:"next_page,omitempty"`
+	PrevPage   string             `json:"prev_page,omitempty"`
 }
 type DocumentResponse struct {
 	// Id is the document's id
@@ -345,6 +348,44 @@ func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, pag
 		return nil, err
 	}
 	return &projects, nil
+}
+
+// IterUploadedDocuments walks every page of the caller's uploaded
+// documents and yields each in turn. See
+// [Client.GetUploadedDocuments] for the page-by-page variant.
+func (c *Client) IterUploadedDocuments(ctx context.Context) iter.Seq2[*DocumentResponse, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]DocumentResponse, bool, error) {
+		res, err := c.GetUploadedDocuments(ctx, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
+}
+
+// IterDocumentComments walks every page of a document's comments. See
+// [Client.GetDocumentComments] for the page-by-page variant.
+func (c *Client) IterDocumentComments(ctx context.Context, documentId string) iter.Seq2[*Comment, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]Comment, bool, error) {
+		res, err := c.GetDocumentComments(ctx, documentId, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
+}
+
+// IterDocumentProjects walks every page of the projects a document
+// belongs to. See [Client.GetDocumentProjects] for the page-by-page
+// variant.
+func (c *Client) IterDocumentProjects(ctx context.Context, documentId string) iter.Seq2[*ProjectResponse, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]ProjectResponse, bool, error) {
+		res, err := c.GetDocumentProjects(ctx, documentId, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
 }
 
 func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string) (*ProfileBulkResponse, error) {

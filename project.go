@@ -3,6 +3,7 @@ package geni
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -73,6 +74,36 @@ func (c *Client) GetProjectCollaborators(ctx context.Context, projectId string, 
 // 1-indexed; values ≤0 omit the parameter. Max 50 followers per page.
 func (c *Client) GetProjectFollowers(ctx context.Context, projectId string, page int) (*ProfileBulkResponse, error) {
 	return c.getProjectProfileListing(ctx, projectId, "followers", page)
+}
+
+// IterProjectProfiles walks every page of profiles tagged to a
+// project. See [Client.GetProjectProfiles] for the page-by-page
+// variant.
+func (c *Client) IterProjectProfiles(ctx context.Context, projectId string) iter.Seq2[*ProfileResponse, error] {
+	return c.iterProjectProfileListing(ctx, projectId, "profiles")
+}
+
+// IterProjectCollaborators walks every page of collaborators on a
+// project. See [Client.GetProjectCollaborators] for the page-by-page
+// variant.
+func (c *Client) IterProjectCollaborators(ctx context.Context, projectId string) iter.Seq2[*ProfileResponse, error] {
+	return c.iterProjectProfileListing(ctx, projectId, "collaborators")
+}
+
+// IterProjectFollowers walks every page of followers of a project.
+// See [Client.GetProjectFollowers] for the page-by-page variant.
+func (c *Client) IterProjectFollowers(ctx context.Context, projectId string) iter.Seq2[*ProfileResponse, error] {
+	return c.iterProjectProfileListing(ctx, projectId, "followers")
+}
+
+func (c *Client) iterProjectProfileListing(ctx context.Context, projectId, sublist string) iter.Seq2[*ProfileResponse, error] {
+	return paginate(ctx, func(ctx context.Context, page int) ([]ProfileResponse, bool, error) {
+		res, err := c.getProjectProfileListing(ctx, projectId, sublist, page)
+		if err != nil {
+			return nil, false, err
+		}
+		return res.Results, res.NextPage != "", nil
+	})
 }
 
 // getProjectProfileListing is the shared GET implementation for the
