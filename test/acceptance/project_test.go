@@ -58,4 +58,28 @@ var _ = Describe("Project API", func() {
 			Expect(res).ToNot(BeNil())
 		})
 	})
+
+	Describe("GetProjectProfiles", func() {
+		It("returns the project's profile list", func() {
+			res, err := client.GetProjectProfiles(ctx, projectId, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).ToNot(BeNil())
+		})
+	})
+
+	Describe("GetProjectCollaborators", func() {
+		It("returns the project's collaborator list", func() {
+			res, err := client.GetProjectCollaborators(ctx, projectId, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).ToNot(BeNil())
+		})
+	})
+
+	Describe("GetProjectFollowers", func() {
+		It("returns the project's follower list", func() {
+			res, err := client.GetProjectFollowers(ctx, projectId, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).ToNot(BeNil())
+		})
+	})
 })
