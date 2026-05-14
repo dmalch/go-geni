@@ -102,7 +102,7 @@ API reference: <https://pkg.go.dev/github.com/dmalch/go-geni>
 ## Contributing
 
 ```bash
-make test                # unit + Ginkgo acceptance (in-process)
+make test                # unit + Ginkgo integration (in-process)
 make lint                # golangci-lint
 make check               # build + vet + lint + test (CI parity)
 ```
