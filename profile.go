@@ -46,8 +46,12 @@ type ProfileRequest struct {
 	CurrentResidence *LocationElement `json:"current_residence"`
 	// AboutMe is the profile's about me section
 	AboutMe *string `json:"about_me"`
-	// DetailStrings are nested maps of locales to details fields (e.g. about me) to values
-	DetailStrings map[string]DetailsString `json:"detail_strings"`
+	// DetailStrings are nested maps of locales to details fields (e.g.
+	// about me) to values. Tagged with omitempty: the Geni API crashes
+	// (500, Ruby NoMethodError on nil) when a request body contains
+	// "detail_strings": null. Callers who want to clear all details
+	// must send an explicit empty map.
+	DetailStrings map[string]DetailsString `json:"detail_strings,omitempty"`
 	// Occupation is the profile's occupation. Sent without omitempty — see Title.
 	Occupation string `json:"occupation"`
 	// Suffix is the profile's suffix. Sent without omitempty — see Title.

@@ -1,0 +1,10 @@
+{
+  "status": "done",
+  "relationship": "first cousin once removed",
+  "relations": [
+    {"id": "profile-1", "relation": "self", "next_id": "union-100"},
+    {"id": "union-100", "relation": "mother", "next_id": "profile-11"},
+    {"id": "profile-11", "relation": "mother", "next_id": "union-200"},
+    {"id": "union-200", "relation": "son", "next_id": "profile-2"}
+  ]
+}

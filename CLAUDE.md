@@ -13,21 +13,39 @@ cleanup planned for 1.0.
 ## Commands
 
 ```bash
-go build ./...
-go test ./...
+make build                               # go build ./...
+make test                                # unit + Ginkgo acceptance (in-process)
+make lint                                # golangci-lint
+make test-acceptance                     # E2E against sandbox; needs GENI_ACCESS_TOKEN
+make check                               # build + vet + lint + test (CI parity)
+
 go test -run TestProfile ./...           # single test by name
 go test -run TestFoo/subtest ./...       # subtest of a table-driven test
-go vet ./...
-golangci-lint run                        # config in .golangci.yml
 ```
 
 CI (`.github/workflows/ci.yaml`) runs build + test + vet + golangci-lint
 on every push/PR to `main`. Keep the working tree warning-free under the
-enabled linters (errcheck, staticcheck, unused, unparam, godot, …).
+enabled linters (errcheck, staticcheck, unused, unparam, godot, …). CI
+does **not** run `test/acceptance/` — those need a real OAuth token,
+which the harness can't mint.
 
-Tests use `github.com/onsi/gomega` for matchers but are plain `testing.T`
-tests (no Ginkgo). All tests are unit tests against in-process fakes —
-none hit the real Geni API.
+Tests come in three tiers:
+
+1. **Unit** — plain `testing.T` + Gomega matchers, in-package, using the
+   `captureTransport` / `fakeTransport` round-trippers (`*_test.go` at
+   the repo root).
+2. **Acceptance** — Ginkgo v2 BDD specs registered into the single
+   `TestGeniSuite` bootstrap (`suite_test.go`, `*_acceptance_test.go`).
+   Still in-process; talks to an `httptest.NewServer` serving fixtures
+   from `testdata/`.
+3. **Sandbox E2E** (`test/acceptance/`, `package acceptance`) —
+   self-skips unless `GENI_ACCESS_TOKEN` is exported. Mint a sandbox
+   token at
+   <https://sandbox.geni.com/platform/developer/api_explorer> and run
+   `make test-acceptance` manually before pushing changes that touch
+   endpoint code or request shape. Fixtures created in the sandbox are
+   cleaned up with `t.Cleanup` — keep new tests read-only or
+   self-cleaning.
 
 ## Architecture
 
