@@ -1,4 +1,4 @@
-## 0.6.0 (Unreleased)
+## 0.6.0
 
 - Project API: added `Client.GetProjectProfiles(ctx, projectId, page)`,
   `Client.GetProjectCollaborators(ctx, projectId, page)`, and
