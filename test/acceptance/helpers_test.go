@@ -4,8 +4,9 @@ import (
 	"context"
 	"os"
 	"path"
-	"testing"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
 
 	"github.com/dmalch/go-geni"
@@ -21,20 +22,18 @@ func sandboxAuthURL() string {
 }
 
 // sandboxTokenCachePath is the on-disk location for the cached sandbox
-// access token. Matches the path used by terraform-provider-genealogy,
+// access token. Matches the path used by terraform-provider-genealogy
 // so a previously-authorized provider session avoids a fresh browser
 // prompt here.
-func sandboxTokenCachePath(t *testing.T) string {
-	t.Helper()
+func sandboxTokenCachePath() string {
+	GinkgoHelper()
 	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatalf("user home dir: %v", err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	return path.Join(home, ".genealogy", "geni_sandbox_token.json")
 }
 
-// tokenSource resolves a sandbox OAuth TokenSource for an acceptance
-// test or skips the test when no usable path is configured. Order:
+// tokenSource resolves a sandbox OAuth TokenSource for the current spec
+// or calls Skip() when no usable path is configured. Order:
 //
 //  1. GENI_ACCESS_TOKEN — static token (non-interactive, CI-friendly).
 //  2. Cached token at ~/.genealogy/geni_sandbox_token.json — written by
@@ -44,23 +43,21 @@ func sandboxTokenCachePath(t *testing.T) string {
 //  3. Interactive browser OAuth flow, gated on GENI_OAUTH=1 so that a
 //     bare `go test ./...` in CI still self-skips. `make test-acceptance`
 //     sets the flag for you.
-//
-// On any other combination the test skips with a hint.
-func tokenSource(t *testing.T) oauth2.TokenSource {
-	t.Helper()
+func tokenSource() oauth2.TokenSource {
+	GinkgoHelper()
 
 	if tok := os.Getenv("GENI_ACCESS_TOKEN"); tok != "" {
 		return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tok})
 	}
 
-	cachePath := sandboxTokenCachePath(t)
+	cachePath := sandboxTokenCachePath()
 	cacheExists := false
 	if _, err := os.Stat(cachePath); err == nil {
 		cacheExists = true
 	}
 
 	if !cacheExists && os.Getenv("GENI_OAUTH") == "" {
-		t.Skip("acceptance tests need a sandbox token. Run `make test-acceptance` to start an interactive OAuth flow, or set GENI_ACCESS_TOKEN to a token minted at https://sandbox.geni.com/platform/developer/api_explorer")
+		Skip("acceptance tests need a sandbox token. Run `make test-acceptance` to start an interactive OAuth flow, or set GENI_ACCESS_TOKEN to a token minted at https://sandbox.geni.com/platform/developer/api_explorer")
 	}
 
 	return oauth2.ReuseTokenSource(nil,
@@ -71,40 +68,35 @@ func tokenSource(t *testing.T) oauth2.TokenSource {
 			})))
 }
 
-// newTestClient resolves a token source (skipping the test if none is
+// newTestClient resolves a token source (skipping the spec if none is
 // available) and returns a go-geni Client pointed at the sandbox.
-func newTestClient(t *testing.T) *geni.Client {
-	t.Helper()
-	return geni.NewClient(tokenSource(t), true)
+func newTestClient() *geni.Client {
+	GinkgoHelper()
+	return geni.NewClient(tokenSource(), true)
 }
 
-// strPtr is a tiny helper for building optional string fields in
-// ProfileRequest / DocumentRequest etc.
 func strPtr(s string) *string { return &s }
 
 // createFixtureProfile creates a deceased, public profile in the sandbox
-// and registers a t.Cleanup hook that deletes it. Tests keep created
-// profiles non-living and public to minimize side effects on the
-// sandbox tree.
-func createFixtureProfile(t *testing.T, ctx context.Context, client *geni.Client, firstName, lastName string) *geni.ProfileResponse {
-	t.Helper()
+// and registers a DeferCleanup hook that deletes it after the current
+// spec finishes. Profiles are kept non-living and public to minimize
+// side effects on the sandbox tree. The last name is always
+// "Acceptance" so fixtures are easy to recognise + scrub manually.
+func createFixtureProfile(ctx context.Context, client *geni.Client, firstName string) *geni.ProfileResponse {
+	GinkgoHelper()
 	created, err := client.CreateProfile(ctx, &geni.ProfileRequest{
 		Names: map[string]geni.NameElement{
 			"en-US": {
 				FirstName: strPtr(firstName),
-				LastName:  strPtr(lastName),
+				LastName:  strPtr("Acceptance"),
 			},
 		},
 		IsAlive: false,
 		Public:  true,
 	})
-	if err != nil {
-		t.Fatalf("create fixture profile: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := client.DeleteProfile(context.Background(), created.Id); err != nil {
-			t.Logf("cleanup: delete profile %s: %v", created.Id, err)
-		}
+	Expect(err).ToNot(HaveOccurred())
+	DeferCleanup(func() {
+		_ = client.DeleteProfile(context.Background(), created.Id)
 	})
 	return created
 }
