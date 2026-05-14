@@ -1,4 +1,4 @@
-## 0.8.0 (Unreleased)
+## 0.8.0
 
 - User API: added `Client.GetUser(ctx)` for the `GET /api/user`
   self-endpoint. New `User` type covering the documented fields
