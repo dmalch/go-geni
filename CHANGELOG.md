@@ -1,4 +1,4 @@
-## 0.7.0 (Unreleased)
+## 0.7.0
 
 - Photo API: added the minimum viable surface for image uploads —
   `Client.CreatePhoto(ctx, title, fileName, file, opts...)` with
