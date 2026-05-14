@@ -8,7 +8,10 @@ import (
 )
 
 type ProjectBulkResponse struct {
-	Results []ProjectResponse `json:"results,omitempty"`
+	Results  []ProjectResponse `json:"results,omitempty"`
+	Page     int               `json:"page,omitempty"`
+	NextPage string            `json:"next_page,omitempty"`
+	PrevPage string            `json:"prev_page,omitempty"`
 }
 
 type ProjectResponse struct {

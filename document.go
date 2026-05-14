@@ -255,6 +255,98 @@ func (c *Client) TagDocument(ctx context.Context, documentId, profileId string) 
 	return &profiles, nil
 }
 
+// GetDocumentComments returns the paginated list of comments on a
+// document. page is 1-indexed; values ≤0 omit the parameter (Geni
+// defaults to page 1). Max 50 comments per page.
+func (c *Client) GetDocumentComments(ctx context.Context, documentId string, page int) (*CommentBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/comments"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var comments CommentBulkResponse
+	if err := json.Unmarshal(body, &comments); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &comments, nil
+}
+
+// AddDocumentComment posts a new comment on a document. text is the
+// comment body and is required by Geni; title is optional and may be
+// the empty string. The response is a [CommentBulkResponse] — the
+// updated paginated comment list.
+func (c *Client) AddDocumentComment(ctx context.Context, documentId, text, title string) (*CommentBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/comment"
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	query := req.URL.Query()
+	query.Set("text", text)
+	if title != "" {
+		query.Set("title", title)
+	}
+	req.URL.RawQuery = query.Encode()
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var comments CommentBulkResponse
+	if err := json.Unmarshal(body, &comments); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &comments, nil
+}
+
+// GetDocumentProjects returns the paginated list of projects a
+// document belongs to. page is 1-indexed; values ≤0 omit the parameter
+// (Geni defaults to page 1). Max 50 projects per page.
+func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, page int) (*ProjectBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/projects"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var projects ProjectBulkResponse
+	if err := json.Unmarshal(body, &projects); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &projects, nil
+}
+
 func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string) (*ProfileBulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/untag/" + profileId
 

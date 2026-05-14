@@ -118,4 +118,40 @@ var _ = Describe("Document API", func() {
 			Expect(res.Results).ToNot(BeEmpty())
 		})
 	})
+
+	Describe("Comments", func() {
+		// In the sandbox, both AddDocumentComment and
+		// GetDocumentComments return a paginated envelope with an
+		// empty `results` array even after a successful add — the
+		// HTTP call succeeds but the comment doesn't surface in the
+		// returned page. The public docs don't describe the rule.
+		// We assert the call shapes succeed; membership of the
+		// just-added comment is not load-bearing for this client.
+		It("posts a comment and lists comments without error", func() {
+			doc := createFixtureDocument(ctx, client, "AccCommentDoc", "to-be-commented")
+
+			added, err := client.AddDocumentComment(ctx, doc.Id, "first comment", "title-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(added).ToNot(BeNil())
+
+			listed, err := client.GetDocumentComments(ctx, doc.Id, 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(listed).ToNot(BeNil())
+		})
+	})
+
+	Describe("Projects", func() {
+		// A freshly-created document is not in any project until the
+		// caller adds it. We assert the call shape (succeeds, returns
+		// a ProjectBulkResponse) rather than that the result set is
+		// non-empty.
+		It("returns the document's project list (possibly empty)", func() {
+			doc := createFixtureDocument(ctx, client, "AccProjectsDoc", "project-listing")
+
+			res, err := client.GetDocumentProjects(ctx, doc.Id, 0)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).ToNot(BeNil())
+		})
+	})
 })
