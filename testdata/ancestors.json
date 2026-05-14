@@ -1,0 +1,12 @@
+{
+  "focus": "profile-1",
+  "nodes": {
+    "profile-1": {"id": "profile-1", "first_name": "Alice"},
+    "profile-10": {"id": "profile-10", "first_name": "Edward"},
+    "profile-11": {"id": "profile-11", "first_name": "Mary"},
+    "profile-20": {"id": "profile-20", "first_name": "Henry"},
+    "profile-21": {"id": "profile-21", "first_name": "Margaret"},
+    "union-100": {"id": "union-100", "partners": ["profile-10", "profile-11"], "children": ["profile-1"]},
+    "union-200": {"id": "union-200", "partners": ["profile-20", "profile-21"], "children": ["profile-10"]}
+  }
+}

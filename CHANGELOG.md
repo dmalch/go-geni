@@ -1,3 +1,17 @@
+## 0.2.0 (Unreleased)
+
+- Tree API: added `Client.GetImmediateFamily`, `Client.GetAncestors`, and
+  `Client.GetPathTo`. New types: `FamilyResponse` / `FamilyNodes` (with
+  `Profile`, `Union`, `ProfileIds`, `UnionIds` accessors) for the
+  heterogeneous profile+union node map keyed by Geni-prefixed id; typed
+  `PathType` and `PathStatus` value objects; `TreeOption` functional
+  options (`WithGenerations`, `WithPathType`, `WithRefresh`, `WithSearch`,
+  `WithSkipEmail`, `WithSkipNotify`). `GetPathTo` is a thin pass-through
+  — when `Status == PathStatusPending` the caller is expected to back off
+  and re-issue.
+- Tests: adopted Ginkgo + Gomega for the acceptance suite alongside the
+  existing `testing.T` + Gomega unit tests. `go test ./...` discovers both.
+
 ## 0.1.1
 
 - Bumped `golang.org/x/oauth2` from 0.31.0 to 0.36.0 (#1).

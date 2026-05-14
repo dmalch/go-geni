@@ -25,9 +25,12 @@ CI (`.github/workflows/ci.yaml`) runs build + test + vet + golangci-lint
 on every push/PR to `main`. Keep the working tree warning-free under the
 enabled linters (errcheck, staticcheck, unused, unparam, godot, …).
 
-Tests use `github.com/onsi/gomega` for matchers but are plain `testing.T`
-tests (no Ginkgo). All tests are unit tests against in-process fakes —
-none hit the real Geni API.
+Tests use `github.com/onsi/gomega` for matchers. Unit tests are plain
+`testing.T` functions; the acceptance suite (`suite_test.go`,
+`*_acceptance_test.go`) uses Ginkgo v2 BDD specs registered into a single
+`TestGeniSuite` bootstrap. All tests run in-process against fakes
+(`captureTransport` / `fakeTransport` / `httptest.NewServer`) — none hit
+the real Geni API.
 
 ## Architecture
 
