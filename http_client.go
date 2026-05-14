@@ -284,7 +284,13 @@ func (c *Client) addStandardHeadersAndQueryParams(req *http.Request) error {
 
 	req.URL.RawQuery = query.Encode()
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
+	// Only inject application/json when the caller hasn't already set
+	// a Content-Type — multipart upload endpoints (e.g. photo/add)
+	// pre-set their own header with the boundary parameter and would
+	// otherwise end up with two conflicting Content-Type values.
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Add("Content-Type", "application/json")
+	}
 	req.Header.Add("User-Agent", "terraform-provider-genealogy/0.1")
 
 	return nil

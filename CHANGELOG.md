@@ -1,3 +1,19 @@
+## 0.7.0 (Unreleased)
+
+- Photo API: added the minimum viable surface for image uploads —
+  `Client.CreatePhoto(ctx, title, fileName, file, opts...)` with
+  `WithPhotoAlbum`, `WithPhotoDescription`, `WithPhotoDate` options;
+  `Client.GetPhoto(ctx, photoId)`; `Client.GetPhotos(ctx, photoIds)`
+  for bulk; `Client.DeletePhoto(ctx, photoId)`. New `PhotoResponse`
+  and `PhotoBulkResponse` types covering the documented Geni Photo
+  resource (id, title, description, album_id, sizes map, location,
+  tags, timestamps).
+- Multipart plumbing: `addStandardHeadersAndQueryParams` no longer
+  overwrites a caller-set `Content-Type` header, so endpoints that
+  build `multipart/form-data` bodies (the new `CreatePhoto`, plus any
+  future photo/video upload endpoints) can pre-set their boundary
+  header and have it survive intact through `doRequest`.
+
 ## 0.6.0
 
 - Project API: added `Client.GetProjectProfiles(ctx, projectId, page)`,
