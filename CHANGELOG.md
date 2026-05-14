@@ -1,4 +1,4 @@
-## 0.5.0 (Unreleased)
+## 0.5.0
 
 - Document API: added `Client.GetDocumentComments(ctx, docId, page)`,
   `Client.AddDocumentComment(ctx, docId, text, title)`, and
