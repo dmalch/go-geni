@@ -14,7 +14,7 @@ cleanup planned for 1.0.
 
 ```bash
 make build                               # go build ./...
-make test                                # unit + Ginkgo acceptance (in-process)
+make test                                # unit + Ginkgo integration (in-process)
 make lint                                # golangci-lint
 make test-acceptance                     # E2E against sandbox; needs GENI_ACCESS_TOKEN
 make check                               # build + vet + lint + test (CI parity)
@@ -34,10 +34,10 @@ Tests come in three tiers:
 1. **Unit** — plain `testing.T` + Gomega matchers, in-package, using the
    `captureTransport` / `fakeTransport` round-trippers (`*_test.go` at
    the repo root).
-2. **Acceptance** — Ginkgo v2 BDD specs registered into the single
-   `TestGeniSuite` bootstrap (`suite_test.go`, `*_acceptance_test.go`).
-   Still in-process; talks to an `httptest.NewServer` serving fixtures
-   from `testdata/`.
+2. **Integration** — Ginkgo v2 BDD specs registered into the single
+   `TestGeniIntegration` bootstrap (`suite_test.go`,
+   `*_integration_test.go`). Still in-process; talks to an
+   `httptest.NewServer` serving fixtures from `testdata/`.
 3. **Sandbox E2E** (`test/acceptance/`, `package acceptance`) —
    self-skips unless `GENI_ACCESS_TOKEN` is exported. Mint a sandbox
    token at

@@ -7,10 +7,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// TestGeniSuite is the Ginkgo bootstrap. Plain testing.T units still run
-// from their own TestXxx functions; this just lets `go test ./...` pick
-// up the BDD-style acceptance specs registered via Describe / It.
-func TestGeniSuite(t *testing.T) {
+// TestGeniIntegration is the Ginkgo bootstrap for the in-process
+// integration tier. Plain testing.T units still run from their own
+// TestXxx functions; this just lets `go test ./...` pick up the
+// BDD-style integration specs registered via Describe / It. The
+// sandbox tier lives under test/acceptance/ (see its own
+// TestGeniAcceptance bootstrap).
+func TestGeniIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "geni acceptance suite")
+	RunSpecs(t, "geni integration suite")
 }

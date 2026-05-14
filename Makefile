@@ -6,7 +6,7 @@ build:
 vet:
 	go vet ./...
 
-# Unit + Ginkgo acceptance suite (everything but test/acceptance, which
+# Unit + Ginkgo integration suite (everything but test/acceptance, which
 # needs a real OAuth token and a network call to Geni's sandbox).
 test:
 	go test ./...
