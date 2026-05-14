@@ -56,9 +56,14 @@ type PhotoResponse struct {
 	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
-// PhotoBulkResponse is the envelope returned by [Client.GetPhotos].
+// PhotoBulkResponse is the envelope returned by [Client.GetPhotos]
+// and the paginated `*/photos` listings (profile.photos,
+// album.photos, etc.).
 type PhotoBulkResponse struct {
-	Results []PhotoResponse `json:"results,omitempty"`
+	Results  []PhotoResponse `json:"results,omitempty"`
+	Page     int             `json:"page,omitempty"`
+	NextPage string          `json:"next_page,omitempty"`
+	PrevPage string          `json:"prev_page,omitempty"`
 }
 
 // CreatePhotoOption customises an outgoing CreatePhoto request.

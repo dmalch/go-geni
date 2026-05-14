@@ -38,6 +38,8 @@ type DocumentBulkResponse struct {
 	Results    []DocumentResponse `json:"results,omitempty"`
 	Page       int                `json:"page,omitempty"`
 	TotalCount int                `json:"total_count,omitempty"`
+	NextPage   string             `json:"next_page,omitempty"`
+	PrevPage   string             `json:"prev_page,omitempty"`
 }
 type DocumentResponse struct {
 	// Id is the document's id
