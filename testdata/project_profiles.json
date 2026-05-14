@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "id": "profile-501",
+      "first_name": "Eleanor",
+      "last_name": "Project-Member",
+      "is_alive": false,
+      "public": true
+    },
+    {
+      "id": "profile-502",
+      "first_name": "Henry",
+      "last_name": "Project-Member",
+      "is_alive": false,
+      "public": true
+    }
+  ],
+  "page": 1,
+  "total_count": 2,
+  "next_page": "https://www.geni.com/api/project-7/profiles?page=2"
+}

@@ -1,3 +1,12 @@
+## 0.6.0 (Unreleased)
+
+- Project API: added `Client.GetProjectProfiles(ctx, projectId, page)`,
+  `Client.GetProjectCollaborators(ctx, projectId, page)`, and
+  `Client.GetProjectFollowers(ctx, projectId, page)` for the
+  paginated `/project/<id>/{profiles,collaborators,followers}`
+  sub-listings. All three return a `ProfileBulkResponse` (with the
+  existing `Page` / `TotalCount` / `NextPage` / `PrevPage` fields).
+
 ## 0.5.0
 
 - Document API: added `Client.GetDocumentComments(ctx, docId, page)`,
