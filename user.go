@@ -12,10 +12,10 @@ import (
 // a single account may manage many profiles.
 //
 // The public docs list only `name` and `account_type` on this object,
-// but the JSON decoder is permissive: extra fields returned by the
-// sandbox or production API are silently ignored, and the fields
-// listed here are tagged with omitempty so blank values aren't
-// surfaced.
+// and the sandbox returns exactly those two — Id and Guid below are
+// captured defensively in case production differs, but you should
+// not depend on them being populated. The JSON decoder is permissive
+// (extra fields are silently ignored).
 type User struct {
 	// Id is the user's identifier.
 	Id string `json:"id,omitempty"`
