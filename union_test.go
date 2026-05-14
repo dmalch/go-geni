@@ -23,6 +23,37 @@ func TestGetUnion1(t *testing.T) {
 	Expect(union.Id).To(BeEquivalentTo(unionId))
 }
 
+// Geni's bulk-by-id endpoint returns empty results when ids= carries
+// exactly one identifier. The client falls back to the singular Get
+// for that case; this test asserts the fallback wires the right
+// URL and returns the wrapped bulk envelope. Two-id calls still hit
+// the bulk path — covered separately.
+func TestGetUnions_SingleIdFallback(t *testing.T) {
+	t.Run("single id call goes through singular GetUnion path", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"union-9","status":"spouse"}`)
+
+		res, err := c.GetUnions(context.Background(), []string{"union-9"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-9"))
+		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
+		Expect(res.Results).To(HaveLen(1))
+		Expect(res.Results[0].Id).To(Equal("union-9"))
+	})
+
+	t.Run("two-id call still hits the bulk endpoint", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"union-9"},{"id":"union-10"}]}`)
+
+		_, err := c.GetUnions(context.Background(), []string{"union-9", "union-10"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union"))
+		Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("union-9,union-10"))
+	})
+}
+
 func TestAddPartnerToUnion_Request(t *testing.T) {
 	t.Run("POSTs to /api/<unionId>/add-partner", func(t *testing.T) {
 		RegisterTestingT(t)

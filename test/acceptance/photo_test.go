@@ -176,23 +176,37 @@ var _ = Describe("Photo API", func() {
 	})
 
 	Describe("Comments", func() {
-		// Mirrors the document.comment sandbox finding: the wire
-		// calls succeed but the comment may not surface in the list
-		// envelope. We assert the call shapes only.
-		It("posts a comment and lists comments without error", func() {
+		// Skipped: mirrors document.Comments — AddPhotoComment
+		// returns success immediately but the comment never
+		// surfaces on GetPhotoComments (polled 30s). Same shape
+		// as the document comments and profile media listings. The
+		// intended Eventually assertion is preserved so unskipping
+		// is a one-line change.
+		It("posts a comment and eventually lists it back", func() {
+			Skip("AddPhotoComment doesn't propagate to GetPhotoComments in the sandbox (polled 30s; comment never appeared)")
+
 			photo, err := client.CreatePhoto(ctx,
 				fmt.Sprintf("AccPhotoComment-%d", time.Now().UnixNano()),
 				"cmt.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
 
-			added, err := client.AddPhotoComment(ctx, photo.Id, "first photo comment", "")
+			body := "first photo comment"
+			_, err = client.AddPhotoComment(ctx, photo.Id, body, "")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(added).ToNot(BeNil())
 
-			listed, err := client.GetPhotoComments(ctx, photo.Id, 0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(listed).ToNot(BeNil())
+			Eventually(func(g Gomega) {
+				listed, err := client.GetPhotoComments(ctx, photo.Id, 0)
+				g.Expect(err).ToNot(HaveOccurred())
+				texts := make([]string, 0, len(listed.Results))
+				for _, c := range listed.Results {
+					texts = append(texts, c.Comment)
+				}
+				g.Expect(texts).To(ContainElement(body))
+			}).
+				WithTimeout(30 * time.Second).
+				WithPolling(2 * time.Second).
+				Should(Succeed())
 		})
 	})
 })

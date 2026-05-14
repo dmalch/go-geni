@@ -193,6 +193,15 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 
 // GetPhotos fetches multiple photos in a single bulk request.
 func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*PhotoBulkResponse, error) {
+	// Single-id fallback — see GetUnions for the Geni-side quirk.
+	if len(photoIds) == 1 {
+		one, err := c.GetPhoto(ctx, photoIds[0])
+		if err != nil {
+			return nil, err
+		}
+		return &PhotoBulkResponse{Results: []PhotoResponse{*one}}, nil
+	}
+
 	url := BaseURL(c.useSandboxEnv) + "api/photo"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

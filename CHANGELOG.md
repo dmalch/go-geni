@@ -1,3 +1,30 @@
+## 0.10.0 (Unreleased)
+
+- Bulk-by-id single-id fallback: `Client.GetProfiles`,
+  `Client.GetDocuments`, `Client.GetUnions`, and `Client.GetPhotos`
+  now route single-element calls through the corresponding singular
+  `Get*` and wrap the result in the bulk envelope. Reason: Geni's
+  bulk-by-id dispatcher silently returns `results: []` when `ids`
+  carries exactly one identifier — the server appears to route
+  one-element bulk requests through a search/filter path rather than
+  a fetch-by-id path. Callers see consistent behaviour regardless of
+  input size; no API surface change.
+- Sandbox acceptance suite: tightened several specs that were
+  previously Skip()-on-relaxed-assertion. Eventually polling now
+  asserts:
+  - `GetDocuments` bulk eventually returns both ids (the bulk path,
+    via 2-id call).
+  - `GetImmediateFamily` eventually surfaces a child added via
+    `AddChild`.
+  - `GetPathTo` eventually settles on a terminal `PathStatus`
+    (non-Pending) for a real parent→child path.
+  - `GetUnions` for a single id now hits the new fallback and passes
+    without skipping.
+  Specs that genuinely don't propagate within a reasonable window
+  in the sandbox (comments listings, search index, profile media
+  listings) are now Skip()'d with the intended Eventually
+  assertion preserved — flip one Skip line to re-arm.
+
 ## 0.9.0
 
 - Profile API: added `Client.GetProfileDocuments(ctx, profileId, page)`

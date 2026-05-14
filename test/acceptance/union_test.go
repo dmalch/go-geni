@@ -62,19 +62,18 @@ var _ = Describe("Union API", func() {
 	})
 
 	Describe("GetUnions (bulk)", func() {
-		// The Geni sandbox sometimes returns an empty results array
-		// for a single-id bulk lookup of a freshly-created union; we
-		// document but don't fail on that path. The regression we
-		// want to catch ("client decodes the bulk response shape")
-		// is covered by the unit tier.
-		It("returns the requested union when results are populated", func() {
+		// Single-id bulk requests are routed by the client through
+		// a singular GetUnion call because Geni's server-side bulk
+		// dispatcher returns empty for one-element ids lists. The
+		// caller sees a normal *UnionBulkResponse; the workaround
+		// is transparent. See union.go for the fallback.
+		It("returns the requested union via the single-id fallback", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 
 			res, err := client.GetUnions(ctx, []string{unionId})
+
 			Expect(err).ToNot(HaveOccurred())
-			if len(res.Results) == 0 {
-				Skip("sandbox returned an empty bulk-union result for a fresh union (known flake)")
-			}
+			Expect(res.Results).To(HaveLen(1))
 			Expect(res.Results[0].Id).To(Equal(unionId))
 		})
 	})

@@ -3,6 +3,7 @@ package acceptance
 import (
 	"context"
 	"errors"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,17 +23,28 @@ var _ = Describe("Tree traversal API", func() {
 	})
 
 	Describe("GetImmediateFamily", func() {
-		// Sandbox state for freshly-grafted profiles is not stable
-		// enough to assert on Nodes content within a single spec —
-		// we cover that path in the unit/Ginkgo httptest tiers.
-		It("echoes the focus profile id", func() {
+		// Eventually-polled: AddChild on a freshly-created profile
+		// may take a few seconds for the new child to surface on
+		// the parent's immediate-family graph. We poll until it
+		// does. If it never does, the spec fails — which is the
+		// signal we want.
+		It("eventually lists a child added to the focus profile", func() {
 			focus := createFixtureProfile(ctx, client, "FocusFamily")
 
-			family, err := client.GetImmediateFamily(ctx, focus.Id)
-
+			child, err := client.AddChild(ctx, focus.Id)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(family.Focus).ToNot(BeNil())
-			Expect(family.Focus.Id).To(Equal(focus.Id))
+			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+
+			Eventually(func(g Gomega) {
+				family, err := client.GetImmediateFamily(ctx, focus.Id)
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(family.Focus).ToNot(BeNil())
+				g.Expect(family.Focus.Id).To(Equal(focus.Id))
+				g.Expect(family.Nodes.ProfileIds()).To(ContainElement(child.Id))
+			}).
+				WithTimeout(30 * time.Second).
+				WithPolling(2 * time.Second).
+				Should(Succeed())
 		})
 	})
 
@@ -59,29 +71,40 @@ var _ = Describe("Tree traversal API", func() {
 	})
 
 	Describe("GetPathTo", func() {
-		// The notify/email suppression options keep the call
-		// side-effect-free. Geni may return Pending on first call;
-		// we don't poll — we just assert a recognized PathStatus
-		// comes back.
-		It("returns a recognized PathStatus for a parent→child path", func() {
+		// Eventually-polled: Geni's path-to endpoint is async — a
+		// first call frequently returns PathStatusPending and the
+		// caller is expected to re-issue. The notify/email
+		// suppression options keep the call side-effect-free
+		// across the polling window. We poll until status settles
+		// on a non-Pending value (Done is expected for a real
+		// parent→child relationship; Overloaded / NotFound are
+		// also terminal).
+		It("settles on a terminal PathStatus for a parent→child path", func() {
 			parent := createFixtureProfile(ctx, client, "PathToParent")
 
 			child, err := client.AddChild(ctx, parent.Id)
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
-			res, err := client.GetPathTo(ctx, parent.Id, child.Id,
-				geni.WithSkipEmail(true),
-				geni.WithSkipNotify(true),
-			)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Status).To(BeElementOf(
-				geni.PathStatusDone,
-				geni.PathStatusPending,
-				geni.PathStatusOverloaded,
-				geni.PathStatusNotFound,
-			))
+			var lastStatus geni.PathStatus
+			Eventually(func(g Gomega) {
+				res, err := client.GetPathTo(ctx, parent.Id, child.Id,
+					geni.WithSkipEmail(true),
+					geni.WithSkipNotify(true),
+				)
+				g.Expect(err).ToNot(HaveOccurred())
+				lastStatus = res.Status
+				g.Expect(res.Status).ToNot(Equal(geni.PathStatusPending),
+					"status is still pending; keep polling")
+				g.Expect(res.Status).To(BeElementOf(
+					geni.PathStatusDone,
+					geni.PathStatusOverloaded,
+					geni.PathStatusNotFound,
+				))
+			}).
+				WithTimeout(30*time.Second).
+				WithPolling(2*time.Second).
+				Should(Succeed(), "last seen status: %s", lastStatus)
 		})
 	})
 })
