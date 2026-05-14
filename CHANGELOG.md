@@ -1,4 +1,4 @@
-## 0.10.0 (Unreleased)
+## 0.10.0
 
 - Bulk-by-id single-id fallback: `Client.GetProfiles`,
   `Client.GetDocuments`, `Client.GetUnions`, and `Client.GetPhotos`
