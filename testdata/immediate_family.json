@@ -1,5 +1,12 @@
 {
-  "focus": "profile-1",
+  "focus": {
+    "id": "profile-1",
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "gender": "female",
+    "is_alive": true,
+    "public": true
+  },
   "nodes": {
     "profile-1": {
       "id": "profile-1",

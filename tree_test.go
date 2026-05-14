@@ -43,7 +43,7 @@ func newFakeClient(status int, body string) (*Client, *fakeTransport) {
 func TestGetImmediateFamily_Request(t *testing.T) {
 	t.Run("targets /api/<id>/immediate-family", func(t *testing.T) {
 		RegisterTestingT(t)
-		c, ft := newFakeClient(http.StatusOK, `{"focus":"profile-1","nodes":{}}`)
+		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
 		_, err := c.GetImmediateFamily(context.Background(), "profile-1")
 
@@ -54,13 +54,14 @@ func TestGetImmediateFamily_Request(t *testing.T) {
 
 	t.Run("decodes focus and nodes", func(t *testing.T) {
 		RegisterTestingT(t)
-		body := `{"focus":"profile-1","nodes":{"profile-1":{"id":"profile-1","first_name":"A"},"union-9":{"id":"union-9"}}}`
+		body := `{"focus":{"id":"profile-1","first_name":"A"},"nodes":{"profile-1":{"id":"profile-1","first_name":"A"},"union-9":{"id":"union-9"}}}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
 		res, err := c.GetImmediateFamily(context.Background(), "profile-1")
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(res.Focus).To(Equal("profile-1"))
+		Expect(res.Focus).ToNot(BeNil())
+		Expect(res.Focus.Id).To(Equal("profile-1"))
 		Expect(res.Nodes).To(HaveKey("profile-1"))
 		Expect(res.Nodes).To(HaveKey("union-9"))
 	})
@@ -87,7 +88,7 @@ func TestGetImmediateFamily_Request(t *testing.T) {
 func TestFamilyNodes_Accessors(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{
-		"focus": "profile-1",
+		"focus": {"id":"profile-1"},
 		"nodes": {
 			"profile-1": {"id":"profile-1","first_name":"A"},
 			"profile-2": {"id":"profile-2","first_name":"B"},
@@ -142,7 +143,7 @@ func TestFamilyNodes_Accessors(t *testing.T) {
 func TestGetAncestors_Request(t *testing.T) {
 	t.Run("targets /api/<id>/ancestors and omits generations by default", func(t *testing.T) {
 		RegisterTestingT(t)
-		c, ft := newFakeClient(http.StatusOK, `{"focus":"profile-1","nodes":{}}`)
+		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
 		_, err := c.GetAncestors(context.Background(), "profile-1")
 
@@ -154,7 +155,7 @@ func TestGetAncestors_Request(t *testing.T) {
 
 	t.Run("WithGenerations sets generations query param", func(t *testing.T) {
 		RegisterTestingT(t)
-		c, ft := newFakeClient(http.StatusOK, `{"focus":"profile-1","nodes":{}}`)
+		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
 		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(10))
 
@@ -164,7 +165,7 @@ func TestGetAncestors_Request(t *testing.T) {
 
 	t.Run("WithGenerations clamps to 20", func(t *testing.T) {
 		RegisterTestingT(t)
-		c, ft := newFakeClient(http.StatusOK, `{"focus":"profile-1","nodes":{}}`)
+		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
 		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(25))
 
@@ -174,7 +175,7 @@ func TestGetAncestors_Request(t *testing.T) {
 
 	t.Run("WithGenerations is a no-op for zero or negative", func(t *testing.T) {
 		RegisterTestingT(t)
-		c, ft := newFakeClient(http.StatusOK, `{"focus":"profile-1","nodes":{}}`)
+		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
 		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(0))
 

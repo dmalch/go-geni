@@ -1,5 +1,5 @@
 {
-  "focus": "profile-1",
+  "focus": {"id": "profile-1", "first_name": "Alice"},
   "nodes": {
     "profile-1": {"id": "profile-1", "first_name": "Alice"},
     "profile-10": {"id": "profile-10", "first_name": "Edward"},

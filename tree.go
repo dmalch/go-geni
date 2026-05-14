@@ -73,11 +73,12 @@ func (n FamilyNodes) idsWithPrefix(prefix string) []string {
 }
 
 // FamilyResponse is the shape returned by Geni's family-graph endpoints
-// (immediate-family, ancestors). Focus is the id of the profile the call
-// was anchored on; the corresponding node lives in Nodes.
+// (immediate-family, ancestors). Focus is the profile the call was
+// anchored on, embedded inline by the server. Related profiles and
+// unions live in Nodes.
 type FamilyResponse struct {
-	Focus string      `json:"focus,omitempty"`
-	Nodes FamilyNodes `json:"nodes,omitempty"`
+	Focus *ProfileResponse `json:"focus,omitempty"`
+	Nodes FamilyNodes      `json:"nodes,omitempty"`
 }
 
 // PathType is the value of the path_type query parameter on

@@ -81,7 +81,8 @@ var _ = Describe("Client tree endpoints", func() {
 			res, err := client.GetImmediateFamily(ctx, "profile-1")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Focus).To(Equal("profile-1"))
+			Expect(res.Focus).ToNot(BeNil())
+			Expect(res.Focus.Id).To(Equal("profile-1"))
 			Expect(res.Nodes.ProfileIds()).To(ContainElements("profile-1", "profile-2", "profile-3"))
 			Expect(res.Nodes.UnionIds()).To(ConsistOf("union-9"))
 

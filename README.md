@@ -99,6 +99,20 @@ to `geni.NewClient`.
 
 API reference: <https://pkg.go.dev/github.com/dmalch/go-geni>
 
+## Contributing
+
+```bash
+make test                # unit + Ginkgo acceptance (in-process)
+make lint                # golangci-lint
+make check               # build + vet + lint + test (CI parity)
+```
+
+The sandbox E2E suite under `test/acceptance/` self-skips unless
+`GENI_ACCESS_TOKEN` is exported. Mint a sandbox token at
+<https://sandbox.geni.com/platform/developer/api_explorer> and run
+`make test-acceptance` before pushing changes that touch endpoint or
+request-shape code. CI does not run E2E.
+
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE).
