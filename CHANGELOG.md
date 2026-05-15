@@ -1,3 +1,20 @@
+## 0.12.0 (Unreleased)
+
+- Surname API: added `Client.GetSurname(ctx, surnameId)`,
+  `Client.GetSurnameFollowers(ctx, surnameId, page)`, and
+  `Client.GetSurnameProfiles(ctx, surnameId, page)`. New `Surname`
+  type (id, description, slugged_name, url). The followers and
+  profiles sub-listings return the existing `ProfileBulkResponse`.
+- Revision API: added `Client.GetRevision(ctx, revisionId)` and
+  `Client.GetRevisions(ctx, revisionIds)` with the same single-id
+  bulk fallback used by Profile / Document / Union / Photo. New
+  `Revision` and `RevisionBulkResponse` types covering the
+  documented fields (id, guid, action, date_local, time_local,
+  timestamp, story).
+- Stats API: added `Client.GetStats(ctx)`. New `StatsResponse` type;
+  individual entries are kept as `json.RawMessage` because Geni's
+  docs don't enumerate per-stat fields.
+
 ## 0.11.0
 
 - Video API: full resource mirror of Photo. New methods:
