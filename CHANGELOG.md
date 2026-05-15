@@ -1,4 +1,4 @@
-## 0.11.0 (Unreleased)
+## 0.11.0
 
 - Video API: full resource mirror of Photo. New methods:
   `Client.CreateVideo`, `Client.GetVideo`, `Client.GetVideos`,
