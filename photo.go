@@ -178,7 +178,21 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	coalescer := bulkCoalescer[PhotoResponse, PhotoBulkResponse]{
+		currentId: photoId,
+		idPrefix:  "photo",
+		decodeBulk: func(body []byte) (PhotoBulkResponse, error) {
+			var env PhotoBulkResponse
+			if err := json.Unmarshal(body, &env); err != nil {
+				return env, err
+			}
+			return env, nil
+		},
+		listResults: func(env PhotoBulkResponse) []PhotoResponse { return env.Results },
+		idOfResult:  func(p PhotoResponse) string { return p.Id },
+	}
+
+	body, err := c.doRequest(ctx, req, coalescer.options()...)
 	if err != nil {
 		return nil, err
 	}
