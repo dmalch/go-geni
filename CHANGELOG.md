@@ -1,4 +1,4 @@
-## 0.12.0 (Unreleased)
+## 0.12.0
 
 - Surname API: added `Client.GetSurname(ctx, surnameId)`,
   `Client.GetSurnameFollowers(ctx, surnameId, page)`, and
