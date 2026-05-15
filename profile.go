@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 type DetailsString struct {
@@ -282,73 +281,21 @@ func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResp
 
 	c.addProfileFieldsQueryParams(req)
 
-	body, err := c.doRequest(ctx, req,
-		withRequestKey(func() string {
-			return profileId
-		}),
-		withPrepareBulkRequest(func(req *http.Request, urlMap *sync.Map) {
-			// Add a new ids parameter containing IDs of all profiles to be fetched in
-			// addition to the current one. First, we need to get the IDs from the map.
-			ids := make([]string, 0)
-
-			ids = append(ids, profileId)
-
-			urlMap.Range(func(key, value interface{}) bool {
-				if _, ok := value.(context.CancelFunc); ok {
-					if keyString, ok := key.(string); ok && strings.Contains(keyString, "profile") {
-						ids = append(ids, keyString)
-					}
-				}
-				return true
-			})
-
-			if len(ids) > 1 {
-				query := req.URL.Query()
-				query.Add("ids", strings.Join(ids, ","))
-				req.URL.RawQuery = query.Encode()
+	coalescer := bulkCoalescer[ProfileResponse, ProfileBulkResponse]{
+		currentId: profileId,
+		idPrefix:  "profile",
+		decodeBulk: func(body []byte) (ProfileBulkResponse, error) {
+			var env ProfileBulkResponse
+			if err := json.Unmarshal(body, &env); err != nil {
+				return env, err
 			}
-		}),
-		withParseBulkResponse(func(req *http.Request, body []byte, urlMap *sync.Map) ([]byte, error) {
-			// If only one profile is requested, we can skip the bulk response parsing
-			if !req.URL.Query().Has("ids") {
-				return body, nil
-			}
+			return env, nil
+		},
+		listResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
+		idOfResult:  func(p ProfileResponse) string { return p.Id },
+	}
 
-			// Parse the response to get the profile ID
-			var response ProfileBulkResponse
-			err := json.Unmarshal(body, &response)
-			if err != nil {
-				slog.Error("Error unmarshaling bulk response", "error", err)
-				return nil, err
-			}
-
-			var requestedProfileRes []byte
-
-			// Store the response in the map using the profile ID as the key
-			for _, profile := range response.Results {
-
-				jsonBody, err := json.Marshal(&profile)
-				if err != nil {
-					slog.Error("Error marshaling request", "error", err)
-					return nil, err
-				}
-
-				if profile.Id == profileId {
-					requestedProfileRes = jsonBody
-					continue
-				}
-
-				previous, loaded := urlMap.Swap(profile.Id, jsonBody)
-				if loaded {
-					// If the previous value is context cancel function, cancel it
-					if cancelFunc, ok := previous.(context.CancelFunc); ok {
-						cancelFunc()
-					}
-				}
-			}
-
-			return requestedProfileRes, nil
-		}))
+	body, err := c.doRequest(ctx, req, coalescer.options()...)
 	if err != nil {
 		return nil, err
 	}

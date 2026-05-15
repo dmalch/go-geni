@@ -1,3 +1,18 @@
+## 0.13.0 (Unreleased)
+
+- Bulk-read coalescing extended to all single-fetchable resources:
+  concurrent `GetUnion`, `GetDocument`, `GetPhoto`, and `GetVideo`
+  calls now collapse into a single bulk request the same way
+  `GetProfile` always has. The implementation is a generic
+  `bulkCoalescer[Item, Envelope]` in `coalesce.go` that owns the
+  request-key / prepare / parse-response triple for every resource
+  type. `GetProfile` was refactored onto the same helper — same
+  behavior, less duplication.
+- New concurrency tests (`coalesce_test.go`) verify the wire-level
+  collapse: 4 concurrent reads of a single resource type collapse
+  into fewer HTTP requests, and a concurrent read across two
+  different resource types stays on two distinct URL paths.
+
 ## 0.12.0
 
 - Surname API: added `Client.GetSurname(ctx, surnameId)`,
