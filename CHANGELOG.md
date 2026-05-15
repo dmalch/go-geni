@@ -1,3 +1,20 @@
+## 0.11.0 (Unreleased)
+
+- Video API: full resource mirror of Photo. New methods:
+  `Client.CreateVideo`, `Client.GetVideo`, `Client.GetVideos`,
+  `Client.UpdateVideo`, `Client.DeleteVideo`, `Client.TagVideo`,
+  `Client.UntagVideo`, `Client.GetVideoTags`, `Client.AddVideoComment`,
+  `Client.GetVideoComments`. New types: `VideoResponse`,
+  `VideoRequest`, `VideoBulkResponse`, plus `CreateVideoOption`
+  with `WithVideoDescription` / `WithVideoDate`. Reuses the
+  Photo-introduced multipart plumbing and the single-id bulk
+  fallback from v0.10.0.
+- Sandbox finding documented in `CreateVideo` godoc: Geni's
+  /video/add docs say `file` is optional, but the sandbox 400s on
+  metadata-only requests and runs uploads through ffmpeg validation
+  — arbitrary byte payloads return 500 "Could not get the duration".
+  Sandbox specs Skip cleanly without a real video fixture.
+
 ## 0.10.0
 
 - Bulk-by-id single-id fallback: `Client.GetProfiles`,
