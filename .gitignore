@@ -8,6 +8,13 @@
 *.so
 *.dylib
 
+# Example binaries dropped in the repo root when built via
+# `go build ./examples/<name>` (one per subdir under examples/).
+# Root-anchored to avoid matching same-named files elsewhere.
+/getprofile
+/listmanaged
+/refreshtoken
+
 # Test binary, built with `go test -c`
 *.test
 
