@@ -1,3 +1,24 @@
+## 0.17.0 (Unreleased)
+
+- Photo Album API: four new methods completing the resource.
+  - `Client.CreatePhotoAlbum(ctx, *PhotoAlbumRequest)` →
+    `*PhotoAlbum` — POST `/api/photo_album/add`.
+  - `Client.GetPhotoAlbum(ctx, albumId)` → `*PhotoAlbum`.
+  - `Client.GetPhotoAlbumPhotos(ctx, albumId, page)` →
+    `*PhotoBulkResponse` — paginated photos in an album.
+  - `Client.UpdatePhotoAlbum(ctx, albumId, *PhotoAlbumRequest)` →
+    `*PhotoAlbum`.
+- New `PhotoAlbumRequest` type (name + description). The existing
+  `PhotoAlbum` type (introduced in v0.15.0 as the result type of
+  `GetMyAlbums`) gained `CoverPhoto map[string]string` and
+  `PhotosCount int` fields.
+- Sandbox finding documented in `photoAlbumPath`: Geni returns
+  photo-album ids as `album-{n}` but the URL path requires
+  `photo_album-{n}` — bare `album-` paths return a 500
+  ApiException (`"No action responded to album-{n}"`). The client
+  normalises the prefix when constructing URLs so callers pass
+  whichever form they received from the API.
+
 ## 0.16.0
 
 - Document API: added `Client.GetDocumentTags(ctx, documentId, page)`

@@ -11,18 +11,18 @@ import (
 )
 
 // PhotoAlbum is Geni's PhotoAlbum resource — a container for related
-// photos. Currently used as the result type of [Client.GetMyAlbums];
-// the standalone PhotoAlbum CRUD endpoints (add/photos/update) are
-// not yet implemented in this client. The fields below are the
-// commonly-returned ones from the my-albums listing; the JSON decoder
-// is permissive (extra fields are silently ignored) so a richer
-// PhotoAlbum that ships later can extend the struct without breaking
-// callers.
+// photos. Returned by [Client.GetMyAlbums], [Client.CreatePhotoAlbum],
+// [Client.GetPhotoAlbum], and [Client.UpdatePhotoAlbum].
 type PhotoAlbum struct {
 	Id          string `json:"id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	Url         string `json:"url,omitempty"`
+	// CoverPhoto is a size-keyed map of cover-image URLs, same
+	// shape as PhotoResponse.Sizes.
+	CoverPhoto map[string]string `json:"cover_photo,omitempty"`
+	// PhotosCount is the number of photos in the album.
+	PhotosCount int    `json:"photos_count,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
