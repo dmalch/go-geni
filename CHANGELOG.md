@@ -1,3 +1,29 @@
+## 0.14.0 (Unreleased)
+
+- Profile API: nine new endpoint methods rounding out the
+  small-profile-action surface:
+  - `Client.FollowProfile(ctx, id)` / `Client.UnfollowProfile(ctx, id)`
+    — both return the targeted `ProfileResponse`.
+  - `Client.CompareProfiles(ctx, id1, id2)` — fetches immediate-family
+    graphs for both profiles in one call. New `ProfileComparison`
+    type wraps `[]FamilyResponse` (two entries, one per profile).
+  - `Client.AddParent(ctx, id, *ProfileRequest, opts...)` — creates
+    and attaches a new parent profile. Accepts `WithModifier` for
+    adopt / foster relationships, completing the family-add
+    quartet alongside `AddPartner` / `AddChild` / `AddSibling`.
+  - `Client.UpdateProfileBasics(ctx, id, *ProfileRequest)` — narrower
+    target than `UpdateProfile`, scoped to the basics/about fields.
+  - `Client.AddProfilePhoto(ctx, id, *PhotoRequest)` /
+    `Client.AddProfileVideo(ctx, id, *VideoRequest)` /
+    `Client.AddProfileDocument(ctx, id, *DocumentRequest)` —
+    JSON-body media-add endpoints (file is Base64-encoded in the
+    request, distinct from the multipart `/photo/add` and `/video/add`
+    paths). `PhotoRequest.File` and `VideoRequest.File` gained the
+    optional Base64 string for this purpose.
+  - `Client.AddProfileMugshot(ctx, id, *MugshotRequest)` — sets a
+    profile's mugshot. New `MugshotRequest` type accepts either
+    `File` (Base64 upload) or `PhotoId` (reuse an existing photo).
+
 ## 0.13.0
 
 - Bulk-read coalescing extended to all single-fetchable resources:

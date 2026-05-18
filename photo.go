@@ -12,13 +12,21 @@ import (
 	"strings"
 )
 
-// PhotoRequest is the JSON-encoded body for [Client.UpdatePhoto].
-// All fields are optional; omitted fields leave the existing value
-// in place.
+// PhotoRequest is the JSON-encoded body for [Client.UpdatePhoto]
+// and [Client.AddProfilePhoto]. All fields are optional; omitted
+// fields leave the existing value in place (for Update) or aren't
+// sent at all (for AddProfilePhoto).
+//
+// File is the Base64-encoded image content. It's only meaningful
+// for AddProfilePhoto — UpdatePhoto ignores it. Note that the
+// /photo/add multipart endpoint ([Client.CreatePhoto]) uses a
+// streaming io.Reader instead; this struct's File field is only
+// for the JSON-body /profile/{id}/add-photo path.
 type PhotoRequest struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Date        string `json:"date,omitempty"`
+	Title       string  `json:"title,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Date        string  `json:"date,omitempty"`
+	File        *string `json:"file,omitempty"`
 }
 
 // PhotoResponse is Geni's Photo resource — a single uploaded image
