@@ -99,6 +99,49 @@ func TestAddDocumentComment_Request(t *testing.T) {
 	})
 }
 
+func TestGetDocumentTags_Request(t *testing.T) {
+	t.Run("GETs /api/<documentId>/tags and omits page by default", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
+
+		_, err := c.GetDocumentTags(context.Background(), "document-1", 0)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document-1/tags"))
+		Expect(ft.lastRequest.URL.Query().Has("page")).To(BeFalse())
+	})
+
+	t.Run("positive page sets the page query param", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
+
+		_, err := c.GetDocumentTags(context.Background(), "document-1", 2)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
+	})
+
+	t.Run("decodes profile results + pagination", func(t *testing.T) {
+		RegisterTestingT(t)
+		body := `{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"next_page":"…?page=2"}`
+		c, _ := newFakeClient(http.StatusOK, body)
+
+		res, err := c.GetDocumentTags(context.Background(), "document-1", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.Results).To(HaveLen(2))
+		Expect(res.NextPage).To(ContainSubstring("page=2"))
+	})
+
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetDocumentTags(context.Background(), "document-1", 0)
+		Expect(err).To(MatchError(ErrResourceNotFound))
+	})
+}
+
 func TestGetDocumentProjects_Request(t *testing.T) {
 	t.Run("GETs /api/<documentId>/projects and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)

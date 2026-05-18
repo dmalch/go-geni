@@ -76,19 +76,34 @@ var _ = Describe("Document API", func() {
 
 	Describe("Tagging", func() {
 		// TagDocument associates a profile with a document; Untag
-		// removes the association. Both return the document's
-		// current tag list (as a ProfileBulkResponse).
-		It("tags and untags a profile on a document", func() {
+		// removes the association. GetDocumentTags is the
+		// authoritative read of the document's tagged-profiles
+		// list — mirrors the GetPhotoTags pattern.
+		It("tags, lists, and untags a profile on a document", func() {
 			profile := createFixtureProfile(ctx, client, "DocTag")
 			doc := createFixtureDocument(ctx, client, "AccTagDoc", "tagged content")
 
-			tagged, err := client.TagDocument(ctx, doc.Id, profile.Id)
+			_, err := client.TagDocument(ctx, doc.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
-			_ = tagged // shape only — Geni's response shape here is opaque
 
-			untagged, err := client.UntagDocument(ctx, doc.Id, profile.Id)
+			tags, err := client.GetDocumentTags(ctx, doc.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
-			_ = untagged
+			ids := make([]string, 0, len(tags.Results))
+			for _, p := range tags.Results {
+				ids = append(ids, p.Id)
+			}
+			Expect(ids).To(ContainElement(profile.Id))
+
+			_, err = client.UntagDocument(ctx, doc.Id, profile.Id)
+			Expect(err).ToNot(HaveOccurred())
+
+			tagsAfter, err := client.GetDocumentTags(ctx, doc.Id, 0)
+			Expect(err).ToNot(HaveOccurred())
+			idsAfter := make([]string, 0, len(tagsAfter.Results))
+			for _, p := range tagsAfter.Results {
+				idsAfter = append(idsAfter, p.Id)
+			}
+			Expect(idsAfter).ToNot(ContainElement(profile.Id))
 		})
 	})
 

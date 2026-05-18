@@ -79,4 +79,19 @@ var _ = Describe("Client document comments + projects endpoints", func() {
 			Expect(res.Results[0].Name).To(Equal("Family Roots"))
 		})
 	})
+
+	Describe("GetDocumentTags", func() {
+		It("decodes ProfileBulkResponse for the tagged-profiles listing", func() {
+			serve(http.StatusOK,
+				[]byte(`{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"next_page":"…?page=2"}`),
+				http.MethodGet, "/api/doc-1/tags")
+
+			res, err := client.GetDocumentTags(ctx, "doc-1", 1)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
+			Expect(res.Results).To(HaveLen(2))
+			Expect(res.NextPage).To(ContainSubstring("page=2"))
+		})
+	})
 })
