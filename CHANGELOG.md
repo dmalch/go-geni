@@ -1,4 +1,4 @@
-## 0.13.0 (Unreleased)
+## 0.13.0
 
 - Bulk-read coalescing extended to all single-fetchable resources:
   concurrent `GetUnion`, `GetDocument`, `GetPhoto`, and `GetVideo`
