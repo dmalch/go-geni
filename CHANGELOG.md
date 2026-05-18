@@ -1,4 +1,4 @@
-## 0.17.0 (Unreleased)
+## 0.17.0
 
 - Photo Album API: four new methods completing the resource.
   - `Client.CreatePhotoAlbum(ctx, *PhotoAlbumRequest)` →
