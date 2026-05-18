@@ -1,3 +1,32 @@
+## 0.15.0 (Unreleased)
+
+- User API: ten new endpoint methods rounding out the user-scoped
+  surface:
+  - `GetFollowedProfiles`, `GetFollowedDocuments`,
+    `GetFollowedProjects`, `GetFollowedSurnames` — the four
+    `/user/followed-*` listings.
+  - `GetMaxFamily` — `/user/max-family`, paginated profile list.
+  - `GetUploadedPhotos`, `GetUploadedVideos` — symmetric with
+    the existing `GetUploadedDocuments`.
+  - `GetMyAlbums`, `GetMyLabels` — `/user/my-*` listings.
+  - `GetMetadata`, `UpdateMetadata` — application-specific
+    key/value store, opaque to the client.
+- New types: `Metadata` (with `Data json.RawMessage`), `PhotoAlbum`
+  + `PhotoAlbumBulkResponse`, `LabelsResponse`,
+  `SurnameBulkResponse`.
+- Sandbox finding documented in `UpdateMetadata` godoc: Geni's
+  `/user/update-metadata` expects the `data` field as a JSON-encoded
+  *string*, not a nested object — sending a nested object returns
+  a 500 ApiException (`"no implicit conversion of
+  ActionController::Parameters into String"`). The client now
+  serialises the supplied `RawMessage` into a string before
+  sending.
+- Not implemented (deferred): `/user/add`. The endpoint returns the
+  OAuth access token in an `X-API-OAuth-access_token` response
+  header, but `Client.doRequest` only exposes body bytes today. A
+  later change can plumb a header-extraction path through
+  `doRequest` and wire it up.
+
 ## 0.14.0
 
 - Profile API: nine new endpoint methods rounding out the

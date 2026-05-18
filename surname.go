@@ -8,6 +8,16 @@ import (
 	"strconv"
 )
 
+// SurnameBulkResponse is the paginated envelope returned by
+// [Client.GetFollowedSurnames] (and a natural home for any future
+// surname-bulk endpoints).
+type SurnameBulkResponse struct {
+	Results  []Surname `json:"results,omitempty"`
+	Page     int       `json:"page,omitempty"`
+	NextPage string    `json:"next_page,omitempty"`
+	PrevPage string    `json:"prev_page,omitempty"`
+}
+
 // Surname is Geni's Surname resource — a tag for a family name. Used
 // as the parent for surname-scoped collections (followers, profiles).
 type Surname struct {
