@@ -1,4 +1,4 @@
-## 0.16.0 (Unreleased)
+## 0.16.0
 
 - Document API: added `Client.GetDocumentTags(ctx, documentId, page)`
   — the read counterpart to the existing `TagDocument` /
