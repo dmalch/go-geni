@@ -1,4 +1,4 @@
-## 0.14.0 (Unreleased)
+## 0.14.0
 
 - Profile API: nine new endpoint methods rounding out the
   small-profile-action surface:
