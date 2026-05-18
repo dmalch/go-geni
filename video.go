@@ -15,10 +15,16 @@ import (
 // VideoRequest is the JSON-encoded body for [Client.UpdateVideo].
 // All fields are optional; omitted fields leave the existing value
 // in place.
+// VideoRequest is the JSON-encoded body for [Client.UpdateVideo]
+// and [Client.AddProfileVideo]. File is the Base64-encoded video
+// content for AddProfileVideo only — the /video/add multipart
+// endpoint ([Client.CreateVideo]) uses a streaming io.Reader
+// instead.
 type VideoRequest struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Date        string `json:"date,omitempty"`
+	Title       string  `json:"title,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Date        string  `json:"date,omitempty"`
+	File        *string `json:"file,omitempty"`
 }
 
 // VideoResponse is Geni's Video resource — a single uploaded video

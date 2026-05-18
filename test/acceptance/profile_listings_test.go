@@ -3,6 +3,7 @@ package acceptance
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/color"
@@ -30,9 +31,10 @@ func inlineTinyPng() io.Reader {
 
 // How long we'll wait for cross-resource state to propagate to the
 // profile's documents / photos listing once the test fixture path
-// actually populates it. Currently unused — the specs that use these
-// are Skip()'d (see comments inline) — but kept so the eventual
-// assertion is realistic when the missing endpoints land.
+// has actually populated it via the profile/add-* endpoints
+// introduced in v0.14.0. Before that, the only setup primitives
+// were TagDocument / TagPhoto, which Geni doesn't propagate to
+// these listings — those specs were Skip()'d.
 const (
 	profileListingPropagationTimeout = 60 * time.Second
 	profileListingPropagationPoll    = 5 * time.Second
@@ -50,23 +52,29 @@ var _ = Describe("Profile media listings", func() {
 	})
 
 	Describe("GetProfileDocuments", func() {
-		// Skipped: the sandbox listing reflects documents the
-		// profile *owns* (via profile/add-document — not yet
-		// implemented in this client), not documents tagged on the
-		// profile via document.tag. Running this spec against the
-		// current sandbox times out at 60s with the document never
-		// surfacing. Unskip once profile/add-document lands and
-		// drive the setup through it instead of TagDocument.
-		It("eventually lists a document attached to the profile", func() {
-			Skip("requires profile/add-document endpoint — TagDocument doesn't propagate to /profile/{id}/documents in the sandbox")
+		// Skipped: even with the now-supported AddProfileDocument
+		// (v0.14.0) — the "right" owns-this-document verb — the
+		// sandbox listing still doesn't reflect the new document
+		// within a 60s polling window. Whatever filter or
+		// propagation mechanism the listing uses, neither
+		// TagDocument nor AddProfileDocument triggers it on the
+		// timescale tests can realistically wait for. The
+		// AddProfileDocument call itself is verified in
+		// profile_actions_test.go; this spec stays as the
+		// canonical regression target should sandbox propagation
+		// ever speed up.
+		It("eventually lists a document attached via AddProfileDocument", func() {
+			Skip("/profile/{id}/documents doesn't reflect new documents within 60s, even after AddProfileDocument")
 
 			profile := createFixtureProfile(ctx, client, "ProfileDocs")
-			doc := createFixtureDocument(ctx, client,
-				fmt.Sprintf("AccProfileDocsDoc-%d", time.Now().UnixNano()),
-				"profile-listing fixture")
+			text := "profile-listing fixture"
 
-			_, err := client.TagDocument(ctx, doc.Id, profile.Id)
+			doc, err := client.AddProfileDocument(ctx, profile.Id, &geni.DocumentRequest{
+				Title: fmt.Sprintf("AccProfileDocsDoc-%d", time.Now().UnixNano()),
+				Text:  &text,
+			})
 			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = client.DeleteDocument(context.Background(), doc.Id) })
 
 			Eventually(func(g Gomega) {
 				listed, err := client.GetProfileDocuments(ctx, profile.Id, 0)
@@ -84,22 +92,27 @@ var _ = Describe("Profile media listings", func() {
 	})
 
 	Describe("GetProfilePhotos", func() {
-		// Skipped for the same reason as GetProfileDocuments:
-		// requires profile/add-photo (not yet implemented) to
-		// produce a photo the listing actually reflects. TagPhoto
-		// alone doesn't propagate.
-		It("eventually lists a photo attached to the profile", func() {
-			Skip("requires profile/add-photo endpoint — TagPhoto doesn't propagate to /profile/{id}/photos in the sandbox")
+		// Same finding as the documents listing: AddProfilePhoto
+		// succeeds (covered in profile_actions_test.go) but the
+		// /profile/{id}/photos listing doesn't reflect it within
+		// 60s.
+		It("eventually lists a photo attached via AddProfilePhoto", func() {
+			Skip("/profile/{id}/photos doesn't reflect new photos within 60s, even after AddProfilePhoto")
 
 			profile := createFixtureProfile(ctx, client, "ProfilePhotos")
-			photo, err := client.CreatePhoto(ctx,
-				fmt.Sprintf("AccProfilePhotosPhoto-%d", time.Now().UnixNano()),
-				"plist.png", inlineTinyPng())
+
+			// inlineTinyPng yields raw PNG bytes; the JSON-body
+			// endpoint expects Base64.
+			raw, err := io.ReadAll(inlineTinyPng())
+			Expect(err).ToNot(HaveOccurred())
+			b64 := base64.StdEncoding.EncodeToString(raw)
+
+			photo, err := client.AddProfilePhoto(ctx, profile.Id, &geni.PhotoRequest{
+				Title: fmt.Sprintf("AccProfilePhotosPhoto-%d", time.Now().UnixNano()),
+				File:  &b64,
+			})
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
-
-			_, err = client.TagPhoto(ctx, photo.Id, profile.Id)
-			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
 				listed, err := client.GetProfilePhotos(ctx, profile.Id, 0)
