@@ -372,6 +372,40 @@ func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, pag
 	return &projects, nil
 }
 
+// GetDocumentTags returns the paginated list of profiles tagged in a
+// document. page is 1-indexed; values ≤0 omit the parameter (Geni
+// defaults to page 1). Max 50 tags per page. Symmetric with
+// [Client.GetPhotoTags].
+func (c *Client) GetDocumentTags(ctx context.Context, documentId string, page int) (*ProfileBulkResponse, error) {
+	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/tags"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.doRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var profiles ProfileBulkResponse
+	if err := json.Unmarshal(body, &profiles); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	for i := range profiles.Results {
+		c.fixResponse(&profiles.Results[i])
+	}
+	return &profiles, nil
+}
+
 func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string) (*ProfileBulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/untag/" + profileId
 

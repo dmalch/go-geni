@@ -1,3 +1,10 @@
+## 0.16.0 (Unreleased)
+
+- Document API: added `Client.GetDocumentTags(ctx, documentId, page)`
+  — the read counterpart to the existing `TagDocument` /
+  `UntagDocument` write verbs. Returns a paginated
+  `ProfileBulkResponse`. Symmetric with `Client.GetPhotoTags`.
+
 ## 0.15.0
 
 - User API: ten new endpoint methods rounding out the user-scoped
