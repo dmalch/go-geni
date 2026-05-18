@@ -1,4 +1,4 @@
-## 0.15.0 (Unreleased)
+## 0.15.0
 
 - User API: ten new endpoint methods rounding out the user-scoped
   surface:
