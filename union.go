@@ -47,7 +47,21 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	coalescer := bulkCoalescer[UnionResponse, UnionBulkResponse]{
+		currentId: unionId,
+		idPrefix:  "union",
+		decodeBulk: func(body []byte) (UnionBulkResponse, error) {
+			var env UnionBulkResponse
+			if err := json.Unmarshal(body, &env); err != nil {
+				return env, err
+			}
+			return env, nil
+		},
+		listResults: func(env UnionBulkResponse) []UnionResponse { return env.Results },
+		idOfResult:  func(u UnionResponse) string { return u.Id },
+	}
+
+	body, err := c.doRequest(ctx, req, coalescer.options()...)
 	if err != nil {
 		return nil, err
 	}

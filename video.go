@@ -151,6 +151,26 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 }
 
 // GetVideo fetches a single video by id.
+// videoCoalescer returns the options needed to coalesce concurrent
+// GetVideo calls into a single bulk request. See bulkCoalescer in
+// coalesce.go for the mechanism.
+func (c *Client) videoCoalescer(videoId string) []func(*opt) {
+	coalescer := bulkCoalescer[VideoResponse, VideoBulkResponse]{
+		currentId: videoId,
+		idPrefix:  "video",
+		decodeBulk: func(body []byte) (VideoBulkResponse, error) {
+			var env VideoBulkResponse
+			if err := json.Unmarshal(body, &env); err != nil {
+				return env, err
+			}
+			return env, nil
+		},
+		listResults: func(env VideoBulkResponse) []VideoResponse { return env.Results },
+		idOfResult:  func(v VideoResponse) string { return v.Id },
+	}
+	return coalescer.options()
+}
+
 func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -159,7 +179,7 @@ func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, 
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.doRequest(ctx, req, c.videoCoalescer(videoId)...)
 	if err != nil {
 		return nil, err
 	}
