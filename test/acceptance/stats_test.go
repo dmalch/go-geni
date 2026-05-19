@@ -22,7 +22,7 @@ var _ = Describe("Stats / Surname / Revision API", func() {
 
 	Describe("GetStats", func() {
 		It("returns the platform's stats list", func() {
-			res, err := client.GetStats(ctx)
+			res, err := client.Stats().Get(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())

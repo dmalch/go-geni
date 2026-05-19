@@ -32,22 +32,39 @@ import (
 
 // Client is the shared HTTP transport used by every resource client.
 type Client struct {
-	tokenSource oauth2.TokenSource
-	client      *http.Client
-	limiter     *rate.Limiter
-	urlMap      *sync.Map
+	tokenSource   oauth2.TokenSource
+	useSandboxEnv bool
+	client        *http.Client
+	limiter       *rate.Limiter
+	urlMap        *sync.Map
 }
 
-// New constructs a Client. The rate limiter starts at 1 rps and is
-// re-tuned dynamically from each response's X-API-Rate-* headers.
-func New(tokenSource oauth2.TokenSource) *Client {
+// New constructs a Client. useSandboxEnv toggles between
+// sandbox.geni.com and www.geni.com. The rate limiter starts at 1 rps
+// and is re-tuned dynamically from each response's X-API-Rate-*
+// headers.
+func New(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 	return &Client{
-		tokenSource: tokenSource,
-		client:      &http.Client{},
-		limiter:     rate.NewLimiter(rate.Every(1*time.Second), 1),
-		urlMap:      &sync.Map{},
+		tokenSource:   tokenSource,
+		useSandboxEnv: useSandboxEnv,
+		client:        &http.Client{},
+		limiter:       rate.NewLimiter(rate.Every(1*time.Second), 1),
+		urlMap:        &sync.Map{},
 	}
 }
+
+// BaseURL returns the prod or sandbox HTTP host (with trailing slash)
+// configured at construction time. Resource packages call this to
+// build endpoint URLs.
+func (c *Client) BaseURL() string { return BaseURL(c.useSandboxEnv) }
+
+// APIURL returns the prod or sandbox API host (with "api/" suffix and
+// trailing slash). Used when stripping URL prefixes from response
+// bodies — e.g. ProfileResponse.Unions.
+func (c *Client) APIURL() string { return APIURL(c.useSandboxEnv) }
+
+// UseSandbox reports whether the client targets sandbox.geni.com.
+func (c *Client) UseSandbox() bool { return c.useSandboxEnv }
 
 // SetHTTPClient replaces the inner *http.Client. Intended for tests
 // that want to inject a fake http.RoundTripper.
