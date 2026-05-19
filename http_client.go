@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/dmalch/go-geni/stats"
 	"github.com/dmalch/go-geni/transport"
 )
 
@@ -18,22 +19,32 @@ var ErrResourceNotFound = transport.ErrResourceNotFound
 // Re-exported from the transport package.
 var ErrAccessDenied = transport.ErrAccessDenied
 
-// Client is the Geni API client. All endpoint methods hang off this
-// type. The HTTP plumbing (auth, rate limiting, retry, bulk-read
-// coalescing) lives in the transport package.
+// Client is the Geni API client. Most endpoint methods hang off this
+// type for now; over the pre-1.0 reshape each resource lifts into its
+// own sub-package and is exposed through an accessor on Client (e.g.
+// [Client.Stats] returns a [stats.Client]). The HTTP plumbing (auth,
+// rate limiting, retry, bulk-read coalescing) lives in the transport
+// package.
 type Client struct {
 	useSandboxEnv bool
 	transport     *transport.Client
+	stats         *stats.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
 // sandbox.geni.com (true) and www.geni.com (false).
 func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
+	t := transport.New(tokenSource, useSandboxEnv)
 	return &Client{
 		useSandboxEnv: useSandboxEnv,
-		transport:     transport.New(tokenSource),
+		transport:     t,
+		stats:         stats.NewClient(t),
 	}
 }
+
+// Stats returns the resource client for the platform-wide statistics
+// endpoint. Replaces the legacy Client.GetStats method.
+func (c *Client) Stats() *stats.Client { return c.stats }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {

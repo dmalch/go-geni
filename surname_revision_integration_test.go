@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Surname / Revision / Stats endpoints", func() {
+var _ = Describe("Surname / Revision endpoints", func() {
 	var (
 		ctx      context.Context
 		server   *httptest.Server
@@ -136,17 +136,4 @@ var _ = Describe("Surname / Revision / Stats endpoints", func() {
 		})
 	})
 
-	Describe("GetStats", func() {
-		It("returns the opaque stats array", func() {
-			serve(http.StatusOK,
-				[]byte(`{"stats":[{"name":"world_family_tree_size","value":250000000},{"name":"daily_searches","value":1000000}]}`),
-				http.MethodGet, "/api/stats")
-
-			res, err := client.GetStats(ctx)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Stats).To(HaveLen(2))
-			Expect(string(res.Stats[0])).To(ContainSubstring("world_family_tree_size"))
-		})
-	})
 })

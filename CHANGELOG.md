@@ -1,15 +1,18 @@
 ## 0.18.0 (Unreleased)
 
-- **Internal restructuring — first PR of the pre-1.0 reshape.**
+- **Internal restructuring — first PRs of the pre-1.0 reshape.**
   HTTP plumbing (auth, rate limiting, retry, error sentinels, bulk
   coalescing, the `escapeStringToUTF` helper) moves out of the root
   package into a new `github.com/dmalch/go-geni/transport` package.
-  The root `Client` now holds a `*transport.Client` and delegates;
-  the public surface is **unchanged** — every endpoint method, the
-  `BaseURL` helper, and the `ErrResourceNotFound` /
-  `ErrAccessDenied` sentinels continue to live on the root package
-  and work identically. Subsequent PRs will lift each resource
-  (Profile, Union, Document, …) into its own sub-package.
+  Subsequent PRs lift each resource (Profile, Union, Document, …)
+  into its own sub-package. The root `Client` becomes a façade —
+  each lifted resource is exposed via a typed accessor (e.g.
+  `client.Stats() *stats.Client`).
+- **BREAKING:** `Client.GetStats` and the `StatsResponse` type are
+  removed. The `/stats` endpoint now lives in
+  `github.com/dmalch/go-geni/stats`. Callers update from
+  `client.GetStats(ctx)` to `client.Stats().Get(ctx)`, and
+  `*geni.StatsResponse` becomes `*stats.Response`.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,
