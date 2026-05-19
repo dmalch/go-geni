@@ -9,7 +9,7 @@ import (
 	"github.com/dmalch/go-geni"
 )
 
-var _ = Describe("Stats / Revision API", func() {
+var _ = Describe("Stats API", func() {
 	var (
 		ctx    context.Context
 		client *geni.Client
@@ -20,7 +20,7 @@ var _ = Describe("Stats / Revision API", func() {
 		client = newTestClient()
 	})
 
-	Describe("GetStats", func() {
+	Describe("Get", func() {
 		It("returns the platform's stats list", func() {
 			res, err := client.Stats().Get(ctx)
 
@@ -29,16 +29,6 @@ var _ = Describe("Stats / Revision API", func() {
 			// The sandbox should always have at least one stat;
 			// we don't assert specific names since they're opaque.
 			Expect(res.Stats).ToNot(BeEmpty())
-		})
-	})
-
-	Describe("GetRevision", func() {
-		// Skipped: revision ids are produced by Geni's edit history
-		// and aren't directly queryable from the public API for
-		// arbitrary profiles. The wire-shape coverage lives in the
-		// unit and integration tiers.
-		It("reads a known revision", func() {
-			Skip("requires a known sandbox revision id — set GENI_E2E_REVISION_ID and remove this Skip to enable")
 		})
 	})
 })

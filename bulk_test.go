@@ -2,7 +2,6 @@ package geni
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"testing"
 
@@ -171,40 +170,5 @@ func TestGetVideos_BulkErrorMapping(t *testing.T) {
 		c, _ := newFakeClient(http.StatusForbidden, ``)
 		_, err := c.GetVideos(context.Background(), []string{"video-1", "video-2"})
 		Expect(err).To(MatchError(ErrAccessDenied))
-	})
-}
-
-func TestGetRevisions_BulkThreeIds(t *testing.T) {
-	RegisterTestingT(t)
-	c, ft := newFakeClient(http.StatusOK, `{"results":[
-		{"id":"revision-1","action":"create"},
-		{"id":"revision-2","action":"update"},
-		{"id":"revision-3","action":"delete"}
-	]}`)
-
-	res, err := c.GetRevisions(context.Background(), []string{"revision-1", "revision-2", "revision-3"})
-
-	Expect(err).ToNot(HaveOccurred())
-	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/revision"))
-	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("revision-1,revision-2,revision-3"))
-	Expect(res.Results).To(HaveLen(3))
-	actions := []string{res.Results[0].Action, res.Results[1].Action, res.Results[2].Action}
-	Expect(actions).To(ConsistOf("create", "update", "delete"))
-}
-
-func TestGetRevisions_BulkErrorMapping(t *testing.T) {
-	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
-		RegisterTestingT(t)
-		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetRevisions(context.Background(), []string{"revision-1", "revision-2"})
-		Expect(errors.Is(err, ErrResourceNotFound)).To(BeTrue(),
-			"expected ErrResourceNotFound, got %v", err)
-	})
-	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
-		RegisterTestingT(t)
-		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetRevisions(context.Background(), []string{"revision-1", "revision-2"})
-		Expect(errors.Is(err, ErrAccessDenied)).To(BeTrue(),
-			"expected ErrAccessDenied, got %v", err)
 	})
 }
