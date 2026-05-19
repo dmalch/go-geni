@@ -33,11 +33,11 @@ var _ = Describe("Video API", func() {
 		GinkgoHelper()
 		title := fmt.Sprintf("AccCreateVideo-%d", time.Now().UnixNano())
 		payload := bytes.NewReader([]byte("not-really-a-video-just-placeholder-bytes"))
-		video, err := client.CreateVideo(ctx, title, "fake.mp4", payload)
+		video, err := client.Video().Create(ctx, title, "fake.mp4", payload)
 		if err != nil {
 			Skip(fmt.Sprintf("sandbox rejected CreateVideo with placeholder payload: %v (need a real video fixture)", err))
 		}
-		DeferCleanup(func() { _ = client.DeleteVideo(context.Background(), video.Id) })
+		DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.Id) })
 		return video
 	}
 
@@ -53,7 +53,7 @@ var _ = Describe("Video API", func() {
 		It("reads back a freshly-created video", func() {
 			created := createOrSkip()
 
-			got, err := client.GetVideo(ctx, created.Id)
+			got, err := client.Video().Get(ctx, created.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Id).To(Equal(created.Id))
 		})
@@ -64,13 +64,13 @@ var _ = Describe("Video API", func() {
 			created := createOrSkip()
 			newTitle := "AccUpdateVideoAfter"
 
-			updated, err := client.UpdateVideo(ctx, created.Id, &video.Request{
+			updated, err := client.Video().Update(ctx, created.Id, &video.Request{
 				Title: newTitle,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Title).To(Equal(newTitle))
 
-			got, err := client.GetVideo(ctx, created.Id)
+			got, err := client.Video().Get(ctx, created.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Title).To(Equal(newTitle))
 		})
@@ -84,10 +84,10 @@ var _ = Describe("Video API", func() {
 			video := createOrSkip()
 			profile := createFixtureProfile(ctx, client, "VideoTaggee")
 
-			_, err := client.TagVideo(ctx, video.Id, profile.Id)
+			_, err := client.Video().Tag(ctx, video.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tags, err := client.GetVideoTags(ctx, video.Id, 0)
+			tags, err := client.Video().Tags(ctx, video.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(tags.Results))
 			for _, p := range tags.Results {
@@ -95,10 +95,10 @@ var _ = Describe("Video API", func() {
 			}
 			Expect(ids).To(ContainElement(profile.Id))
 
-			_, err = client.UntagVideo(ctx, video.Id, profile.Id)
+			_, err = client.Video().Untag(ctx, video.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tagsAfter, err := client.GetVideoTags(ctx, video.Id, 0)
+			tagsAfter, err := client.Video().Tags(ctx, video.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			idsAfter := make([]string, 0, len(tagsAfter.Results))
 			for _, p := range tagsAfter.Results {
@@ -121,11 +121,11 @@ var _ = Describe("Video API", func() {
 			video := createOrSkip()
 			body := "first video comment"
 
-			_, err := client.AddVideoComment(ctx, video.Id, body, "")
+			_, err := client.Video().AddComment(ctx, video.Id, body, "")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				listed, err := client.GetVideoComments(ctx, video.Id, 0)
+				listed, err := client.Video().Comments(ctx, video.Id, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				texts := make([]string, 0, len(listed.Results))
 				for _, c := range listed.Results {

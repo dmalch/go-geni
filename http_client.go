@@ -15,6 +15,7 @@ import (
 	"github.com/dmalch/go-geni/surname"
 	"github.com/dmalch/go-geni/transport"
 	"github.com/dmalch/go-geni/user"
+	"github.com/dmalch/go-geni/video"
 )
 
 // ErrResourceNotFound is returned for 404 responses from the Geni API.
@@ -43,6 +44,7 @@ type Client struct {
 	project       *project.Client
 	photoalbum    *photoalbum.Client
 	photo         *photo.Client
+	video         *video.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -60,6 +62,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		project:       project.NewClient(t),
 		photoalbum:    photoalbum.NewClient(t),
 		photo:         photo.NewClient(t),
+		video:         video.NewClient(t),
 	}
 }
 
@@ -101,6 +104,12 @@ func (c *Client) PhotoAlbum() *photoalbum.Client { return c.photoalbum }
 // DeletePhoto, TagPhoto, UntagPhoto, GetPhotoTags, GetPhotoComments,
 // AddPhotoComment.
 func (c *Client) Photo() *photo.Client { return c.photo }
+
+// Video returns the resource client for the Video resource.
+// Replaces Client.CreateVideo, GetVideo, GetVideos, UpdateVideo,
+// DeleteVideo, TagVideo, UntagVideo, GetVideoTags, GetVideoComments,
+// AddVideoComment.
+func (c *Client) Video() *video.Client { return c.video }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {

@@ -160,7 +160,7 @@ var _ = Describe("Profile actions API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(video.Id).To(HavePrefix("video-"))
-			DeferCleanup(func() { _ = client.DeleteVideo(context.Background(), video.Id) })
+			DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.Id) })
 		})
 	})
 

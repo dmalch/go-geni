@@ -1,23 +1,85 @@
-package geni
+package video
 
 import (
 	"bytes"
 	"context"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"testing"
 
-	"github.com/dmalch/go-geni/video"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-func TestCreateVideo_Request(t *testing.T) {
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
+
+// readMultipart parses a request body the client built and returns the
+// recorded form values + the file part's filename and raw bytes.
+func readMultipart(t *testing.T, req *http.Request) (fields map[string]string, fileName string, fileBody []byte) {
+	t.Helper()
+	ct := req.Header.Get("Content-Type")
+	Expect(ct).To(HavePrefix("multipart/form-data;"))
+
+	_, params, err := mime.ParseMediaType(ct)
+	Expect(err).ToNot(HaveOccurred())
+	boundary, ok := params["boundary"]
+	Expect(ok).To(BeTrue())
+
+	mr := multipart.NewReader(req.Body, boundary)
+	fields = map[string]string{}
+	for {
+		part, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		Expect(err).ToNot(HaveOccurred())
+		buf, err := io.ReadAll(part)
+		Expect(err).ToNot(HaveOccurred())
+		if part.FileName() != "" {
+			fileName = part.FileName()
+			fileBody = buf
+		} else {
+			fields[part.FormName()] = string(buf)
+		}
+	}
+	return
+}
+
+func TestCreate_Request(t *testing.T) {
 	t.Run("POSTs multipart with title + file", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"video-1","title":"Reunion 1972"}`)
 
-		video, err := c.CreateVideo(
+		v, err := c.Create(
 			context.Background(),
 			"Reunion 1972",
 			"reunion.mp4",
@@ -25,7 +87,7 @@ func TestCreateVideo_Request(t *testing.T) {
 		)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(video.Id).To(Equal("video-1"))
+		Expect(v.Id).To(Equal("video-1"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video/add"))
 
@@ -39,7 +101,7 @@ func TestCreateVideo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"video-1"}`)
 
-		_, err := c.CreateVideo(context.Background(), "External link", "", nil)
+		_, err := c.Create(context.Background(), "External link", "", nil)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -50,17 +112,17 @@ func TestCreateVideo_Request(t *testing.T) {
 		Expect(fileBody).To(BeEmpty())
 	})
 
-	t.Run("WithVideoDescription + WithVideoDate are set as form fields", func(t *testing.T) {
+	t.Run("WithDescription + WithDate are set as form fields", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"video-1"}`)
 
-		_, err := c.CreateVideo(
+		_, err := c.Create(
 			context.Background(),
 			"Title",
 			"v.mp4",
 			strings.NewReader("bytes"),
-			WithVideoDescription("a description"),
-			WithVideoDate("2026-05-15"),
+			WithDescription("a description"),
+			WithDate("2026-05-15"),
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -73,7 +135,7 @@ func TestCreateVideo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{}`)
 
-		_, err := c.CreateVideo(context.Background(), "", "v.mp4", strings.NewReader("x"))
+		_, err := c.Create(context.Background(), "", "v.mp4", strings.NewReader("x"))
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("title is required"))
@@ -81,24 +143,24 @@ func TestCreateVideo_Request(t *testing.T) {
 	})
 }
 
-func TestGetVideo_Request(t *testing.T) {
+func TestGet_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-9","title":"X"}`)
 
-	video, err := c.GetVideo(context.Background(), "video-9")
+	v, err := c.Get(context.Background(), "video-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(video.Id).To(Equal("video-9"))
+	Expect(v.Id).To(Equal("video-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-9"))
 }
 
-func TestGetVideos_SingleIdFallback(t *testing.T) {
+func TestGetBulk_SingleIdFallback(t *testing.T) {
 	t.Run("1 id → /api/<id>", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"video-9","title":"X"}`)
 
-		res, err := c.GetVideos(context.Background(), []string{"video-9"})
+		res, err := c.GetBulk(context.Background(), []string{"video-9"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-9"))
@@ -111,7 +173,7 @@ func TestGetVideos_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"video-1"},{"id":"video-2"}]}`)
 
-		_, err := c.GetVideos(context.Background(), []string{"video-1", "video-2"})
+		_, err := c.GetBulk(context.Background(), []string{"video-1", "video-2"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video"))
@@ -119,17 +181,17 @@ func TestGetVideos_SingleIdFallback(t *testing.T) {
 	})
 }
 
-func TestUpdateVideo_Request(t *testing.T) {
+func TestUpdate_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-1","title":"After"}`)
 
-	video, err := c.UpdateVideo(context.Background(), "video-1", &video.Request{
+	v, err := c.Update(context.Background(), "video-1", &Request{
 		Title:       "After",
 		Description: "updated",
 	})
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(video.Title).To(Equal("After"))
+	Expect(v.Title).To(Equal("After"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/update"))
 
@@ -138,12 +200,12 @@ func TestUpdateVideo_Request(t *testing.T) {
 	Expect(string(got)).To(ContainSubstring(`"description":"updated"`))
 }
 
-func TestDeleteVideo_Request(t *testing.T) {
+func TestDelete_Request(t *testing.T) {
 	t.Run("POSTs to /api/<videoId>/delete", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"result":"ok"}`)
 
-		err := c.DeleteVideo(context.Background(), "video-9")
+		err := c.Delete(context.Background(), "video-9")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -154,38 +216,38 @@ func TestDeleteVideo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		err := c.DeleteVideo(context.Background(), "video-9")
+		err := c.Delete(context.Background(), "video-9")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
 
-func TestTagVideo_Request(t *testing.T) {
+func TestTag_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-1","tags":["profile-9"]}`)
 
-	_, err := c.TagVideo(context.Background(), "video-1", "profile-9")
+	_, err := c.Tag(context.Background(), "video-1", "profile-9")
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/tag/profile-9"))
 }
 
-func TestUntagVideo_Request(t *testing.T) {
+func TestUntag_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-1","tags":[]}`)
 
-	_, err := c.UntagVideo(context.Background(), "video-1", "profile-9")
+	_, err := c.Untag(context.Background(), "video-1", "profile-9")
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/untag/profile-9"))
 }
 
-func TestGetVideoTags_Request(t *testing.T) {
+func TestTags_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"profile-1"}],"page":1}`)
 
-	res, err := c.GetVideoTags(context.Background(), "video-1", 1)
+	res, err := c.Tags(context.Background(), "video-1", 1)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/tags"))
@@ -193,22 +255,22 @@ func TestGetVideoTags_Request(t *testing.T) {
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetVideoComments_Request(t *testing.T) {
+func TestComments_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"c-1","comment":"hi"}]}`)
 
-	res, err := c.GetVideoComments(context.Background(), "video-1", 0)
+	res, err := c.Comments(context.Background(), "video-1", 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/comments"))
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestAddVideoComment_Request(t *testing.T) {
+func TestAddComment_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-	_, err := c.AddVideoComment(context.Background(), "video-1", "nice clip", "")
+	_, err := c.AddComment(context.Background(), "video-1", "nice clip", "")
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
