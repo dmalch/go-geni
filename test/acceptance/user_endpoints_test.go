@@ -30,25 +30,25 @@ var _ = Describe("User endpoints API", func() {
 		// that the call returns a valid envelope.
 
 		It("GetFollowedProfiles returns a non-nil envelope", func() {
-			res, err := client.GetFollowedProfiles(ctx, 0)
+			res, err := client.User().FollowedProfiles(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
 
 		It("GetFollowedDocuments returns a non-nil envelope", func() {
-			res, err := client.GetFollowedDocuments(ctx, 0)
+			res, err := client.User().FollowedDocuments(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
 
 		It("GetFollowedProjects returns a non-nil envelope", func() {
-			res, err := client.GetFollowedProjects(ctx, 0)
+			res, err := client.User().FollowedProjects(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
 
 		It("GetFollowedSurnames returns a non-nil envelope", func() {
-			res, err := client.GetFollowedSurnames(ctx, 0)
+			res, err := client.User().FollowedSurnames(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -56,7 +56,7 @@ var _ = Describe("User endpoints API", func() {
 
 	Describe("GetMaxFamily", func() {
 		It("returns a non-nil envelope for the calling user", func() {
-			res, err := client.GetMaxFamily(ctx, 0)
+			res, err := client.User().MaxFamily(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -71,13 +71,13 @@ var _ = Describe("User endpoints API", func() {
 		// not via API"). We assert call shape only.
 
 		It("GetUploadedPhotos returns a non-nil envelope", func() {
-			res, err := client.GetUploadedPhotos(ctx, 0)
+			res, err := client.User().UploadedPhotos(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
 
 		It("GetUploadedVideos returns a non-nil envelope", func() {
-			res, err := client.GetUploadedVideos(ctx, 0)
+			res, err := client.User().UploadedVideos(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -85,13 +85,13 @@ var _ = Describe("User endpoints API", func() {
 
 	Describe("GetMyAlbums / GetMyLabels", func() {
 		It("GetMyAlbums returns a non-nil envelope", func() {
-			res, err := client.GetMyAlbums(ctx, 0)
+			res, err := client.User().Albums(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
 
 		It("GetMyLabels returns a non-nil envelope", func() {
-			res, err := client.GetMyLabels(ctx, 0)
+			res, err := client.User().Labels(ctx, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -106,10 +106,10 @@ var _ = Describe("User endpoints API", func() {
 			nonce := fmt.Sprintf(`{"nonce":%d}`, time.Now().UnixNano())
 			payload := json.RawMessage(nonce)
 
-			_, err := client.UpdateMetadata(ctx, payload)
+			_, err := client.User().UpdateMetadata(ctx, payload)
 			Expect(err).ToNot(HaveOccurred())
 
-			md, err := client.GetMetadata(ctx)
+			md, err := client.User().Metadata(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(md).ToNot(BeNil())
 			Expect(string(md.Data)).To(ContainSubstring(`"nonce"`))

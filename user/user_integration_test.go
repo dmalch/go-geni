@@ -1,4 +1,4 @@
-package geni
+package user
 
 import (
 	"context"
@@ -6,10 +6,34 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
+
+type rewriteTransport struct {
+	base   http.RoundTripper
+	target *url.URL
+}
+
+func (r *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.URL.Scheme = r.target.Scheme
+	req.URL.Host = r.target.Host
+	return r.base.RoundTrip(req)
+}
+
+func newClientFor(server *httptest.Server) *Client {
+	target, err := url.Parse(server.URL)
+	Expect(err).ToNot(HaveOccurred())
+
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "acc-test"}), true)
+	t.SetHTTPClient(&http.Client{Transport: &rewriteTransport{base: http.DefaultTransport, target: target}})
+	return NewClient(t)
+}
 
 var _ = Describe("User endpoints", func() {
 	var (
@@ -46,12 +70,12 @@ var _ = Describe("User endpoints", func() {
 	}
 
 	Describe("Followed listings", func() {
-		It("GetFollowedProfiles decodes a paginated ProfileBulkResponse", func() {
+		It("FollowedProfiles decodes a paginated profile.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"total_count":17,"next_page":"…?page=2"}`),
 				http.MethodGet, "/api/user/followed-profiles")
 
-			res, err := client.GetFollowedProfiles(ctx, 1)
+			res, err := client.FollowedProfiles(ctx, 1)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
@@ -60,34 +84,34 @@ var _ = Describe("User endpoints", func() {
 			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
 		})
 
-		It("GetFollowedDocuments decodes a paginated DocumentBulkResponse", func() {
+		It("FollowedDocuments decodes a paginated document.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"document-1","title":"T"}],"page":1}`),
 				http.MethodGet, "/api/user/followed-documents")
 
-			res, err := client.GetFollowedDocuments(ctx, 0)
+			res, err := client.FollowedDocuments(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
 		})
 
-		It("GetFollowedProjects decodes a paginated ProjectBulkResponse", func() {
+		It("FollowedProjects decodes a paginated project.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"project-1","name":"P"}]}`),
 				http.MethodGet, "/api/user/followed-projects")
 
-			res, err := client.GetFollowedProjects(ctx, 0)
+			res, err := client.FollowedProjects(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
 		})
 
-		It("GetFollowedSurnames decodes a paginated surname.BulkResponse", func() {
+		It("FollowedSurnames decodes a paginated surname.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"surname-1","slugged_name":"smith"},{"id":"surname-2","slugged_name":"jones"}],"page":1}`),
 				http.MethodGet, "/api/user/followed-surnames")
 
-			res, err := client.GetFollowedSurnames(ctx, 0)
+			res, err := client.FollowedSurnames(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
@@ -96,23 +120,23 @@ var _ = Describe("User endpoints", func() {
 	})
 
 	Describe("Uploaded listings", func() {
-		It("GetUploadedPhotos decodes a paginated PhotoBulkResponse", func() {
+		It("UploadedPhotos decodes a paginated photo.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"photo-1","title":"X"}],"page":1}`),
 				http.MethodGet, "/api/user/uploaded-photos")
 
-			res, err := client.GetUploadedPhotos(ctx, 0)
+			res, err := client.UploadedPhotos(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
 		})
 
-		It("GetUploadedVideos decodes a paginated VideoBulkResponse", func() {
+		It("UploadedVideos decodes a paginated video.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"video-1","title":"X"}],"page":1}`),
 				http.MethodGet, "/api/user/uploaded-videos")
 
-			res, err := client.GetUploadedVideos(ctx, 0)
+			res, err := client.UploadedVideos(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
@@ -120,7 +144,7 @@ var _ = Describe("User endpoints", func() {
 	})
 
 	Describe("My-* listings", func() {
-		It("GetMyAlbums decodes a paginated PhotoAlbumBulkResponse", func() {
+		It("Albums decodes a paginated photoalbum.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[
 					{"id":"album-1","name":"Vacation","description":"Summer 2024"},
@@ -128,7 +152,7 @@ var _ = Describe("User endpoints", func() {
 				],"page":1}`),
 				http.MethodGet, "/api/user/my-albums")
 
-			res, err := client.GetMyAlbums(ctx, 0)
+			res, err := client.Albums(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
@@ -136,12 +160,12 @@ var _ = Describe("User endpoints", func() {
 			Expect(res.Results[0].Description).To(Equal("Summer 2024"))
 		})
 
-		It("GetMyLabels decodes a string-array LabelsResponse", func() {
+		It("Labels decodes a string-array Labels envelope", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":["family","work","travel"],"page":1,"next_page":"…?page=2"}`),
 				http.MethodGet, "/api/user/my-labels")
 
-			res, err := client.GetMyLabels(ctx, 0)
+			res, err := client.Labels(ctx, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(ConsistOf("family", "work", "travel"))
@@ -150,12 +174,12 @@ var _ = Describe("User endpoints", func() {
 	})
 
 	Describe("MaxFamily", func() {
-		It("decodes a paginated ProfileBulkResponse", func() {
+		It("decodes a paginated profile.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1}`),
 				http.MethodGet, "/api/user/max-family")
 
-			res, err := client.GetMaxFamily(ctx, 1)
+			res, err := client.MaxFamily(ctx, 1)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
@@ -163,23 +187,23 @@ var _ = Describe("User endpoints", func() {
 	})
 
 	Describe("Metadata", func() {
-		It("GetMetadata round-trips an opaque data blob", func() {
+		It("Metadata round-trips an opaque data blob", func() {
 			serve(http.StatusOK,
 				[]byte(`{"data":{"theme":"dark","sidebar":42}}`),
 				http.MethodGet, "/api/user/metadata")
 
-			md, err := client.GetMetadata(ctx)
+			md, err := client.Metadata(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(md.Data)).To(ContainSubstring(`"theme":"dark"`))
 			Expect(string(md.Data)).To(ContainSubstring(`"sidebar":42`))
 		})
 
-		It("GetMetadata with multiple user ids sets ids=", func() {
+		It("Metadata with multiple user ids sets ids=", func() {
 			serve(http.StatusOK, []byte(`{"data":{}}`),
 				http.MethodGet, "/api/user/metadata")
 
-			_, err := client.GetMetadata(ctx, "user-1", "user-2")
+			_, err := client.Metadata(ctx, "user-1", "user-2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("ids")).To(Equal("user-1,user-2"))
@@ -193,10 +217,6 @@ var _ = Describe("User endpoints", func() {
 			_, err := client.UpdateMetadata(ctx, json.RawMessage(`{"theme":"light"}`))
 
 			Expect(err).ToNot(HaveOccurred())
-			// Wire format: `data` is a JSON-encoded string, not
-			// a nested object — Geni's /update-metadata 500s on
-			// the nested form ("no implicit conversion of
-			// ActionController::Parameters into String").
 			Expect(string(reqBody)).To(ContainSubstring(`"data":"{\"theme\":\"light\"}"`))
 		})
 	})
