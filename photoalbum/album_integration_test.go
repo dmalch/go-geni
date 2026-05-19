@@ -1,17 +1,40 @@
-package geni
+package photoalbum
 
 import (
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
-	"github.com/dmalch/go-geni/photoalbum"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-var _ = Describe("Client photo album endpoints", func() {
+type rewriteTransport struct {
+	base   http.RoundTripper
+	target *url.URL
+}
+
+func (r *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.URL.Scheme = r.target.Scheme
+	req.URL.Host = r.target.Host
+	return r.base.RoundTrip(req)
+}
+
+func newClientFor(server *httptest.Server) *Client {
+	target, err := url.Parse(server.URL)
+	Expect(err).ToNot(HaveOccurred())
+
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "acc-test"}), true)
+	t.SetHTTPClient(&http.Client{Transport: &rewriteTransport{base: http.DefaultTransport, target: target}})
+	return NewClient(t)
+}
+
+var _ = Describe("Photo album endpoints", func() {
 	var (
 		ctx      context.Context
 		server   *httptest.Server
@@ -45,7 +68,7 @@ var _ = Describe("Client photo album endpoints", func() {
 		client = newClientFor(server)
 	}
 
-	Describe("CreatePhotoAlbum", func() {
+	Describe("Create", func() {
 		It("POSTs the JSON body to /photo_album/add and decodes the new album", func() {
 			serve(http.StatusOK,
 				[]byte(`{
@@ -58,7 +81,7 @@ var _ = Describe("Client photo album endpoints", func() {
 				http.MethodPost, "/api/photo_album/add")
 
 			desc := "Family trip"
-			album, err := client.CreatePhotoAlbum(ctx, &photoalbum.Request{
+			album, err := client.Create(ctx, &Request{
 				Name:        "Vacation 1972",
 				Description: &desc,
 			})
@@ -71,7 +94,7 @@ var _ = Describe("Client photo album endpoints", func() {
 		})
 	})
 
-	Describe("GetPhotoAlbum", func() {
+	Describe("Get", func() {
 		It("GETs /api/<albumId> and decodes the full PhotoAlbum", func() {
 			serve(http.StatusOK,
 				[]byte(`{
@@ -85,7 +108,7 @@ var _ = Describe("Client photo album endpoints", func() {
 				}`),
 				http.MethodGet, "/api/photo_album-1")
 
-			album, err := client.GetPhotoAlbum(ctx, "album-1")
+			album, err := client.Get(ctx, "album-1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.Id).To(Equal("album-1"))
@@ -94,8 +117,8 @@ var _ = Describe("Client photo album endpoints", func() {
 		})
 	})
 
-	Describe("GetPhotoAlbumPhotos", func() {
-		It("decodes a paginated PhotoBulkResponse", func() {
+	Describe("Photos", func() {
+		It("decodes a paginated photo.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{
 					"results": [
@@ -107,7 +130,7 @@ var _ = Describe("Client photo album endpoints", func() {
 				}`),
 				http.MethodGet, "/api/photo_album-1/photos")
 
-			res, err := client.GetPhotoAlbumPhotos(ctx, "album-1", 1)
+			res, err := client.Photos(ctx, "album-1", 1)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
@@ -116,13 +139,13 @@ var _ = Describe("Client photo album endpoints", func() {
 		})
 	})
 
-	Describe("UpdatePhotoAlbum", func() {
+	Describe("Update", func() {
 		It("POSTs the JSON body to /api/<albumId>/update and decodes the updated album", func() {
 			serve(http.StatusOK,
 				[]byte(`{"id":"album-1","name":"After"}`),
 				http.MethodPost, "/api/photo_album-1/update")
 
-			album, err := client.UpdatePhotoAlbum(ctx, "album-1", &photoalbum.Request{
+			album, err := client.Update(ctx, "album-1", &Request{
 				Name: "After",
 			})
 

@@ -114,6 +114,15 @@
   - `client.GetProjectFollowers(ctx, id, p)`     → `client.Project().Followers(ctx, id, p)`
   - `client.AddProfileToProject(ctx, pid, prj)`  → `client.Project().AddProfile(ctx, pid, prj)`
   - `client.AddDocumentToProject(ctx, did, prj)` → `client.Project().AddDocument(ctx, did, prj)`
+- **BREAKING:** PhotoAlbum methods lift into
+  `github.com/dmalch/go-geni/photoalbum` (types lifted in PR 7).
+  Root gains `PhotoAlbum() *photoalbum.Client`. The `photoAlbumPath`
+  helper that normalises `album-{n}` → `photo_album-{n}` moves
+  alongside as `albumPath`.
+  - `client.CreatePhotoAlbum(ctx, req)`        → `client.PhotoAlbum().Create(ctx, req)`
+  - `client.GetPhotoAlbum(ctx, id)`            → `client.PhotoAlbum().Get(ctx, id)`
+  - `client.GetPhotoAlbumPhotos(ctx, id, p)`   → `client.PhotoAlbum().Photos(ctx, id, p)`
+  - `client.UpdatePhotoAlbum(ctx, id, req)`    → `client.PhotoAlbum().Update(ctx, id, req)`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

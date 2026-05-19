@@ -30,7 +30,7 @@ var _ = Describe("Photo Album API", func() {
 	createFixtureAlbum := func() *photoalbum.PhotoAlbum {
 		GinkgoHelper()
 		desc := "sandbox-test"
-		album, err := client.CreatePhotoAlbum(ctx, &photoalbum.Request{
+		album, err := client.PhotoAlbum().Create(ctx, &photoalbum.Request{
 			Name:        fmt.Sprintf("AccAlbum-%d", time.Now().UnixNano()),
 			Description: &desc,
 		})
@@ -50,7 +50,7 @@ var _ = Describe("Photo Album API", func() {
 		It("reads a freshly-created album back", func() {
 			created := createFixtureAlbum()
 
-			got, err := client.GetPhotoAlbum(ctx, created.Id)
+			got, err := client.PhotoAlbum().Get(ctx, created.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Id).To(Equal(created.Id))
 			Expect(got.Name).To(Equal(created.Name))
@@ -62,14 +62,14 @@ var _ = Describe("Photo Album API", func() {
 			created := createFixtureAlbum()
 			newName := fmt.Sprintf("AccAlbumRenamed-%d", time.Now().UnixNano())
 
-			updated, err := client.UpdatePhotoAlbum(ctx, created.Id, &photoalbum.Request{
+			updated, err := client.PhotoAlbum().Update(ctx, created.Id, &photoalbum.Request{
 				Name: newName,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Id).To(Equal(created.Id))
 			Expect(updated.Name).To(Equal(newName))
 
-			got, err := client.GetPhotoAlbum(ctx, created.Id)
+			got, err := client.PhotoAlbum().Get(ctx, created.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Name).To(Equal(newName))
 		})
@@ -85,7 +85,7 @@ var _ = Describe("Photo Album API", func() {
 		It("returns a non-nil envelope for a fresh album", func() {
 			created := createFixtureAlbum()
 
-			res, err := client.GetPhotoAlbumPhotos(ctx, created.Id, 0)
+			res, err := client.PhotoAlbum().Photos(ctx, created.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
