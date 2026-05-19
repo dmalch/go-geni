@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dmalch/go-geni/photo"
 	. "github.com/onsi/gomega"
 )
 
@@ -155,7 +156,7 @@ func TestUpdatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","title":"After"}`)
 
-		photo, err := c.UpdatePhoto(context.Background(), "photo-1", &PhotoRequest{
+		photo, err := c.UpdatePhoto(context.Background(), "photo-1", &photo.Request{
 			Title:       "After",
 			Description: "updated",
 		})
@@ -175,7 +176,7 @@ func TestUpdatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.UpdatePhoto(context.Background(), "photo-1", &PhotoRequest{Title: "X"})
+		_, err := c.UpdatePhoto(context.Background(), "photo-1", &photo.Request{Title: "X"})
 
 		Expect(err).To(MatchError(ErrResourceNotFound))
 	})

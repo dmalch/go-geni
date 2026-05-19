@@ -11,71 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/comment"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
-
-// PhotoRequest is the JSON-encoded body for [Client.UpdatePhoto]
-// and [Client.AddProfilePhoto]. All fields are optional; omitted
-// fields leave the existing value in place (for Update) or aren't
-// sent at all (for AddProfilePhoto).
-//
-// File is the Base64-encoded image content. It's only meaningful
-// for AddProfilePhoto — UpdatePhoto ignores it. Note that the
-// /photo/add multipart endpoint ([Client.CreatePhoto]) uses a
-// streaming io.Reader instead; this struct's File field is only
-// for the JSON-body /profile/{id}/add-photo path.
-type PhotoRequest struct {
-	Title       string  `json:"title,omitempty"`
-	Description string  `json:"description,omitempty"`
-	Date        string  `json:"date,omitempty"`
-	File        *string `json:"file,omitempty"`
-}
-
-// PhotoResponse is Geni's Photo resource — a single uploaded image
-// with metadata and tagging.
-type PhotoResponse struct {
-	// Id is the photo's identifier.
-	Id string `json:"id,omitempty"`
-	// Guid is the photo's legacy global identifier.
-	Guid string `json:"guid,omitempty"`
-	// AlbumId is the id of the album containing the photo.
-	AlbumId string `json:"album_id,omitempty"`
-	// Title is the photo's title.
-	Title string `json:"title,omitempty"`
-	// Description is the photo's description.
-	Description string `json:"description,omitempty"`
-	// Date is the photo's date, as returned by Geni (string format).
-	Date string `json:"date,omitempty"`
-	// Attribution is the photo's attribution string.
-	Attribution string `json:"attribution,omitempty"`
-	// ContentType is the original MIME type of the upload.
-	ContentType string `json:"content_type,omitempty"`
-	// Location is the photo's optional location.
-	Location *profile.LocationElement `json:"location,omitempty"`
-	// Tags is the list of profiles tagged in the photo (urls or ids
-	// depending on the `only_ids` query parameter).
-	Tags []string `json:"tags,omitempty"`
-	// Sizes maps Geni-defined size names (e.g. "small", "medium",
-	// "large") to fully-qualified image URLs. The exact set of keys
-	// varies by upload.
-	Sizes map[string]string `json:"sizes,omitempty"`
-	// Url is the API URL for the photo.
-	Url string `json:"url,omitempty"`
-	// CreatedAt / UpdatedAt are the resource lifecycle timestamps.
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
-}
-
-// PhotoBulkResponse is the envelope returned by [Client.GetPhotos]
-// and the paginated `*/photos` listings (profile.photos,
-// album.photos, etc.).
-type PhotoBulkResponse struct {
-	Results  []PhotoResponse `json:"results,omitempty"`
-	Page     int             `json:"page,omitempty"`
-	NextPage string          `json:"next_page,omitempty"`
-	PrevPage string          `json:"prev_page,omitempty"`
-}
 
 // CreatePhotoOption customises an outgoing CreatePhoto request.
 type CreatePhotoOption func(*createPhotoOptions)
@@ -113,7 +53,7 @@ func WithPhotoDate(date string) CreatePhotoOption {
 // Both title and a non-nil file are required by Geni; passing an empty
 // title or nil file is rejected client-side before the request is
 // sent.
-func (c *Client) CreatePhoto(ctx context.Context, title, fileName string, file io.Reader, opts ...CreatePhotoOption) (*PhotoResponse, error) {
+func (c *Client) CreatePhoto(ctx context.Context, title, fileName string, file io.Reader, opts ...CreatePhotoOption) (*photo.Photo, error) {
 	if title == "" {
 		return nil, errInvalidArg("CreatePhoto: title is required")
 	}
@@ -172,7 +112,7 @@ func (c *Client) CreatePhoto(ctx context.Context, title, fileName string, file i
 		return nil, err
 	}
 
-	var photo PhotoResponse
+	var photo photo.Photo
 	if err := json.Unmarshal(respBody, &photo); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -181,7 +121,7 @@ func (c *Client) CreatePhoto(ctx context.Context, title, fileName string, file i
 }
 
 // GetPhoto fetches a single photo by id.
-func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, error) {
+func (c *Client) GetPhoto(ctx context.Context, photoId string) (*photo.Photo, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + photoId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -189,18 +129,18 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 		return nil, err
 	}
 
-	coalescer := &transport.BulkCoalescer[PhotoResponse, PhotoBulkResponse]{
+	coalescer := &transport.BulkCoalescer[photo.Photo, photo.BulkResponse]{
 		CurrentID: photoId,
 		IDPrefix:  "photo",
-		DecodeBulk: func(body []byte) (PhotoBulkResponse, error) {
-			var env PhotoBulkResponse
+		DecodeBulk: func(body []byte) (photo.BulkResponse, error) {
+			var env photo.BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env PhotoBulkResponse) []PhotoResponse { return env.Results },
-		IDOfResult:  func(p PhotoResponse) string { return p.Id },
+		ListResults: func(env photo.BulkResponse) []photo.Photo { return env.Results },
+		IDOfResult:  func(p photo.Photo) string { return p.Id },
 	}
 
 	body, err := c.doRequest(ctx, req, coalescer)
@@ -208,7 +148,7 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 		return nil, err
 	}
 
-	var photo PhotoResponse
+	var photo photo.Photo
 	if err := json.Unmarshal(body, &photo); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -217,14 +157,14 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 }
 
 // GetPhotos fetches multiple photos in a single bulk request.
-func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*PhotoBulkResponse, error) {
+func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*photo.BulkResponse, error) {
 	// Single-id fallback — see GetUnions for the Geni-side quirk.
 	if len(photoIds) == 1 {
 		one, err := c.GetPhoto(ctx, photoIds[0])
 		if err != nil {
 			return nil, err
 		}
-		return &PhotoBulkResponse{Results: []PhotoResponse{*one}}, nil
+		return &photo.BulkResponse{Results: []photo.Photo{*one}}, nil
 	}
 
 	url := BaseURL(c.useSandboxEnv) + "api/photo"
@@ -243,7 +183,7 @@ func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*PhotoBulkRe
 		return nil, err
 	}
 
-	var photos PhotoBulkResponse
+	var photos photo.BulkResponse
 	if err := json.Unmarshal(body, &photos); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -255,7 +195,7 @@ func (c *Client) GetPhotos(ctx context.Context, photoIds []string) (*PhotoBulkRe
 // JSON-encoded the same way as profile / document / union update
 // endpoints, and runs through escapeStringToUTF so non-ASCII text
 // survives the API's UTF-8 handling.
-func (c *Client) UpdatePhoto(ctx context.Context, photoId string, request *PhotoRequest) (*PhotoResponse, error) {
+func (c *Client) UpdatePhoto(ctx context.Context, photoId string, request *photo.Request) (*photo.Photo, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -276,7 +216,7 @@ func (c *Client) UpdatePhoto(ctx context.Context, photoId string, request *Photo
 		return nil, err
 	}
 
-	var photo PhotoResponse
+	var photo photo.Photo
 	if err := json.Unmarshal(body, &photo); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -286,17 +226,17 @@ func (c *Client) UpdatePhoto(ctx context.Context, photoId string, request *Photo
 
 // TagPhoto associates a profile with a photo. Returns the updated
 // photo (its `tags` list will include profileId).
-func (c *Client) TagPhoto(ctx context.Context, photoId, profileId string) (*PhotoResponse, error) {
+func (c *Client) TagPhoto(ctx context.Context, photoId, profileId string) (*photo.Photo, error) {
 	return c.photoTagAction(ctx, photoId, profileId, "tag")
 }
 
 // UntagPhoto removes a profile-tag from a photo. Returns the updated
 // photo.
-func (c *Client) UntagPhoto(ctx context.Context, photoId, profileId string) (*PhotoResponse, error) {
+func (c *Client) UntagPhoto(ctx context.Context, photoId, profileId string) (*photo.Photo, error) {
 	return c.photoTagAction(ctx, photoId, profileId, "untag")
 }
 
-func (c *Client) photoTagAction(ctx context.Context, photoId, profileId, action string) (*PhotoResponse, error) {
+func (c *Client) photoTagAction(ctx context.Context, photoId, profileId, action string) (*photo.Photo, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/" + action + "/" + profileId
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -309,7 +249,7 @@ func (c *Client) photoTagAction(ctx context.Context, photoId, profileId, action 
 		return nil, err
 	}
 
-	var photo PhotoResponse
+	var photo photo.Photo
 	if err := json.Unmarshal(body, &photo); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -353,7 +293,7 @@ func (c *Client) GetPhotoTags(ctx context.Context, photoId string, page int) (*p
 // GetPhotoComments returns the paginated list of comments on a photo.
 // page is 1-indexed; values ≤0 omit the parameter (Geni defaults to
 // page 1). Max 50 comments per page.
-func (c *Client) GetPhotoComments(ctx context.Context, photoId string, page int) (*CommentBulkResponse, error) {
+func (c *Client) GetPhotoComments(ctx context.Context, photoId string, page int) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/comments"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -372,7 +312,7 @@ func (c *Client) GetPhotoComments(ctx context.Context, photoId string, page int)
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -384,7 +324,7 @@ func (c *Client) GetPhotoComments(ctx context.Context, photoId string, page int)
 // Geni; title is optional. The response is a [CommentBulkResponse] —
 // the updated paginated comment list (sandbox behaviour varies: see
 // the analogous note on AddDocumentComment).
-func (c *Client) AddPhotoComment(ctx context.Context, photoId, text, title string) (*CommentBulkResponse, error) {
+func (c *Client) AddPhotoComment(ctx context.Context, photoId, text, title string) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/comment"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -404,7 +344,7 @@ func (c *Client) AddPhotoComment(ctx context.Context, photoId, text, title strin
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

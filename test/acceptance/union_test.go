@@ -8,6 +8,7 @@ import (
 
 	"github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/union"
 )
 
 // createCoupleAndUnion creates a focus profile, adds a partner, and
@@ -84,7 +85,7 @@ var _ = Describe("Union API", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 			year := int32(1925)
 
-			updated, err := client.UpdateUnion(ctx, unionId, &geni.UnionRequest{
+			updated, err := client.UpdateUnion(ctx, unionId, &union.Request{
 				Marriage: &profile.EventElement{
 					Date: &profile.DateElement{Year: &year},
 				},

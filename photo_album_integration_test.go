@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dmalch/go-geni/photoalbum"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -57,7 +58,7 @@ var _ = Describe("Client photo album endpoints", func() {
 				http.MethodPost, "/api/photo_album/add")
 
 			desc := "Family trip"
-			album, err := client.CreatePhotoAlbum(ctx, &PhotoAlbumRequest{
+			album, err := client.CreatePhotoAlbum(ctx, &photoalbum.Request{
 				Name:        "Vacation 1972",
 				Description: &desc,
 			})
@@ -121,7 +122,7 @@ var _ = Describe("Client photo album endpoints", func() {
 				[]byte(`{"id":"album-1","name":"After"}`),
 				http.MethodPost, "/api/photo_album-1/update")
 
-			album, err := client.UpdatePhotoAlbum(ctx, "album-1", &PhotoAlbumRequest{
+			album, err := client.UpdatePhotoAlbum(ctx, "album-1", &photoalbum.Request{
 				Name: "After",
 			})
 

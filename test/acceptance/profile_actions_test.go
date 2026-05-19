@@ -14,7 +14,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/video"
 )
 
 // tinyPngBase64 returns a 1×1 PNG encoded as Base64 — usable as the
@@ -117,7 +120,7 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddDocOwner")
 
 			text := "attached via add-document"
-			doc, err := client.AddProfileDocument(ctx, profile.Id, &geni.DocumentRequest{
+			doc, err := client.AddProfileDocument(ctx, profile.Id, &document.Request{
 				Title: fmt.Sprintf("AccAddProfileDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
@@ -132,7 +135,7 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddPhotoOwner")
 
 			b64 := tinyPngBase64()
-			photo, err := client.AddProfilePhoto(ctx, profile.Id, &geni.PhotoRequest{
+			photo, err := client.AddProfilePhoto(ctx, profile.Id, &photo.Request{
 				Title: fmt.Sprintf("AccAddProfilePhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
@@ -151,7 +154,7 @@ var _ = Describe("Profile actions API", func() {
 
 			profile := createFixtureProfile(ctx, client, "AddVideoOwner")
 			b64 := "" // placeholder
-			video, err := client.AddProfileVideo(ctx, profile.Id, &geni.VideoRequest{
+			video, err := client.AddProfileVideo(ctx, profile.Id, &video.Request{
 				Title: fmt.Sprintf("AccAddProfileVideo-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})

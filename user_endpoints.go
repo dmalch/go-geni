@@ -9,35 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
+	"github.com/dmalch/go-geni/photoalbum"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/project"
 	"github.com/dmalch/go-geni/surname"
+	"github.com/dmalch/go-geni/video"
 )
-
-// PhotoAlbum is Geni's PhotoAlbum resource — a container for related
-// photos. Returned by [Client.GetMyAlbums], [Client.CreatePhotoAlbum],
-// [Client.GetPhotoAlbum], and [Client.UpdatePhotoAlbum].
-type PhotoAlbum struct {
-	Id          string `json:"id,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	Url         string `json:"url,omitempty"`
-	// CoverPhoto is a size-keyed map of cover-image URLs, same
-	// shape as PhotoResponse.Sizes.
-	CoverPhoto map[string]string `json:"cover_photo,omitempty"`
-	// PhotosCount is the number of photos in the album.
-	PhotosCount int    `json:"photos_count,omitempty"`
-	CreatedAt   string `json:"created_at,omitempty"`
-	UpdatedAt   string `json:"updated_at,omitempty"`
-}
-
-// PhotoAlbumBulkResponse is the paginated envelope returned by
-// [Client.GetMyAlbums].
-type PhotoAlbumBulkResponse struct {
-	Results  []PhotoAlbum `json:"results,omitempty"`
-	Page     int          `json:"page,omitempty"`
-	NextPage string       `json:"next_page,omitempty"`
-	PrevPage string       `json:"prev_page,omitempty"`
-}
 
 // LabelsResponse is the paginated envelope returned by
 // [Client.GetMyLabels]. Each result is a label string — Geni's docs
@@ -66,13 +45,13 @@ func (c *Client) GetFollowedProfiles(ctx context.Context, page int) (*profile.Bu
 
 // GetFollowedDocuments returns the paginated list of documents the
 // authenticated user follows.
-func (c *Client) GetFollowedDocuments(ctx context.Context, page int) (*DocumentBulkResponse, error) {
+func (c *Client) GetFollowedDocuments(ctx context.Context, page int) (*document.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/followed-documents"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res DocumentBulkResponse
+	var res document.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -82,13 +61,13 @@ func (c *Client) GetFollowedDocuments(ctx context.Context, page int) (*DocumentB
 
 // GetFollowedProjects returns the paginated list of projects the
 // authenticated user follows.
-func (c *Client) GetFollowedProjects(ctx context.Context, page int) (*ProjectBulkResponse, error) {
+func (c *Client) GetFollowedProjects(ctx context.Context, page int) (*project.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/followed-projects"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res ProjectBulkResponse
+	var res project.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -121,13 +100,13 @@ func (c *Client) GetMaxFamily(ctx context.Context, page int) (*profile.BulkRespo
 
 // GetUploadedPhotos returns the paginated list of photos the
 // authenticated user has uploaded.
-func (c *Client) GetUploadedPhotos(ctx context.Context, page int) (*PhotoBulkResponse, error) {
+func (c *Client) GetUploadedPhotos(ctx context.Context, page int) (*photo.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/uploaded-photos"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res PhotoBulkResponse
+	var res photo.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -137,13 +116,13 @@ func (c *Client) GetUploadedPhotos(ctx context.Context, page int) (*PhotoBulkRes
 
 // GetUploadedVideos returns the paginated list of videos the
 // authenticated user has uploaded.
-func (c *Client) GetUploadedVideos(ctx context.Context, page int) (*VideoBulkResponse, error) {
+func (c *Client) GetUploadedVideos(ctx context.Context, page int) (*video.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/uploaded-videos"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res VideoBulkResponse
+	var res video.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -153,13 +132,13 @@ func (c *Client) GetUploadedVideos(ctx context.Context, page int) (*VideoBulkRes
 
 // GetMyAlbums returns the paginated list of the authenticated user's
 // photo albums.
-func (c *Client) GetMyAlbums(ctx context.Context, page int) (*PhotoAlbumBulkResponse, error) {
+func (c *Client) GetMyAlbums(ctx context.Context, page int) (*photoalbum.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/my-albums"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res PhotoAlbumBulkResponse
+	var res photoalbum.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

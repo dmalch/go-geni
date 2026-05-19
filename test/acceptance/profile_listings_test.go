@@ -15,6 +15,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 )
 
 // inlineTinyPng generates a 1×1 PNG so the photos spec doesn't need a
@@ -69,7 +71,7 @@ var _ = Describe("Profile media listings", func() {
 			profile := createFixtureProfile(ctx, client, "ProfileDocs")
 			text := "profile-listing fixture"
 
-			doc, err := client.AddProfileDocument(ctx, profile.Id, &geni.DocumentRequest{
+			doc, err := client.AddProfileDocument(ctx, profile.Id, &document.Request{
 				Title: fmt.Sprintf("AccProfileDocsDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
@@ -107,7 +109,7 @@ var _ = Describe("Profile media listings", func() {
 			Expect(err).ToNot(HaveOccurred())
 			b64 := base64.StdEncoding.EncodeToString(raw)
 
-			photo, err := client.AddProfilePhoto(ctx, profile.Id, &geni.PhotoRequest{
+			photo, err := client.AddProfilePhoto(ctx, profile.Id, &photo.Request{
 				Title: fmt.Sprintf("AccProfilePhotosPhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})

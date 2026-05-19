@@ -58,6 +58,30 @@
   every profile-returning endpoint sends. Root's
   `addProfileFieldsQueryParams` now delegates to it; sub-packages
   call `profile.AddFields(req)` directly.
+- **BREAKING:** Wire types for Document, Photo, Video, PhotoAlbum,
+  Project, Union, and Comment lift into per-resource sub-packages.
+  Methods stay on root; the type-only move unblocks the user/
+  resource (and the per-resource method PRs that follow). Rename
+  map:
+  - `*geni.DocumentResponse`     → `*document.Document`
+  - `*geni.DocumentRequest`      → `*document.Request`
+  - `*geni.DocumentBulkResponse` → `*document.BulkResponse`
+  - `*geni.PhotoResponse`        → `*photo.Photo`
+  - `*geni.PhotoRequest`         → `*photo.Request`
+  - `*geni.PhotoBulkResponse`    → `*photo.BulkResponse`
+  - `*geni.VideoResponse`        → `*video.Video`
+  - `*geni.VideoRequest`         → `*video.Request`
+  - `*geni.VideoBulkResponse`    → `*video.BulkResponse`
+  - `*geni.PhotoAlbum`           → `*photoalbum.PhotoAlbum`
+  - `*geni.PhotoAlbumRequest`    → `*photoalbum.Request`
+  - `*geni.PhotoAlbumBulkResponse` → `*photoalbum.BulkResponse`
+  - `*geni.ProjectResponse`      → `*project.Project`
+  - `*geni.ProjectBulkResponse`  → `*project.BulkResponse`
+  - `*geni.UnionResponse`        → `*union.Union`
+  - `*geni.UnionRequest`         → `*union.Request`
+  - `*geni.UnionBulkResponse`    → `*union.BulkResponse`
+  - `geni.Comment`               → `comment.Comment`
+  - `*geni.CommentBulkResponse`  → `*comment.BulkResponse`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

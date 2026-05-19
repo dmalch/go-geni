@@ -10,39 +10,10 @@ import (
 
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
+	"github.com/dmalch/go-geni/union"
 )
 
-type UnionRequest struct {
-	// Marriage date and location
-	Marriage *profile.EventElement `json:"marriage,omitempty"`
-	// Divorce date and location
-	Divorce *profile.EventElement `json:"divorce,omitempty"`
-}
-
-type UnionBulkResponse struct {
-	Results []UnionResponse `json:"results,omitempty"`
-}
-
-type UnionResponse struct {
-	// The union's id
-	Id string `json:"id,omitempty"`
-	// AdoptedChildren is a subset of the children array, indicating which children are adopted
-	AdoptedChildren []string `json:"adopted_children,omitempty"`
-	// Children is an array of children in the union (urls or ids, if requested)
-	Children []string `json:"children,omitempty"`
-	// FosterChildren is a subset of the children array, indicating which children are foster
-	FosterChildren []string `json:"foster_children,omitempty"`
-	// Partners is an array of partners in the union (urls or ids, if requested)
-	Partners []string `json:"partners,omitempty"`
-	// Marriage date and location
-	Marriage *profile.EventElement `json:"marriage,omitempty"`
-	// Divorce date and location
-	Divorce *profile.EventElement `json:"divorce,omitempty"`
-	// Status of the union (spouse|ex_spouse)
-	Status string `json:"status,omitempty"`
-}
-
-func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, error) {
+func (c *Client) GetUnion(ctx context.Context, unionId string) (*union.Union, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + unionId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -50,18 +21,18 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 		return nil, err
 	}
 
-	coalescer := &transport.BulkCoalescer[UnionResponse, UnionBulkResponse]{
+	coalescer := &transport.BulkCoalescer[union.Union, union.BulkResponse]{
 		CurrentID: unionId,
 		IDPrefix:  "union",
-		DecodeBulk: func(body []byte) (UnionBulkResponse, error) {
-			var env UnionBulkResponse
+		DecodeBulk: func(body []byte) (union.BulkResponse, error) {
+			var env union.BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env UnionBulkResponse) []UnionResponse { return env.Results },
-		IDOfResult:  func(u UnionResponse) string { return u.Id },
+		ListResults: func(env union.BulkResponse) []union.Union { return env.Results },
+		IDOfResult:  func(u union.Union) string { return u.Id },
 	}
 
 	body, err := c.doRequest(ctx, req, coalescer)
@@ -69,7 +40,7 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 		return nil, err
 	}
 
-	var union UnionResponse
+	var union union.Union
 	err = json.Unmarshal(body, &union)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -79,7 +50,7 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 	return &union, nil
 }
 
-func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*UnionBulkResponse, error) {
+func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*union.BulkResponse, error) {
 	// Geni's bulk endpoint returns an empty results array when
 	// `ids=` carries exactly one identifier — the server appears to
 	// route single-id bulk requests through a search/filter path
@@ -91,7 +62,7 @@ func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*UnionBulkRe
 		if err != nil {
 			return nil, err
 		}
-		return &UnionBulkResponse{Results: []UnionResponse{*one}}, nil
+		return &union.BulkResponse{Results: []union.Union{*one}}, nil
 	}
 
 	url := BaseURL(c.useSandboxEnv) + "api/union"
@@ -110,7 +81,7 @@ func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*UnionBulkRe
 		return nil, err
 	}
 
-	var union UnionBulkResponse
+	var union union.BulkResponse
 	err = json.Unmarshal(body, &union)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -179,7 +150,7 @@ func (c *Client) AddChildToUnion(ctx context.Context, unionId string, opts ...Ad
 	return &profile, nil
 }
 
-func (c *Client) UpdateUnion(ctx context.Context, unionId string, request *UnionRequest) (*UnionResponse, error) {
+func (c *Client) UpdateUnion(ctx context.Context, unionId string, request *union.Request) (*union.Union, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -202,7 +173,7 @@ func (c *Client) UpdateUnion(ctx context.Context, unionId string, request *Union
 		return nil, err
 	}
 
-	var union UnionResponse
+	var union union.Union
 	err = json.Unmarshal(body, &union)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)

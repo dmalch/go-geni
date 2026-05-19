@@ -10,66 +10,14 @@ import (
 
 	"log/slog"
 
+	"github.com/dmalch/go-geni/comment"
+	"github.com/dmalch/go-geni/document"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/project"
 	"github.com/dmalch/go-geni/transport"
 )
 
-type DocumentRequest struct {
-	// Title is the document's title
-	Title string `json:"title,omitempty"`
-	// Description is the document's description
-	Description *string `json:"description,omitempty"`
-	// ContentType is the document's content type
-	ContentType *string `json:"content_type,omitempty"`
-	// Date is the document's date
-	Date *profile.DateElement `json:"date,omitempty"`
-	// Location is the document's location
-	Location *profile.LocationElement `json:"location,omitempty"`
-	// Labels is the document's comma separated labels
-	Labels *string `json:"labels,omitempty"`
-	// File is the Base64 encoded file to create a document from
-	File *string `json:"file,omitempty"`
-	// FileName is the name of the file, required if the file is provided
-	FileName *string `json:"file_name,omitempty"`
-	// SourceUrl is the source URL for the document
-	SourceUrl *string `json:"source_url,omitempty"`
-	// Text is the text to create a document from
-	Text *string `json:"text,omitempty"`
-}
-
-type DocumentBulkResponse struct {
-	Results    []DocumentResponse `json:"results,omitempty"`
-	Page       int                `json:"page,omitempty"`
-	TotalCount int                `json:"total_count,omitempty"`
-	NextPage   string             `json:"next_page,omitempty"`
-	PrevPage   string             `json:"prev_page,omitempty"`
-}
-type DocumentResponse struct {
-	// Id is the document's id
-	Id string `json:"id,omitempty"`
-	// Title is the document's title
-	Title string `json:"title,omitempty"`
-	// Description is the document's description
-	Description *string `json:"description"`
-	// SourceUrl is the document's source URL
-	SourceUrl *string `json:"source_url"`
-	// ContentType is the document's content type
-	ContentType *string `json:"content_type"`
-	// Date is the document's date
-	Date *profile.DateElement `json:"date"`
-	// Location is the document's location
-	Location *profile.LocationElement `json:"location,omitempty"`
-	// Profiles is the list of profiles tagged in the document
-	Tags []string `json:"tags"`
-	// Labels is the list of labels associated with the document
-	Labels []string `json:"labels"`
-	// UpdatedAt is the timestamp of when the document was last updated
-	UpdatedAt string `json:"updated_at"`
-	// CreatedAt is the timestamp of when the document was created
-	CreatedAt string `json:"created_at"`
-}
-
-func (c *Client) CreateDocument(ctx context.Context, request *DocumentRequest) (*DocumentResponse, error) {
+func (c *Client) CreateDocument(ctx context.Context, request *document.Request) (*document.Document, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -92,7 +40,7 @@ func (c *Client) CreateDocument(ctx context.Context, request *DocumentRequest) (
 		return nil, err
 	}
 
-	var document DocumentResponse
+	var document document.Document
 	err = json.Unmarshal(body, &document)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -102,7 +50,7 @@ func (c *Client) CreateDocument(ctx context.Context, request *DocumentRequest) (
 	return &document, nil
 }
 
-func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentResponse, error) {
+func (c *Client) GetDocument(ctx context.Context, documentId string) (*document.Document, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -110,18 +58,18 @@ func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentR
 		return nil, err
 	}
 
-	coalescer := &transport.BulkCoalescer[DocumentResponse, DocumentBulkResponse]{
+	coalescer := &transport.BulkCoalescer[document.Document, document.BulkResponse]{
 		CurrentID: documentId,
 		IDPrefix:  "document",
-		DecodeBulk: func(body []byte) (DocumentBulkResponse, error) {
-			var env DocumentBulkResponse
+		DecodeBulk: func(body []byte) (document.BulkResponse, error) {
+			var env document.BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env DocumentBulkResponse) []DocumentResponse { return env.Results },
-		IDOfResult:  func(d DocumentResponse) string { return d.Id },
+		ListResults: func(env document.BulkResponse) []document.Document { return env.Results },
+		IDOfResult:  func(d document.Document) string { return d.Id },
 	}
 
 	body, err := c.doRequest(ctx, req, coalescer)
@@ -129,7 +77,7 @@ func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentR
 		return nil, err
 	}
 
-	var document DocumentResponse
+	var document document.Document
 	err = json.Unmarshal(body, &document)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -139,14 +87,14 @@ func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentR
 	return &document, nil
 }
 
-func (c *Client) GetDocuments(ctx context.Context, documentIds []string) (*DocumentBulkResponse, error) {
+func (c *Client) GetDocuments(ctx context.Context, documentIds []string) (*document.BulkResponse, error) {
 	// Single-id fallback — see GetUnions for the Geni-side quirk.
 	if len(documentIds) == 1 {
 		one, err := c.GetDocument(ctx, documentIds[0])
 		if err != nil {
 			return nil, err
 		}
-		return &DocumentBulkResponse{Results: []DocumentResponse{*one}}, nil
+		return &document.BulkResponse{Results: []document.Document{*one}}, nil
 	}
 
 	url := BaseURL(c.useSandboxEnv) + "api/document"
@@ -165,7 +113,7 @@ func (c *Client) GetDocuments(ctx context.Context, documentIds []string) (*Docum
 		return nil, err
 	}
 
-	var document DocumentBulkResponse
+	var document document.BulkResponse
 	err = json.Unmarshal(body, &document)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -175,7 +123,7 @@ func (c *Client) GetDocuments(ctx context.Context, documentIds []string) (*Docum
 	return &document, nil
 }
 
-func (c *Client) GetUploadedDocuments(ctx context.Context, page int) (*DocumentBulkResponse, error) {
+func (c *Client) GetUploadedDocuments(ctx context.Context, page int) (*document.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/uploaded-documents"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -192,7 +140,7 @@ func (c *Client) GetUploadedDocuments(ctx context.Context, page int) (*DocumentB
 		return nil, err
 	}
 
-	var document DocumentBulkResponse
+	var document document.BulkResponse
 	err = json.Unmarshal(body, &document)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -226,7 +174,7 @@ func (c *Client) DeleteDocument(ctx context.Context, documentId string) error {
 	return nil
 }
 
-func (c *Client) UpdateDocument(ctx context.Context, documentId string, request *DocumentRequest) (*DocumentResponse, error) {
+func (c *Client) UpdateDocument(ctx context.Context, documentId string, request *document.Request) (*document.Document, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -249,7 +197,7 @@ func (c *Client) UpdateDocument(ctx context.Context, documentId string, request 
 		return nil, err
 	}
 
-	var document DocumentResponse
+	var document document.Document
 	err = json.Unmarshal(body, &document)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -286,7 +234,7 @@ func (c *Client) TagDocument(ctx context.Context, documentId, profileId string) 
 // GetDocumentComments returns the paginated list of comments on a
 // document. page is 1-indexed; values ≤0 omit the parameter (Geni
 // defaults to page 1). Max 50 comments per page.
-func (c *Client) GetDocumentComments(ctx context.Context, documentId string, page int) (*CommentBulkResponse, error) {
+func (c *Client) GetDocumentComments(ctx context.Context, documentId string, page int) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/comments"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -305,7 +253,7 @@ func (c *Client) GetDocumentComments(ctx context.Context, documentId string, pag
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -317,7 +265,7 @@ func (c *Client) GetDocumentComments(ctx context.Context, documentId string, pag
 // comment body and is required by Geni; title is optional and may be
 // the empty string. The response is a [CommentBulkResponse] — the
 // updated paginated comment list.
-func (c *Client) AddDocumentComment(ctx context.Context, documentId, text, title string) (*CommentBulkResponse, error) {
+func (c *Client) AddDocumentComment(ctx context.Context, documentId, text, title string) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/comment"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -337,7 +285,7 @@ func (c *Client) AddDocumentComment(ctx context.Context, documentId, text, title
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -348,7 +296,7 @@ func (c *Client) AddDocumentComment(ctx context.Context, documentId, text, title
 // GetDocumentProjects returns the paginated list of projects a
 // document belongs to. page is 1-indexed; values ≤0 omit the parameter
 // (Geni defaults to page 1). Max 50 projects per page.
-func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, page int) (*ProjectBulkResponse, error) {
+func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, page int) (*project.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/projects"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -367,7 +315,7 @@ func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, pag
 		return nil, err
 	}
 
-	var projects ProjectBulkResponse
+	var projects project.BulkResponse
 	if err := json.Unmarshal(body, &projects); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

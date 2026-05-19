@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dmalch/go-geni/video"
 	. "github.com/onsi/gomega"
 )
 
@@ -122,7 +123,7 @@ func TestUpdateVideo_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-1","title":"After"}`)
 
-	video, err := c.UpdateVideo(context.Background(), "video-1", &VideoRequest{
+	video, err := c.UpdateVideo(context.Background(), "video-1", &video.Request{
 		Title:       "After",
 		Description: "updated",
 	})

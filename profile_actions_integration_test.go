@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/video"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -158,7 +161,7 @@ var _ = Describe("Profile actions endpoints", func() {
 				http.MethodPost, "/api/profile-1/add-photo")
 
 			b64 := "aGVsbG8="
-			photo, err := client.AddProfilePhoto(ctx, "profile-1", &PhotoRequest{
+			photo, err := client.AddProfilePhoto(ctx, "profile-1", &photo.Request{
 				Title: "Snapshot",
 				File:  &b64,
 			})
@@ -180,7 +183,7 @@ var _ = Describe("Profile actions endpoints", func() {
 				[]byte(`{"id":"video-9","title":"Reel"}`),
 				http.MethodPost, "/api/profile-1/add-video")
 
-			_, err := client.AddProfileVideo(ctx, "profile-1", &VideoRequest{Title: "Reel"})
+			_, err := client.AddProfileVideo(ctx, "profile-1", &video.Request{Title: "Reel"})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(body)).To(ContainSubstring(`"title":"Reel"`))
@@ -195,7 +198,7 @@ var _ = Describe("Profile actions endpoints", func() {
 				http.MethodPost, "/api/profile-1/add-document")
 
 			text := "Lorem ipsum"
-			doc, err := client.AddProfileDocument(ctx, "profile-1", &DocumentRequest{
+			doc, err := client.AddProfileDocument(ctx, "profile-1", &document.Request{
 				Title: "Letter",
 				Text:  &text,
 			})
@@ -211,7 +214,7 @@ var _ = Describe("Profile actions endpoints", func() {
 				http.MethodPost, "/api/profile-1/add-document")
 
 			src := "https://example.org/cert.pdf"
-			_, err := client.AddProfileDocument(ctx, "profile-1", &DocumentRequest{
+			_, err := client.AddProfileDocument(ctx, "profile-1", &document.Request{
 				Title:     "Source",
 				SourceUrl: &src,
 			})
