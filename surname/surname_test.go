@@ -1,19 +1,50 @@
-package geni
+package surname
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-func TestGetSurname_Request(t *testing.T) {
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
+
+func TestGet_Request(t *testing.T) {
 	t.Run("GETs /api/<surnameId>", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"surname-1","slugged_name":"smith","description":"Smith family"}`)
 
-		s, err := c.GetSurname(context.Background(), "surname-1")
+		s, err := c.Get(context.Background(), "surname-1")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(s.Id).To(Equal("surname-1"))
@@ -27,18 +58,18 @@ func TestGetSurname_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.GetSurname(context.Background(), "surname-1")
+		_, err := c.Get(context.Background(), "surname-1")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
 
-func TestGetSurnameFollowers_Request(t *testing.T) {
+func TestFollowers_Request(t *testing.T) {
 	t.Run("GETs /api/<surnameId>/followers", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetSurnameFollowers(context.Background(), "surname-1", 0)
+		_, err := c.Followers(context.Background(), "surname-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/surname-1/followers"))
@@ -49,7 +80,7 @@ func TestGetSurnameFollowers_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetSurnameFollowers(context.Background(), "surname-1", 2)
+		_, err := c.Followers(context.Background(), "surname-1", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
@@ -60,7 +91,7 @@ func TestGetSurnameFollowers_Request(t *testing.T) {
 		body := `{"results":[{"id":"profile-1"}],"page":1,"next_page":"…?page=2"}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetSurnameFollowers(context.Background(), "surname-1", 1)
+		res, err := c.Followers(context.Background(), "surname-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(1))
@@ -68,11 +99,11 @@ func TestGetSurnameFollowers_Request(t *testing.T) {
 	})
 }
 
-func TestGetSurnameProfiles_Request(t *testing.T) {
+func TestProfiles_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-	_, err := c.GetSurnameProfiles(context.Background(), "surname-1", 0)
+	_, err := c.Profiles(context.Background(), "surname-1", 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/surname-1/profiles"))

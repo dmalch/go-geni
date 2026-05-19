@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/surname"
 )
 
 // PhotoAlbum is Geni's PhotoAlbum resource — a container for related
@@ -97,13 +98,13 @@ func (c *Client) GetFollowedProjects(ctx context.Context, page int) (*ProjectBul
 
 // GetFollowedSurnames returns the paginated list of surnames the
 // authenticated user follows.
-func (c *Client) GetFollowedSurnames(ctx context.Context, page int) (*SurnameBulkResponse, error) {
+func (c *Client) GetFollowedSurnames(ctx context.Context, page int) (*surname.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/followed-surnames"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
 	}
-	var res SurnameBulkResponse
+	var res surname.BulkResponse
 	if err := json.Unmarshal(body, &res); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -292,7 +293,7 @@ func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page
 // getPaginated builds a paginated GET request and returns the raw
 // response body. Used by the user-scoped listings that decode into
 // non-Profile envelopes (DocumentBulkResponse, ProjectBulkResponse,
-// SurnameBulkResponse, PhotoBulkResponse, VideoBulkResponse,
+// surname.BulkResponse, PhotoBulkResponse, VideoBulkResponse,
 // PhotoAlbumBulkResponse, LabelsResponse).
 func (c *Client) getPaginated(ctx context.Context, url string, page int) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)

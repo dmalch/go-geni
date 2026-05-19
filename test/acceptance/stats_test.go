@@ -9,7 +9,7 @@ import (
 	"github.com/dmalch/go-geni"
 )
 
-var _ = Describe("Stats / Surname / Revision API", func() {
+var _ = Describe("Stats / Revision API", func() {
 	var (
 		ctx    context.Context
 		client *geni.Client
@@ -29,17 +29,6 @@ var _ = Describe("Stats / Surname / Revision API", func() {
 			// The sandbox should always have at least one stat;
 			// we don't assert specific names since they're opaque.
 			Expect(res.Stats).ToNot(BeEmpty())
-		})
-	})
-
-	Describe("GetSurname", func() {
-		// Skipped: we don't have a portable surname id — surname
-		// records are auto-created by Geni from profile lastnames,
-		// but the id mapping isn't directly queryable through the
-		// public API. The wire-shape coverage lives in the unit
-		// and integration tiers.
-		It("reads a known surname", func() {
-			Skip("requires a known sandbox surname id — set GENI_E2E_SURNAME_ID and remove this Skip to enable")
 		})
 	})
 
