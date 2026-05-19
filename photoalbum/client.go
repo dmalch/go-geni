@@ -1,4 +1,4 @@
-package geni
+package photoalbum
 
 import (
 	"bytes"
@@ -10,42 +10,52 @@ import (
 	"strings"
 
 	"github.com/dmalch/go-geni/photo"
-	"github.com/dmalch/go-geni/photoalbum"
+	"github.com/dmalch/go-geni/transport"
 )
 
-// photoAlbumPath maps the album id Geni returns ("album-{n}") to the
-// URL-path form Geni's router actually accepts ("photo_album-{n}").
-// Bare "album-{n}" requests return a 500 ApiException ("No action
+// Client wraps a transport.Client with the photo-album endpoints.
+type Client struct {
+	transport *transport.Client
+}
+
+// NewClient returns a photoalbum Client backed by the supplied transport.
+func NewClient(t *transport.Client) *Client {
+	return &Client{transport: t}
+}
+
+// albumPath maps the album id Geni returns ("album-{n}") to the URL
+// path Geni's router actually accepts ("photo_album-{n}"). Bare
+// "album-{n}" requests return a 500 ApiException ("No action
 // responded to album-{n}") — the only resource in this client where
 // the response id differs from the URL prefix. Callers that already
 // pass "photo_album-{n}" are passed through unchanged.
-func photoAlbumPath(albumId string) string {
+func albumPath(albumId string) string {
 	return "photo_" + strings.TrimPrefix(albumId, "photo_")
 }
 
-// CreatePhotoAlbum creates a new photo album for the calling user.
-// Returns the newly-created [PhotoAlbum].
-func (c *Client) CreatePhotoAlbum(ctx context.Context, request *photoalbum.Request) (*photoalbum.PhotoAlbum, error) {
+// Create creates a new photo album for the calling user. Returns the
+// newly-created [PhotoAlbum].
+func (c *Client) Create(ctx context.Context, request *Request) (*PhotoAlbum, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := escapeString(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
-	url := BaseURL(c.useSandboxEnv) + "api/photo_album/add"
+	url := c.transport.BaseURL() + "api/photo_album/add"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var album photoalbum.PhotoAlbum
+	var album PhotoAlbum
 	if err := json.Unmarshal(body, &album); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -53,21 +63,21 @@ func (c *Client) CreatePhotoAlbum(ctx context.Context, request *photoalbum.Reque
 	return &album, nil
 }
 
-// GetPhotoAlbum fetches a single photo album by id.
-func (c *Client) GetPhotoAlbum(ctx context.Context, albumId string) (*photoalbum.PhotoAlbum, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + photoAlbumPath(albumId)
+// Get fetches a single photo album by id.
+func (c *Client) Get(ctx context.Context, albumId string) (*PhotoAlbum, error) {
+	url := c.transport.BaseURL() + "api/" + albumPath(albumId)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var album photoalbum.PhotoAlbum
+	var album PhotoAlbum
 	if err := json.Unmarshal(body, &album); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -75,11 +85,11 @@ func (c *Client) GetPhotoAlbum(ctx context.Context, albumId string) (*photoalbum
 	return &album, nil
 }
 
-// GetPhotoAlbumPhotos returns the paginated list of photos in an
-// album. page is 1-indexed; values ≤0 omit the parameter (Geni
-// defaults to page 1). Max 50 per page.
-func (c *Client) GetPhotoAlbumPhotos(ctx context.Context, albumId string, page int) (*photo.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + photoAlbumPath(albumId) + "/photos"
+// Photos returns the paginated list of photos in an album. page is
+// 1-indexed; values ≤0 omit the parameter (Geni defaults to page 1).
+// Max 50 per page.
+func (c *Client) Photos(ctx context.Context, albumId string, page int) (*photo.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + albumPath(albumId) + "/photos"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -92,7 +102,7 @@ func (c *Client) GetPhotoAlbumPhotos(ctx context.Context, albumId string, page i
 		req.URL.RawQuery = query.Encode()
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -105,29 +115,29 @@ func (c *Client) GetPhotoAlbumPhotos(ctx context.Context, albumId string, page i
 	return &photos, nil
 }
 
-// UpdatePhotoAlbum changes a photo album's metadata (name,
-// description). Returns the updated [PhotoAlbum].
-func (c *Client) UpdatePhotoAlbum(ctx context.Context, albumId string, request *photoalbum.Request) (*photoalbum.PhotoAlbum, error) {
+// Update changes a photo album's metadata (name, description).
+// Returns the updated [PhotoAlbum].
+func (c *Client) Update(ctx context.Context, albumId string, request *Request) (*PhotoAlbum, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := escapeString(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
-	url := BaseURL(c.useSandboxEnv) + "api/" + photoAlbumPath(albumId) + "/update"
+	url := c.transport.BaseURL() + "api/" + albumPath(albumId) + "/update"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var album photoalbum.PhotoAlbum
+	var album PhotoAlbum
 	if err := json.Unmarshal(body, &album); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

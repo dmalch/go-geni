@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/dmalch/go-geni/photoalbum"
 	"github.com/dmalch/go-geni/project"
 	"github.com/dmalch/go-geni/revision"
 	"github.com/dmalch/go-geni/search"
@@ -39,6 +40,7 @@ type Client struct {
 	search        *search.Client
 	user          *user.Client
 	project       *project.Client
+	photoalbum    *photoalbum.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -54,6 +56,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		search:        search.NewClient(t),
 		user:          user.NewClient(t),
 		project:       project.NewClient(t),
+		photoalbum:    photoalbum.NewClient(t),
 	}
 }
 
@@ -84,6 +87,11 @@ func (c *Client) User() *user.Client { return c.user }
 // Replaces Client.GetProject, GetProjectProfiles / Collaborators /
 // Followers, AddProfileToProject, AddDocumentToProject.
 func (c *Client) Project() *project.Client { return c.project }
+
+// PhotoAlbum returns the resource client for the PhotoAlbum resource.
+// Replaces Client.CreatePhotoAlbum, GetPhotoAlbum, GetPhotoAlbumPhotos,
+// UpdatePhotoAlbum.
+func (c *Client) PhotoAlbum() *photoalbum.Client { return c.photoalbum }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {
