@@ -49,6 +49,15 @@
   - `*geni.Revision`               → `*revision.Revision`
   - `*geni.RevisionBulkResponse`   → `*revision.BulkResponse`
   The single-id bulk fallback behaviour is preserved.
+- **BREAKING:** SearchProfiles lifts into a new
+  `github.com/dmalch/go-geni/search` package.
+  - `client.SearchProfiles(ctx, names, page)` → `client.Search().Profiles(ctx, names, page)`
+  Return type is unchanged (`*profile.BulkResponse`).
+- New `profile.AddFields(req)` helper + `profile.FieldsQueryValue`
+  constant: encapsulates the canonical `fields=` query param that
+  every profile-returning endpoint sends. Root's
+  `addProfileFieldsQueryParams` now delegates to it; sub-packages
+  call `profile.AddFields(req)` directly.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,
