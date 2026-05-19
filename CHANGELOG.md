@@ -105,6 +105,15 @@
   - `GetManagedProfiles` and `GetUploadedDocuments` stay on root
     for now — they live in `profile.go` / `document.go` and migrate
     when those resources lift later.
+- **BREAKING:** Project resource methods lift into
+  `github.com/dmalch/go-geni/project` (types already lifted in
+  PR 7). Root gains `Project() *project.Client`.
+  - `client.GetProject(ctx, id)`                 → `client.Project().Get(ctx, id)`
+  - `client.GetProjectProfiles(ctx, id, p)`      → `client.Project().Profiles(ctx, id, p)`
+  - `client.GetProjectCollaborators(ctx, id, p)` → `client.Project().Collaborators(ctx, id, p)`
+  - `client.GetProjectFollowers(ctx, id, p)`     → `client.Project().Followers(ctx, id, p)`
+  - `client.AddProfileToProject(ctx, pid, prj)`  → `client.Project().AddProfile(ctx, pid, prj)`
+  - `client.AddDocumentToProject(ctx, did, prj)` → `client.Project().AddDocument(ctx, did, prj)`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

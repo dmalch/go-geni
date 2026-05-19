@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/dmalch/go-geni/project"
 	"github.com/dmalch/go-geni/revision"
 	"github.com/dmalch/go-geni/search"
 	"github.com/dmalch/go-geni/stats"
@@ -37,6 +38,7 @@ type Client struct {
 	revision      *revision.Client
 	search        *search.Client
 	user          *user.Client
+	project       *project.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -51,6 +53,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		revision:      revision.NewClient(t),
 		search:        search.NewClient(t),
 		user:          user.NewClient(t),
+		project:       project.NewClient(t),
 	}
 }
 
@@ -76,6 +79,11 @@ func (c *Client) Search() *search.Client { return c.search }
 // Documents,Projects,Surnames}, GetMaxFamily, GetUploaded{Photos,
 // Videos}, GetMyAlbums, GetMyLabels, GetMetadata, UpdateMetadata.
 func (c *Client) User() *user.Client { return c.user }
+
+// Project returns the resource client for the Project resource.
+// Replaces Client.GetProject, GetProjectProfiles / Collaborators /
+// Followers, AddProfileToProject, AddDocumentToProject.
+func (c *Client) Project() *project.Client { return c.project }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {

@@ -33,7 +33,7 @@ var _ = Describe("Project API", func() {
 
 	Describe("GetProject", func() {
 		It("returns the configured project", func() {
-			project, err := client.GetProject(ctx, projectId)
+			project, err := client.Project().Get(ctx, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(project.Id).To(Equal(projectId))
 		})
@@ -43,7 +43,7 @@ var _ = Describe("Project API", func() {
 		It("adds a freshly-created profile to the project", func() {
 			profile := createFixtureProfile(ctx, client, "ProjectMember")
 
-			res, err := client.AddProfileToProject(ctx, profile.Id, projectId)
+			res, err := client.Project().AddProfile(ctx, profile.Id, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -53,7 +53,7 @@ var _ = Describe("Project API", func() {
 		It("adds a freshly-created document to the project", func() {
 			doc := createFixtureDocument(ctx, client, "AccProjectDoc", "project content")
 
-			res, err := client.AddDocumentToProject(ctx, doc.Id, projectId)
+			res, err := client.Project().AddDocument(ctx, doc.Id, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -61,7 +61,7 @@ var _ = Describe("Project API", func() {
 
 	Describe("GetProjectProfiles", func() {
 		It("returns the project's profile list", func() {
-			res, err := client.GetProjectProfiles(ctx, projectId, 0)
+			res, err := client.Project().Profiles(ctx, projectId, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -69,7 +69,7 @@ var _ = Describe("Project API", func() {
 
 	Describe("GetProjectCollaborators", func() {
 		It("returns the project's collaborator list", func() {
-			res, err := client.GetProjectCollaborators(ctx, projectId, 0)
+			res, err := client.Project().Collaborators(ctx, projectId, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -77,7 +77,7 @@ var _ = Describe("Project API", func() {
 
 	Describe("GetProjectFollowers", func() {
 		It("returns the project's follower list", func() {
-			res, err := client.GetProjectFollowers(ctx, projectId, 0)
+			res, err := client.Project().Followers(ctx, projectId, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
