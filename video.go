@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
@@ -47,7 +48,7 @@ type VideoResponse struct {
 	// ContentType is the original MIME type of the upload.
 	ContentType string `json:"content_type,omitempty"`
 	// Location is the video's optional location.
-	Location *LocationElement `json:"location,omitempty"`
+	Location *profile.LocationElement `json:"location,omitempty"`
 	// Tags is the list of profiles tagged in the video (urls or ids
 	// depending on the `only_ids` query parameter).
 	Tags []string `json:"tags,omitempty"`
@@ -276,7 +277,7 @@ func (c *Client) DeleteVideo(ctx context.Context, videoId string) error {
 		return err
 	}
 
-	var result ResultResponse
+	var result transport.Result
 	if err := json.Unmarshal(body, &result); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return err
@@ -317,7 +318,7 @@ func (c *Client) videoTagAction(ctx context.Context, videoId, profileId, action 
 
 // GetVideoTags returns the paginated list of profiles tagged in a
 // video. Mirrors [Client.GetPhotoTags].
-func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/tags"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -336,7 +337,7 @@ func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*P
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 // SearchProfiles performs a name-based profile search against Geni's
@@ -18,7 +20,7 @@ import (
 // The response is a [ProfileBulkResponse]; its Results, Page,
 // NextPage, and PrevPage fields describe the current page and how to
 // navigate forward/backward.
-func (c *Client) SearchProfiles(ctx context.Context, names string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) SearchProfiles(ctx context.Context, names string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/profile/search"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -42,7 +44,7 @@ func (c *Client) SearchProfiles(ctx context.Context, names string, page int) (*P
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 // FamilyNodes is the heterogeneous map of related entities returned by
@@ -20,7 +22,7 @@ type FamilyNodes map[string]json.RawMessage
 
 // Profile decodes the node at id into a [ProfileResponse]. It errors if
 // id does not name a profile node in the map.
-func (n FamilyNodes) Profile(id string) (*ProfileResponse, error) {
+func (n FamilyNodes) Profile(id string) (*profile.Profile, error) {
 	if !strings.HasPrefix(id, "profile-") {
 		return nil, fmt.Errorf("not a profile id: %s", id)
 	}
@@ -28,7 +30,7 @@ func (n FamilyNodes) Profile(id string) (*ProfileResponse, error) {
 	if !ok {
 		return nil, fmt.Errorf("profile node %s not found", id)
 	}
-	var p ProfileResponse
+	var p profile.Profile
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return nil, fmt.Errorf("decode profile node %s: %w", id, err)
 	}
@@ -77,7 +79,7 @@ func (n FamilyNodes) idsWithPrefix(prefix string) []string {
 // anchored on, embedded inline by the server. Related profiles and
 // unions live in Nodes.
 type FamilyResponse struct {
-	Focus *ProfileResponse `json:"focus,omitempty"`
+	Focus *profile.Profile `json:"focus,omitempty"`
 	Nodes FamilyNodes      `json:"nodes,omitempty"`
 }
 

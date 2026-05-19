@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
@@ -51,7 +52,7 @@ type PhotoResponse struct {
 	// ContentType is the original MIME type of the upload.
 	ContentType string `json:"content_type,omitempty"`
 	// Location is the photo's optional location.
-	Location *LocationElement `json:"location,omitempty"`
+	Location *profile.LocationElement `json:"location,omitempty"`
 	// Tags is the list of profiles tagged in the photo (urls or ids
 	// depending on the `only_ids` query parameter).
 	Tags []string `json:"tags,omitempty"`
@@ -319,7 +320,7 @@ func (c *Client) photoTagAction(ctx context.Context, photoId, profileId, action 
 // GetPhotoTags returns the paginated list of profiles tagged in a
 // photo. page is 1-indexed; values ≤0 omit the parameter (Geni
 // defaults to page 1). Max 50 tags per page.
-func (c *Client) GetPhotoTags(ctx context.Context, photoId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetPhotoTags(ctx context.Context, photoId string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + photoId + "/tags"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -338,7 +339,7 @@ func (c *Client) GetPhotoTags(ctx context.Context, photoId string, page int) (*P
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -425,7 +426,7 @@ func (c *Client) DeletePhoto(ctx context.Context, photoId string) error {
 		return err
 	}
 
-	var result ResultResponse
+	var result transport.Result
 	if err := json.Unmarshal(body, &result); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return err

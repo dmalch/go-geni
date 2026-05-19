@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/profile"
 )
 
 // tinyPngBase64 returns a 1×1 PNG encoded as Base64 — usable as the
@@ -76,8 +77,8 @@ var _ = Describe("Profile actions API", func() {
 
 			first := "ParentOf"
 			last := "Acceptance"
-			parent, err := client.AddParent(ctx, child.Id, &geni.ProfileRequest{
-				Names: map[string]geni.NameElement{
+			parent, err := client.AddParent(ctx, child.Id, &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &first, LastName: &last},
 				},
 				IsAlive: false,
@@ -98,8 +99,8 @@ var _ = Describe("Profile actions API", func() {
 
 			afterFirst := "BasicsAfter"
 			afterLast := "Acceptance"
-			updated, err := client.UpdateProfileBasics(ctx, created.Id, &geni.ProfileRequest{
-				Names: map[string]geni.NameElement{
+			updated, err := client.UpdateProfileBasics(ctx, created.Id, &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &afterFirst, LastName: &afterLast},
 				},
 				IsAlive: false,

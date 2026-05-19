@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/profile"
 )
 
 var _ = Describe("Profile API", func() {
@@ -38,7 +39,7 @@ var _ = Describe("Profile API", func() {
 			created := createFixtureProfile(ctx, client, "UpdateBefore")
 			about := "Updated bio for acceptance test"
 
-			updated, err := client.UpdateProfile(ctx, created.Id, &geni.ProfileRequest{
+			updated, err := client.UpdateProfile(ctx, created.Id, &profile.Request{
 				AboutMe: &about,
 				IsAlive: false,
 				Public:  true,
@@ -53,8 +54,8 @@ var _ = Describe("Profile API", func() {
 		It("deletes a profile", func() {
 			// Allocate without the auto-cleanup helper — we want to
 			// observe the post-delete state inside the spec.
-			created, err := client.CreateProfile(ctx, &geni.ProfileRequest{
-				Names: map[string]geni.NameElement{
+			created, err := client.CreateProfile(ctx, &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: strPtr("DeleteMe"), LastName: strPtr("Acceptance")},
 				},
 				IsAlive: false,
@@ -76,7 +77,7 @@ var _ = Describe("Profile API", func() {
 	Describe("Family additions", func() {
 		// AddPartner / AddChild / AddSibling all return the new
 		// profile; each registers its own cleanup hook.
-		var focus *geni.ProfileResponse
+		var focus *profile.Profile
 
 		BeforeEach(func() {
 			focus = createFixtureProfile(ctx, client, "FamilyFocus")
@@ -129,8 +130,8 @@ var _ = Describe("Profile API", func() {
 	Describe("MergeProfiles", func() {
 		It("succeeds for two newly-created profiles", func() {
 			keep := createFixtureProfile(ctx, client, "MergeKeep")
-			dup, err := client.CreateProfile(ctx, &geni.ProfileRequest{
-				Names: map[string]geni.NameElement{
+			dup, err := client.CreateProfile(ctx, &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: strPtr("MergeDup"), LastName: strPtr("Acceptance")},
 				},
 				IsAlive: false,
@@ -151,11 +152,11 @@ var _ = Describe("Profile API", func() {
 		// the wipe took effect on the server.
 		It("clears the date sub-object of a named event", func() {
 			year := int32(1900)
-			created, err := client.CreateProfile(ctx, &geni.ProfileRequest{
-				Names: map[string]geni.NameElement{
+			created, err := client.CreateProfile(ctx, &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: strPtr("WipeDates"), LastName: strPtr("Acceptance")},
 				},
-				Birth:   &geni.EventElement{Date: &geni.DateElement{Year: &year}},
+				Birth:   &profile.EventElement{Date: &profile.DateElement{Year: &year}},
 				IsAlive: false,
 				Public:  true,
 			})

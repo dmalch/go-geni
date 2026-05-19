@@ -11,6 +11,7 @@ import (
 
 	"github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/auth"
+	"github.com/dmalch/go-geni/profile"
 )
 
 // sandboxClientId is the Geni OAuth client id registered for the
@@ -82,10 +83,10 @@ func strPtr(s string) *string { return &s }
 // spec finishes. Profiles are kept non-living and public to minimize
 // side effects on the sandbox tree. The last name is always
 // "Acceptance" so fixtures are easy to recognise + scrub manually.
-func createFixtureProfile(ctx context.Context, client *geni.Client, firstName string) *geni.ProfileResponse {
+func createFixtureProfile(ctx context.Context, client *geni.Client, firstName string) *profile.Profile {
 	GinkgoHelper()
-	created, err := client.CreateProfile(ctx, &geni.ProfileRequest{
-		Names: map[string]geni.NameElement{
+	created, err := client.CreateProfile(ctx, &profile.Request{
+		Names: map[string]profile.NameElement{
 			"en-US": {
 				FirstName: strPtr(firstName),
 				LastName:  strPtr("Acceptance"),

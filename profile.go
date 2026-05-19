@@ -9,217 +9,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
-type DetailsString struct {
-	// AboutMe is the profile's about me section
-	AboutMe *string `json:"about_me"`
-}
-
-type ProfileRequest struct {
-	// DisplayName is the profile's display name
-	DisplayName *string `json:"display_name,omitempty"`
-	// Nicknames is the profile's nicknames
-	Nicknames []string `json:"nicknames,omitempty"`
-	// Gender is the profile's gender
-	Gender *string `json:"gender,omitempty"`
-	// Names is the name info
-	Names map[string]NameElement `json:"names,omitempty"`
-	// Birth is the birth event info
-	Birth *EventElement `json:"birth,omitempty"`
-	// Baptism is the baptism event info
-	Baptism *EventElement `json:"baptism,omitempty"`
-	// Death is the death event info
-	Death *EventElement `json:"death,omitempty"`
-	// CauseOfDeath is the cause of death
-	CauseOfDeath *string `json:"cause_of_death"`
-	// Burial is the burial event info
-	Burial *EventElement `json:"burial,omitempty"`
-	// IsAlive is a boolean that indicates whether the profile is living
-	IsAlive bool `json:"is_alive"`
-	// Title is the profile's name title. Sent without omitempty so that an
-	// empty string clears any previously-set value (Geni accepts "" as a
-	// clear sentinel for flat scalar fields).
-	Title string `json:"title"`
-	// CurrentResidence is the profile's current residence
-	CurrentResidence *LocationElement `json:"current_residence"`
-	// AboutMe is the profile's about me section
-	AboutMe *string `json:"about_me"`
-	// DetailStrings are nested maps of locales to details fields (e.g.
-	// about me) to values. Tagged with omitempty: the Geni API crashes
-	// (500, Ruby NoMethodError on nil) when a request body contains
-	// "detail_strings": null. Callers who want to clear all details
-	// must send an explicit empty map.
-	DetailStrings map[string]DetailsString `json:"detail_strings,omitempty"`
-	// Occupation is the profile's occupation. Sent without omitempty — see Title.
-	Occupation string `json:"occupation"`
-	// Suffix is the profile's suffix. Sent without omitempty — see Title.
-	Suffix string `json:"suffix"`
-	// Public is a boolean that indicates whether the profile is public
-	Public bool `json:"public"`
-	// Locked is a boolean that indicates whether the profile is locked down by a curator
-	Locked bool `json:"locked"`
-	// MergeNote is the note explaining the profile's merge status
-	MergeNote []string `json:"merge_note,omitempty"`
-}
-
-type ProfileBulkResponse struct {
-	Results    []ProfileResponse `json:"results,omitempty"`
-	Page       int               `json:"page,omitempty"`
-	TotalCount int               `json:"total_count,omitempty"`
-	// NextPage / PrevPage are populated by paginated endpoints
-	// (search, managed-profiles, …) when more pages are available.
-	NextPage string `json:"next_page,omitempty"`
-	PrevPage string `json:"prev_page,omitempty"`
-}
-
-type ProfileResponse struct {
-	// Id is the profile's node id
-	Id string `json:"id,omitempty"`
-	// Guid is the profile's globally unique identifier
-	Guid string `json:"guid,omitempty"`
-	// FirstName is the profile's first name
-	FirstName *string `json:"first_name,omitempty"`
-	// LastName is the profile's last name
-	LastName *string `json:"last_name,omitempty"`
-	// MiddleName is the profile's middle name
-	MiddleName *string `json:"middle_name,omitempty"`
-	// MaidenName is the profile's maiden name
-	MaidenName *string `json:"maiden_name,omitempty"`
-	// DisplayName is the profile's display name
-	DisplayName *string `json:"display_name,omitempty"`
-	// Nicknames is the profile's nicknames
-	Nicknames []string `json:"nicknames,omitempty"`
-	// Gender is the profile's gender
-	Gender *string `json:"gender,omitempty"`
-	// Names is the name info
-	Names map[string]NameElement `json:"names,omitempty"`
-	// Birth is the birth event info
-	Birth *EventElement `json:"birth,omitempty"`
-	// Baptism is the baptism event info
-	Baptism *EventElement `json:"baptism,omitempty"`
-	// Death is the death event info
-	Death *EventElement `json:"death,omitempty"`
-	// CauseOfDeath is the cause of death
-	CauseOfDeath *string `json:"cause_of_death,omitempty"`
-	// Burial is the burial event info
-	Burial *EventElement `json:"burial,omitempty"`
-	// Events is the events associated with this profile
-	Events []EventElement `json:"events,omitempty"`
-	// IsAlive is a boolean that indicates whether the profile is living
-	IsAlive bool `json:"is_alive"`
-	// Title is the profile's name title
-	Title string `json:"title,omitempty"`
-	// CurrentResidence is the profile's current residence
-	CurrentResidence *LocationElement `json:"current_residence"`
-	// AboutMe is the profile's about me section
-	AboutMe *string `json:"about_me,omitempty"`
-	// DetailStrings are nested maps of locales to details fields (e.g. about me) to values
-	DetailStrings map[string]DetailsString `json:"detail_strings,omitempty"`
-	// Occupation is the profile's occupation
-	Occupation string `json:"occupation,omitempty"`
-	// Suffix is the profile's suffix
-	Suffix string `json:"suffix,omitempty"`
-	// Public is a boolean that indicates whether the profile is public
-	Public bool `json:"public"`
-	// Locked is a boolean that indicates whether the profile is locked down by a curator
-	Locked bool `json:"locked"`
-	// Language is the profile's language
-	Language string `json:"language,omitempty"`
-	// ProfileUrl is the URL to access profile in a browser
-	ProfileUrl string `json:"profile_url,omitempty"`
-	// MergePending is a boolean that indicates whether the profile has a pending merge
-	MergePending bool `json:"merge_pending,omitempty"`
-	// MergedInto is the ID of the profile this profile is currently merged into
-	MergedInto string `json:"merged_into,omitempty"`
-	// MergeNote is the note explaining the profile's merge status
-	MergeNote []string `json:"merge_note,omitempty"`
-	// Url is the URL to access profile through the API
-	Url string `json:"url,omitempty"`
-	// Unions is the URLs to unions
-	Unions []string `json:"unions,omitempty"`
-	// Projects are the IDs of projects this profile is a member of
-	Projects []string `json:"project_ids,omitempty"`
-	// Deleted is a boolean that indicates whether the profile is deleted
-	Deleted bool `json:"deleted"`
-	// UpdatedAt is the timestamp of when the profile was last updated
-	UpdatedAt string `json:"updated_at,omitempty"`
-	// CreatedAt is the timestamp of when the profile was created
-	CreatedAt string `json:"created_at,omitempty"`
-}
-
-// NameElement is the response for a name.
-type NameElement struct {
-	// FirstName is the profile's first name
-	FirstName *string `json:"first_name"`
-	// LastName is the profile's last name
-	LastName *string `json:"last_name"`
-	// MiddleName is the profile's middle name
-	MiddleName *string `json:"middle_name"`
-	// MaidenName is the profile's maiden name
-	MaidenName *string `json:"maiden_name"`
-	// DisplayName is the profile's display name
-	DisplayName *string `json:"display_name"`
-	// Nicknames is the profile's comma-separated list of nicknames
-	Nicknames *string `json:"nicknames"`
-}
-
-// EventElement is the response for an event.
-type EventElement struct {
-	Date        *DateElement     `json:"date"`
-	Description *string          `json:"description,omitempty"`
-	Location    *LocationElement `json:"location"`
-	Name        string           `json:"name,omitempty"`
-}
-
-// DateElement is the response for a date.
-type DateElement struct {
-	// Circa is a boolean that indicates whether the date is approximate
-	Circa *bool `json:"circa"`
-	// Day is the day of the month
-	Day *int32 `json:"day"`
-	// Month is the month of the year
-	Month *int32 `json:"month"`
-	// Year is the year
-	Year *int32 `json:"year"`
-	// EndCirca is a boolean that indicates whether the end date is approximate
-	EndCirca *bool `json:"end_circa"`
-	// EndDay is the end day of the month (only valid if range is between)
-	EndDay *int32 `json:"end_day"`
-	// EndMonth is the end month of the year (only valid if range is between)
-	EndMonth *int32 `json:"end_month"`
-	// EndYear is the end year (only valid if range is between)
-	EndYear *int32 `json:"end_year"`
-	// Range is the range (before, after, or between)
-	Range *string `json:"range"`
-}
-
-// LocationElement is the response for a location.
-type LocationElement struct {
-	// City is the city name
-	City *string `json:"city"`
-	// Country is the country name
-	Country *string `json:"country"`
-	// County is the county name
-	County *string `json:"county"`
-	// Latitude is the latitude
-	Latitude *float64 `json:"latitude,omitempty"`
-	// Longitude is the longitude
-	Longitude *float64 `json:"longitude,omitempty"`
-	// PlaceName is the place name
-	PlaceName *string `json:"place_name"`
-	// State is the state name
-	State *string `json:"state"`
-	// StreetAddress1 is the street address line 1
-	StreetAddress1 *string `json:"street_address1"`
-	// StreetAddress2 is the street address line 2
-	StreetAddress2 *string `json:"street_address2"`
-	// StreetAddress3 is the street address line 3
-	StreetAddress3 *string `json:"street_address3"`
-}
-
-func (c *Client) CreateProfile(ctx context.Context, request *ProfileRequest) (*ProfileResponse, error) {
+func (c *Client) CreateProfile(ctx context.Context, request *profile.Request) (*profile.Profile, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -244,7 +38,7 @@ func (c *Client) CreateProfile(ctx context.Context, request *ProfileRequest) (*P
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -261,7 +55,7 @@ func (c *Client) CreateProfile(ctx context.Context, request *ProfileRequest) (*P
 func escapeString(s string) string      { return transport.EscapeStringToUTF(s) }
 func escapeStringToUTF(s string) string { return transport.EscapeStringToUTF(s) }
 
-func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResponse, error) {
+func (c *Client) GetProfile(ctx context.Context, profileId string) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -271,18 +65,18 @@ func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResp
 
 	c.addProfileFieldsQueryParams(req)
 
-	coalescer := &transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse]{
+	coalescer := &transport.BulkCoalescer[profile.Profile, profile.BulkResponse]{
 		CurrentID: profileId,
 		IDPrefix:  "profile",
-		DecodeBulk: func(body []byte) (ProfileBulkResponse, error) {
-			var env ProfileBulkResponse
+		DecodeBulk: func(body []byte) (profile.BulkResponse, error) {
+			var env profile.BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
-		IDOfResult:  func(p ProfileResponse) string { return p.Id },
+		ListResults: func(env profile.BulkResponse) []profile.Profile { return env.Results },
+		IDOfResult:  func(p profile.Profile) string { return p.Id },
 	}
 
 	body, err := c.doRequest(ctx, req, coalescer)
@@ -290,7 +84,7 @@ func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResp
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -308,7 +102,7 @@ func (c *Client) addProfileFieldsQueryParams(req *http.Request) {
 	req.URL.RawQuery = query.Encode()
 }
 
-func (c *Client) fixResponse(profile *ProfileResponse) {
+func (c *Client) fixResponse(profile *profile.Profile) {
 	//The only_ids flag does not work for the profile endpoint, so we need to remove
 	//the url from the Unions field.
 	for i, union := range profile.Unions {
@@ -316,14 +110,14 @@ func (c *Client) fixResponse(profile *ProfileResponse) {
 	}
 }
 
-func (c *Client) GetProfiles(ctx context.Context, profileIds []string) (*ProfileBulkResponse, error) {
+func (c *Client) GetProfiles(ctx context.Context, profileIds []string) (*profile.BulkResponse, error) {
 	// Single-id fallback — see GetUnions for the Geni-side quirk.
 	if len(profileIds) == 1 {
 		one, err := c.GetProfile(ctx, profileIds[0])
 		if err != nil {
 			return nil, err
 		}
-		return &ProfileBulkResponse{Results: []ProfileResponse{*one}}, nil
+		return &profile.BulkResponse{Results: []profile.Profile{*one}}, nil
 	}
 
 	url := BaseURL(c.useSandboxEnv) + "api/profile"
@@ -344,7 +138,7 @@ func (c *Client) GetProfiles(ctx context.Context, profileIds []string) (*Profile
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	err = json.Unmarshal(body, &profiles)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -358,7 +152,7 @@ func (c *Client) GetProfiles(ctx context.Context, profileIds []string) (*Profile
 	return &profiles, nil
 }
 
-func (c *Client) GetManagedProfiles(ctx context.Context, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetManagedProfiles(ctx context.Context, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/managed-profiles"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -377,7 +171,7 @@ func (c *Client) GetManagedProfiles(ctx context.Context, page int) (*ProfileBulk
 		return nil, err
 	}
 
-	var profile ProfileBulkResponse
+	var profile profile.BulkResponse
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -452,7 +246,7 @@ func (c *Client) GetProfilePhotos(ctx context.Context, profileId string, page in
 	return &photos, nil
 }
 
-func (c *Client) UpdateProfile(ctx context.Context, profileId string, request *ProfileRequest) (*ProfileResponse, error) {
+func (c *Client) UpdateProfile(ctx context.Context, profileId string, request *profile.Request) (*profile.Profile, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -477,7 +271,7 @@ func (c *Client) UpdateProfile(ctx context.Context, profileId string, request *P
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -548,7 +342,7 @@ func (c *Client) DeleteProfile(ctx context.Context, profileId string) error {
 		return err
 	}
 
-	var result ResultResponse
+	var result transport.Result
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -558,7 +352,7 @@ func (c *Client) DeleteProfile(ctx context.Context, profileId string) error {
 	return nil
 }
 
-func (c *Client) AddPartner(ctx context.Context, profileId string) (*ProfileResponse, error) {
+func (c *Client) AddPartner(ctx context.Context, profileId string) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/add-partner"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -573,7 +367,7 @@ func (c *Client) AddPartner(ctx context.Context, profileId string) (*ProfileResp
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -585,7 +379,7 @@ func (c *Client) AddPartner(ctx context.Context, profileId string) (*ProfileResp
 	return &profile, nil
 }
 
-func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOption) (*ProfileResponse, error) {
+func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOption) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/add-child"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -603,7 +397,7 @@ func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOpti
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -615,7 +409,7 @@ func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOpti
 	return &profile, nil
 }
 
-func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...AddOption) (*ProfileResponse, error) {
+func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...AddOption) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/add-sibling"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -633,7 +427,7 @@ func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...AddOp
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	err = json.Unmarshal(body, &profile)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -658,7 +452,7 @@ func (c *Client) MergeProfiles(ctx context.Context, profile1Id, profile2Id strin
 		return err
 	}
 
-	var result ResultResponse
+	var result transport.Result
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)

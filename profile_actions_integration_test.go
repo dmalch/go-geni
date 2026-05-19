@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dmalch/go-geni/profile"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -103,8 +104,8 @@ var _ = Describe("Profile actions endpoints", func() {
 				[]byte(`{"id":"profile-parent","first_name":"Mom","public":true}`),
 				http.MethodPost, "/api/profile-1/add-parent")
 
-			parent, err := client.AddParent(ctx, "profile-1", &ProfileRequest{
-				Names: map[string]NameElement{
+			parent, err := client.AddParent(ctx, "profile-1", &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: ptrTo("Mom"), LastName: ptrTo("Smith")},
 				},
 				IsAlive: false,
@@ -122,7 +123,7 @@ var _ = Describe("Profile actions endpoints", func() {
 				[]byte(`{"id":"profile-parent"}`),
 				http.MethodPost, "/api/profile-1/add-parent")
 
-			_, err := client.AddParent(ctx, "profile-1", &ProfileRequest{}, WithModifier("adopt"))
+			_, err := client.AddParent(ctx, "profile-1", &profile.Request{}, WithModifier("adopt"))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
@@ -135,8 +136,8 @@ var _ = Describe("Profile actions endpoints", func() {
 				[]byte(`{"id":"profile-1","first_name":"After","public":true}`),
 				http.MethodPost, "/api/profile-1/update-basics")
 
-			updated, err := client.UpdateProfileBasics(ctx, "profile-1", &ProfileRequest{
-				Names: map[string]NameElement{
+			updated, err := client.UpdateProfileBasics(ctx, "profile-1", &profile.Request{
+				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: ptrTo("After"), LastName: ptrTo("Smith")},
 				},
 				IsAlive: false,

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 type ProjectBulkResponse struct {
@@ -54,7 +56,7 @@ func (c *Client) GetProject(ctx context.Context, projectId string) (*ProjectResp
 // GetProjectProfiles returns the paginated list of profiles tagged
 // to a project. page is 1-indexed; values ≤0 omit the parameter
 // (Geni defaults to page 1). Max 50 profiles per page.
-func (c *Client) GetProjectProfiles(ctx context.Context, projectId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetProjectProfiles(ctx context.Context, projectId string, page int) (*profile.BulkResponse, error) {
 	return c.getProjectProfileListing(ctx, projectId, "profiles", page)
 }
 
@@ -63,7 +65,7 @@ func (c *Client) GetProjectProfiles(ctx context.Context, projectId string, page 
 // [ProfileBulkResponse]; each entry is a profile object representing
 // the collaborator. page is 1-indexed; values ≤0 omit the parameter.
 // Max 50 collaborators per page.
-func (c *Client) GetProjectCollaborators(ctx context.Context, projectId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetProjectCollaborators(ctx context.Context, projectId string, page int) (*profile.BulkResponse, error) {
 	return c.getProjectProfileListing(ctx, projectId, "collaborators", page)
 }
 
@@ -71,14 +73,14 @@ func (c *Client) GetProjectCollaborators(ctx context.Context, projectId string, 
 // a project. The response is shaped as a [ProfileBulkResponse]; each
 // entry is a profile object representing the follower. page is
 // 1-indexed; values ≤0 omit the parameter. Max 50 followers per page.
-func (c *Client) GetProjectFollowers(ctx context.Context, projectId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetProjectFollowers(ctx context.Context, projectId string, page int) (*profile.BulkResponse, error) {
 	return c.getProjectProfileListing(ctx, projectId, "followers", page)
 }
 
 // getProjectProfileListing is the shared GET implementation for the
 // three /project/<id>/{profiles,collaborators,followers} sub-listings
 // — all three return identically-shaped paginated profile envelopes.
-func (c *Client) getProjectProfileListing(ctx context.Context, projectId, sublist string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) getProjectProfileListing(ctx context.Context, projectId, sublist string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + projectId + "/" + sublist
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -97,7 +99,7 @@ func (c *Client) getProjectProfileListing(ctx context.Context, projectId, sublis
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -108,7 +110,7 @@ func (c *Client) getProjectProfileListing(ctx context.Context, projectId, sublis
 	return &profiles, nil
 }
 
-func (c *Client) AddProfileToProject(ctx context.Context, profileId, projectId string) (*ProfileResponse, error) {
+func (c *Client) AddProfileToProject(ctx context.Context, profileId, projectId string) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + projectId + "/add_profiles"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -125,7 +127,7 @@ func (c *Client) AddProfileToProject(ctx context.Context, profileId, projectId s
 		return nil, err
 	}
 
-	var profileResponse ProfileResponse
+	var profileResponse profile.Profile
 	err = json.Unmarshal(body, &profileResponse)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)

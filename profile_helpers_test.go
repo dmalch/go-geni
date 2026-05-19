@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dmalch/go-geni/profile"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
 )
@@ -29,7 +30,7 @@ func TestFixResponse(t *testing.T) {
 		RegisterTestingT(t)
 		client := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test"}), false)
 
-		profile := &ProfileResponse{
+		profile := &profile.Profile{
 			Unions: []string{
 				"https://www.geni.com/api/union-123",
 				"https://www.geni.com/api/union-456",
@@ -45,7 +46,7 @@ func TestFixResponse(t *testing.T) {
 		RegisterTestingT(t)
 		client := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test"}), true)
 
-		profile := &ProfileResponse{
+		profile := &profile.Profile{
 			Unions: []string{
 				"https://api.sandbox.geni.com/union-789",
 			},
@@ -60,7 +61,7 @@ func TestFixResponse(t *testing.T) {
 		RegisterTestingT(t)
 		client := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test"}), false)
 
-		profile := &ProfileResponse{
+		profile := &profile.Profile{
 			Unions: []string{},
 		}
 

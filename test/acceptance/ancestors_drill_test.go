@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/profile"
 )
 
 // These specs probe the Geni sandbox to localise the 403 behaviour
@@ -69,7 +70,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 		Expect(managed.Results).ToNot(BeEmpty(), "GetManagedProfiles returned no results; can't probe")
 
 		// Pick the first non-deleted result. Skip deleted shells.
-		var target *geni.ProfileResponse
+		var target *profile.Profile
 		for i := range managed.Results {
 			if !managed.Results[i].Deleted {
 				target = &managed.Results[i]

@@ -8,14 +8,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
 type UnionRequest struct {
 	// Marriage date and location
-	Marriage *EventElement `json:"marriage,omitempty"`
+	Marriage *profile.EventElement `json:"marriage,omitempty"`
 	// Divorce date and location
-	Divorce *EventElement `json:"divorce,omitempty"`
+	Divorce *profile.EventElement `json:"divorce,omitempty"`
 }
 
 type UnionBulkResponse struct {
@@ -34,9 +35,9 @@ type UnionResponse struct {
 	// Partners is an array of partners in the union (urls or ids, if requested)
 	Partners []string `json:"partners,omitempty"`
 	// Marriage date and location
-	Marriage *EventElement `json:"marriage,omitempty"`
+	Marriage *profile.EventElement `json:"marriage,omitempty"`
 	// Divorce date and location
-	Divorce *EventElement `json:"divorce,omitempty"`
+	Divorce *profile.EventElement `json:"divorce,omitempty"`
 	// Status of the union (spouse|ex_spouse)
 	Status string `json:"status,omitempty"`
 }
@@ -125,7 +126,7 @@ func (c *Client) GetUnions(ctx context.Context, unionIds []string) (*UnionBulkRe
 // profile (mirroring the profile-scoped [Client.AddPartner]); refetch
 // the union via [Client.GetUnion] if you need the updated partner
 // list.
-func (c *Client) AddPartnerToUnion(ctx context.Context, unionId string) (*ProfileResponse, error) {
+func (c *Client) AddPartnerToUnion(ctx context.Context, unionId string) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + unionId + "/add-partner"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -138,7 +139,7 @@ func (c *Client) AddPartnerToUnion(ctx context.Context, unionId string) (*Profil
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -152,7 +153,7 @@ func (c *Client) AddPartnerToUnion(ctx context.Context, unionId string) (*Profil
 // "foster" to record an adopted/foster relationship — the modifier is
 // stored on the union (in `adopted_children` / `foster_children`), so
 // refetch via [Client.GetUnion] to confirm it took effect.
-func (c *Client) AddChildToUnion(ctx context.Context, unionId string, opts ...AddOption) (*ProfileResponse, error) {
+func (c *Client) AddChildToUnion(ctx context.Context, unionId string, opts ...AddOption) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + unionId + "/add-child"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -169,7 +170,7 @@ func (c *Client) AddChildToUnion(ctx context.Context, unionId string, opts ...Ad
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
