@@ -1,4 +1,4 @@
-package geni
+package photo
 
 import (
 	"bytes"
@@ -10,9 +10,37 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmalch/go-geni/photo"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
+
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
 
 // readMultipart parses a request body the client built and returns the
 // recorded form values + the file part's filename, content type, and
@@ -47,12 +75,12 @@ func readMultipart(t *testing.T, req *http.Request) (fields map[string]string, f
 	return
 }
 
-func TestCreatePhoto_Request(t *testing.T) {
+func TestCreate_Request(t *testing.T) {
 	t.Run("POSTs multipart/form-data with title and file", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","title":"Hello"}`)
 
-		photo, err := c.CreatePhoto(
+		p, err := c.Create(
 			context.Background(),
 			"Hello",
 			"hello.jpg",
@@ -60,7 +88,7 @@ func TestCreatePhoto_Request(t *testing.T) {
 		)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(photo.Id).To(Equal("photo-1"))
+		Expect(p.Id).To(Equal("photo-1"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo/add"))
 
@@ -70,18 +98,18 @@ func TestCreatePhoto_Request(t *testing.T) {
 		Expect(fileBody).To(Equal([]byte("\xff\xd8raw-jpeg-bytes")))
 	})
 
-	t.Run("WithPhotoAlbum / WithPhotoDescription / WithPhotoDate set form fields", func(t *testing.T) {
+	t.Run("WithAlbum / WithDescription / WithDate set form fields", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1"}`)
 
-		_, err := c.CreatePhoto(
+		_, err := c.Create(
 			context.Background(),
 			"Title",
 			"img.png",
 			strings.NewReader("png-bytes"),
-			WithPhotoAlbum("album-7"),
-			WithPhotoDescription("a description"),
-			WithPhotoDate("2026-05-14"),
+			WithAlbum("album-7"),
+			WithDescription("a description"),
+			WithDate("2026-05-14"),
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -96,7 +124,7 @@ func TestCreatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{}`)
 
-		_, err := c.CreatePhoto(context.Background(), "", "f.png", strings.NewReader("x"))
+		_, err := c.Create(context.Background(), "", "f.png", strings.NewReader("x"))
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("title is required"))
@@ -107,7 +135,7 @@ func TestCreatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{}`)
 
-		_, err := c.CreatePhoto(context.Background(), "Title", "f.png", nil)
+		_, err := c.Create(context.Background(), "Title", "f.png", nil)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("file is required"))
@@ -118,7 +146,7 @@ func TestCreatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1"}`)
 
-		_, err := c.CreatePhoto(context.Background(), "Title", "x.bin", strings.NewReader("x"))
+		_, err := c.Create(context.Background(), "Title", "x.bin", strings.NewReader("x"))
 		Expect(err).ToNot(HaveOccurred())
 
 		got := ft.lastRequest.Header.Values("Content-Type")
@@ -127,23 +155,23 @@ func TestCreatePhoto_Request(t *testing.T) {
 	})
 }
 
-func TestGetPhoto_Request(t *testing.T) {
+func TestGet_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-9","title":"X"}`)
 
-	photo, err := c.GetPhoto(context.Background(), "photo-9")
+	p, err := c.Get(context.Background(), "photo-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(photo.Id).To(Equal("photo-9"))
+	Expect(p.Id).To(Equal("photo-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-9"))
 }
 
-func TestGetPhotos_Request(t *testing.T) {
+func TestGetBulk_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"photo-1"},{"id":"photo-2"}]}`)
 
-	res, err := c.GetPhotos(context.Background(), []string{"photo-1", "photo-2"})
+	res, err := c.GetBulk(context.Background(), []string{"photo-1", "photo-2"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Results).To(HaveLen(2))
@@ -151,18 +179,18 @@ func TestGetPhotos_Request(t *testing.T) {
 	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("photo-1,photo-2"))
 }
 
-func TestUpdatePhoto_Request(t *testing.T) {
+func TestUpdate_Request(t *testing.T) {
 	t.Run("POSTs JSON to /api/<photoId>/update", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","title":"After"}`)
 
-		photo, err := c.UpdatePhoto(context.Background(), "photo-1", &photo.Request{
+		p, err := c.Update(context.Background(), "photo-1", &Request{
 			Title:       "After",
 			Description: "updated",
 		})
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(photo.Title).To(Equal("After"))
+		Expect(p.Title).To(Equal("After"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1/update"))
 
@@ -176,41 +204,41 @@ func TestUpdatePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.UpdatePhoto(context.Background(), "photo-1", &photo.Request{Title: "X"})
+		_, err := c.Update(context.Background(), "photo-1", &Request{Title: "X"})
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
 
-func TestTagPhoto_Request(t *testing.T) {
+func TestTag_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","tags":["profile-9"]}`)
 
-	photo, err := c.TagPhoto(context.Background(), "photo-1", "profile-9")
+	p, err := c.Tag(context.Background(), "photo-1", "profile-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(photo.Tags).To(ConsistOf("profile-9"))
+	Expect(p.Tags).To(ConsistOf("profile-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1/tag/profile-9"))
 }
 
-func TestUntagPhoto_Request(t *testing.T) {
+func TestUntag_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","tags":[]}`)
 
-	_, err := c.UntagPhoto(context.Background(), "photo-1", "profile-9")
+	_, err := c.Untag(context.Background(), "photo-1", "profile-9")
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1/untag/profile-9"))
 }
 
-func TestGetPhotoTags_Request(t *testing.T) {
+func TestTags_Request(t *testing.T) {
 	t.Run("GETs /api/<photoId>/tags and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetPhotoTags(context.Background(), "photo-1", 0)
+		_, err := c.Tags(context.Background(), "photo-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -222,7 +250,7 @@ func TestGetPhotoTags_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetPhotoTags(context.Background(), "photo-1", 2)
+		_, err := c.Tags(context.Background(), "photo-1", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
@@ -233,7 +261,7 @@ func TestGetPhotoTags_Request(t *testing.T) {
 		body := `{"results":[{"id":"profile-1","first_name":"A"},{"id":"profile-2"}],"page":1}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetPhotoTags(context.Background(), "photo-1", 1)
+		res, err := c.Tags(context.Background(), "photo-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
@@ -241,13 +269,13 @@ func TestGetPhotoTags_Request(t *testing.T) {
 	})
 }
 
-func TestGetPhotoComments_Request(t *testing.T) {
+func TestComments_Request(t *testing.T) {
 	t.Run("GETs /api/<photoId>/comments and decodes Comment results", func(t *testing.T) {
 		RegisterTestingT(t)
 		body := `{"results":[{"id":"c-1","comment":"nice"}],"page":1}`
 		c, ft := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetPhotoComments(context.Background(), "photo-1", 0)
+		res, err := c.Comments(context.Background(), "photo-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1/comments"))
@@ -256,12 +284,12 @@ func TestGetPhotoComments_Request(t *testing.T) {
 	})
 }
 
-func TestAddPhotoComment_Request(t *testing.T) {
+func TestAddComment_Request(t *testing.T) {
 	t.Run("POSTs text and optional title as query params", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.AddPhotoComment(context.Background(), "photo-1", "hi there", "greeting")
+		_, err := c.AddComment(context.Background(), "photo-1", "hi there", "greeting")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -274,19 +302,19 @@ func TestAddPhotoComment_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.AddPhotoComment(context.Background(), "photo-1", "hi", "")
+		_, err := c.AddComment(context.Background(), "photo-1", "hi", "")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Has("title")).To(BeFalse())
 	})
 }
 
-func TestDeletePhoto_Request(t *testing.T) {
+func TestDelete_Request(t *testing.T) {
 	t.Run("POSTs to /api/<photoId>/delete", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"result":"ok"}`)
 
-		err := c.DeletePhoto(context.Background(), "photo-9")
+		err := c.Delete(context.Background(), "photo-9")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -297,8 +325,8 @@ func TestDeletePhoto_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		err := c.DeletePhoto(context.Background(), "photo-9")
+		err := c.Delete(context.Background(), "photo-9")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }

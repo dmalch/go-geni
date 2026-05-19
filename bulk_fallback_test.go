@@ -72,7 +72,7 @@ func TestGetPhotos_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","title":"X"}`)
 
-		res, err := c.GetPhotos(context.Background(), []string{"photo-1"})
+		res, err := c.Photo().GetBulk(context.Background(), []string{"photo-1"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1"))
@@ -85,7 +85,7 @@ func TestGetPhotos_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"photo-1"},{"id":"photo-2"}]}`)
 
-		_, err := c.GetPhotos(context.Background(), []string{"photo-1", "photo-2"})
+		_, err := c.Photo().GetBulk(context.Background(), []string{"photo-1", "photo-2"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo"))

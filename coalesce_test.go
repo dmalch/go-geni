@@ -188,7 +188,7 @@ func TestCoalesce_GetDocument(t *testing.T) {
 
 func TestCoalesce_GetPhoto(t *testing.T) {
 	runCoalesceTest(t, "photo", func(c *Client, ctx context.Context, id string) error {
-		_, err := c.GetPhoto(ctx, id)
+		_, err := c.Photo().Get(ctx, id)
 		return err
 	})
 }

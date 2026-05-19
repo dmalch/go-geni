@@ -44,10 +44,10 @@ var _ = Describe("Photo API", func() {
 		It("uploads a tiny PNG and returns the new photo", func() {
 			title := fmt.Sprintf("AccCreatePhoto-%d", time.Now().UnixNano())
 
-			photo, err := client.CreatePhoto(ctx, title, "acc.png", tinyPng())
+			photo, err := client.Photo().Create(ctx, title, "acc.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(photo.Id).To(HavePrefix("photo-"))
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			Expect(photo.Title).To(Equal(title))
 		})
@@ -56,11 +56,11 @@ var _ = Describe("Photo API", func() {
 	Describe("GetPhoto", func() {
 		It("reads back a freshly-uploaded photo", func() {
 			title := fmt.Sprintf("AccGetPhoto-%d", time.Now().UnixNano())
-			photo, err := client.CreatePhoto(ctx, title, "get.png", tinyPng())
+			photo, err := client.Photo().Create(ctx, title, "get.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
-			got, err := client.GetPhoto(ctx, photo.Id)
+			got, err := client.Photo().Get(ctx, photo.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Id).To(Equal(photo.Id))
 			Expect(got.Title).To(Equal(title))
@@ -73,17 +73,17 @@ var _ = Describe("Photo API", func() {
 		// itself returns no error or maps a stale id to
 		// ErrResourceNotFound on a second delete.
 		It("removes a freshly-uploaded photo", func() {
-			photo, err := client.CreatePhoto(ctx,
+			photo, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccDeletePhoto-%d", time.Now().UnixNano()),
 				"del.png",
 				tinyPng())
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(client.DeletePhoto(ctx, photo.Id)).To(Succeed())
+			Expect(client.Photo().Delete(ctx, photo.Id)).To(Succeed())
 
 			// Deleting twice should either succeed (sandbox no-op) or
 			// surface ErrResourceNotFound — both are acceptable.
-			err = client.DeletePhoto(ctx, photo.Id)
+			err = client.Photo().Delete(ctx, photo.Id)
 			if err != nil {
 				Expect(errors.Is(err, geni.ErrResourceNotFound)).To(BeTrue(),
 					"unexpected error on double-delete: %v", err)
@@ -101,12 +101,12 @@ var _ = Describe("Photo API", func() {
 			title := fmt.Sprintf("AccPhotoOpts-%d", time.Now().UnixNano())
 			description := "uploaded by go-geni acceptance suite"
 
-			photo, err := client.CreatePhoto(ctx, title, "opts.png", tinyPng(),
-				geni.WithPhotoDescription(description))
+			photo, err := client.Photo().Create(ctx, title, "opts.png", tinyPng(),
+				photopkg.WithDescription(description))
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
-			got, err := client.GetPhoto(ctx, photo.Id)
+			got, err := client.Photo().Get(ctx, photo.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Id).To(Equal(photo.Id))
 			Expect(got.Description).To(Equal(description))
@@ -115,14 +115,14 @@ var _ = Describe("Photo API", func() {
 
 	Describe("UpdatePhoto", func() {
 		It("updates a photo's title + description and the change round-trips", func() {
-			photo, err := client.CreatePhoto(ctx,
+			photo, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccUpdatePhotoBefore-%d", time.Now().UnixNano()),
 				"upd.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			newTitle := "AccUpdatePhotoAfter"
-			updated, err := client.UpdatePhoto(ctx, photo.Id, &photopkg.Request{
+			updated, err := client.Photo().Update(ctx, photo.Id, &photopkg.Request{
 				Title:       newTitle,
 				Description: "edited by acceptance",
 			})
@@ -130,7 +130,7 @@ var _ = Describe("Photo API", func() {
 			Expect(updated.Title).To(Equal(newTitle))
 			Expect(updated.Description).To(Equal("edited by acceptance"))
 
-			got, err := client.GetPhoto(ctx, photo.Id)
+			got, err := client.Photo().Get(ctx, photo.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Title).To(Equal(newTitle))
 		})
@@ -143,19 +143,19 @@ var _ = Describe("Photo API", func() {
 		// the photo after Untag.
 		It("tags and untags a profile in a photo", func() {
 			profile := createFixtureProfile(ctx, client, "PhotoTaggee")
-			photo, err := client.CreatePhoto(ctx,
+			photo, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccPhotoTag-%d", time.Now().UnixNano()),
 				"tag.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			// TagPhoto's response body sometimes returns the photo
 			// with an empty Tags slice even after a successful tag —
 			// the authoritative read is GetPhotoTags.
-			_, err = client.TagPhoto(ctx, photo.Id, profile.Id)
+			_, err = client.Photo().Tag(ctx, photo.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tags, err := client.GetPhotoTags(ctx, photo.Id, 0)
+			tags, err := client.Photo().Tags(ctx, photo.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(tags.Results))
 			for _, p := range tags.Results {
@@ -163,10 +163,10 @@ var _ = Describe("Photo API", func() {
 			}
 			Expect(ids).To(ContainElement(profile.Id))
 
-			_, err = client.UntagPhoto(ctx, photo.Id, profile.Id)
+			_, err = client.Photo().Untag(ctx, photo.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tagsAfter, err := client.GetPhotoTags(ctx, photo.Id, 0)
+			tagsAfter, err := client.Photo().Tags(ctx, photo.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			idsAfter := make([]string, 0, len(tagsAfter.Results))
 			for _, p := range tagsAfter.Results {
@@ -186,18 +186,18 @@ var _ = Describe("Photo API", func() {
 		It("posts a comment and eventually lists it back", func() {
 			Skip("AddPhotoComment doesn't propagate to GetPhotoComments in the sandbox (polled 30s; comment never appeared)")
 
-			photo, err := client.CreatePhoto(ctx,
+			photo, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccPhotoComment-%d", time.Now().UnixNano()),
 				"cmt.png", tinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			body := "first photo comment"
-			_, err = client.AddPhotoComment(ctx, photo.Id, body, "")
+			_, err = client.Photo().AddComment(ctx, photo.Id, body, "")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				listed, err := client.GetPhotoComments(ctx, photo.Id, 0)
+				listed, err := client.Photo().Comments(ctx, photo.Id, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				texts := make([]string, 0, len(listed.Results))
 				for _, c := range listed.Results {
