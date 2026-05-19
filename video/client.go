@@ -1,4 +1,4 @@
-package geni
+package video
 
 import (
 	"bytes"
@@ -14,35 +14,47 @@ import (
 	"github.com/dmalch/go-geni/comment"
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
-	"github.com/dmalch/go-geni/video"
 )
 
-// VideoRequest is the JSON-encoded body for [Client.UpdateVideo].
-// All fields are optional; omitted fields leave the existing value
-// in place.
+// Client wraps a transport.Client with the video endpoints.
+type Client struct {
+	transport *transport.Client
+}
 
-// CreateVideoOption customises an outgoing CreateVideo request.
-type CreateVideoOption func(*createVideoOptions)
+// NewClient returns a video Client backed by the supplied transport.
+func NewClient(t *transport.Client) *Client {
+	return &Client{transport: t}
+}
 
-type createVideoOptions struct {
+// CreateOption customises an outgoing Create request.
+type CreateOption func(*createOptions)
+
+type createOptions struct {
 	description string
 	date        string
 }
 
-// WithVideoDescription sets the video's description on upload.
-func WithVideoDescription(desc string) CreateVideoOption {
-	return func(o *createVideoOptions) { o.description = desc }
+// WithDescription sets the video's description on upload.
+func WithDescription(desc string) CreateOption {
+	return func(o *createOptions) { o.description = desc }
 }
 
-// WithVideoDate sets the video's date. Geni accepts a free-form date
-// string here (the public docs describe it as "Date in JSON form"
-// without specifying); callers should consult Geni's docs for the
-// exact format they expect.
-func WithVideoDate(date string) CreateVideoOption {
-	return func(o *createVideoOptions) { o.date = date }
+// WithDate sets the video's date. Geni accepts a free-form date string
+// here (the public docs describe it as "Date in JSON form" without
+// specifying); callers should consult Geni's docs for the exact
+// format they expect.
+func WithDate(date string) CreateOption {
+	return func(o *createOptions) { o.date = date }
 }
 
-// CreateVideo uploads a new video to Geni. The endpoint expects
+// errInvalidArg is a thin wrapper so client-side argument errors
+// produce a consistent message prefix without leaking the helper
+// type to callers.
+type errInvalidArg string
+
+func (e errInvalidArg) Error() string { return string(e) }
+
+// Create uploads a new video to Geni. The endpoint expects
 // multipart/form-data; the client builds the body from the supplied
 // io.Reader and filename so callers can stream large files.
 //
@@ -55,12 +67,12 @@ func WithVideoDate(date string) CreateVideoOption {
 // encoded video file. `title` is required by Geni and is enforced
 // client-side; `file` and `fileName` may be nil/empty but expect
 // the server to reject the call.
-func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file io.Reader, opts ...CreateVideoOption) (*video.Video, error) {
+func (c *Client) Create(ctx context.Context, title, fileName string, file io.Reader, opts ...CreateOption) (*Video, error) {
 	if title == "" {
-		return nil, errInvalidArg("CreateVideo: title is required")
+		return nil, errInvalidArg("video.Create: title is required")
 	}
 
-	options := createVideoOptions{}
+	options := createOptions{}
 	for _, o := range opts {
 		o(&options)
 	}
@@ -93,7 +105,7 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 		return nil, err
 	}
 
-	url := BaseURL(c.useSandboxEnv) + "api/video/add"
+	url := c.transport.BaseURL() + "api/video/add"
 	req, err := http.NewRequest(http.MethodPost, url, &body)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -101,68 +113,69 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
-	respBody, err := c.doRequest(ctx, req)
+	respBody, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var video video.Video
-	if err := json.Unmarshal(respBody, &video); err != nil {
+	var v Video
+	if err := json.Unmarshal(respBody, &v); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &video, nil
+	return &v, nil
 }
 
-// GetVideo fetches a single video by id. Concurrent GetVideo calls
-// are coalesced into one bulk request via transport.BulkCoalescer.
-func (c *Client) GetVideo(ctx context.Context, videoId string) (*video.Video, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId
+// Get fetches a single video by id. Concurrent Get calls are coalesced
+// into one bulk request via transport.BulkCoalescer.
+func (c *Client) Get(ctx context.Context, videoId string) (*Video, error) {
+	url := c.transport.BaseURL() + "api/" + videoId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	coalescer := &transport.BulkCoalescer[video.Video, video.BulkResponse]{
+	coalescer := &transport.BulkCoalescer[Video, BulkResponse]{
 		CurrentID: videoId,
 		IDPrefix:  "video",
-		DecodeBulk: func(body []byte) (video.BulkResponse, error) {
-			var env video.BulkResponse
+		DecodeBulk: func(body []byte) (BulkResponse, error) {
+			var env BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env video.BulkResponse) []video.Video { return env.Results },
-		IDOfResult:  func(v video.Video) string { return v.Id },
+		ListResults: func(env BulkResponse) []Video { return env.Results },
+		IDOfResult:  func(v Video) string { return v.Id },
 	}
 
-	body, err := c.doRequest(ctx, req, coalescer)
+	body, err := c.transport.Do(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}
 
-	var video video.Video
-	if err := json.Unmarshal(body, &video); err != nil {
+	var v Video
+	if err := json.Unmarshal(body, &v); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &video, nil
+	return &v, nil
 }
 
-// GetVideos fetches multiple videos in a single bulk request.
-func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*video.BulkResponse, error) {
-	// Single-id fallback — see GetUnions for the Geni-side quirk.
+// GetBulk fetches multiple videos in a single bulk request. The
+// single-id fallback (Geni's bulk dispatcher returns empty for
+// len(ids)==1) is preserved verbatim.
+func (c *Client) GetBulk(ctx context.Context, videoIds []string) (*BulkResponse, error) {
 	if len(videoIds) == 1 {
-		one, err := c.GetVideo(ctx, videoIds[0])
+		one, err := c.Get(ctx, videoIds[0])
 		if err != nil {
 			return nil, err
 		}
-		return &video.BulkResponse{Results: []video.Video{*one}}, nil
+		return &BulkResponse{Results: []Video{*one}}, nil
 	}
 
-	url := BaseURL(c.useSandboxEnv) + "api/video"
+	url := c.transport.BaseURL() + "api/video"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -173,12 +186,12 @@ func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*video.BulkR
 	query.Add("ids", strings.Join(videoIds, ","))
 	req.URL.RawQuery = query.Encode()
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var videos video.BulkResponse
+	var videos BulkResponse
 	if err := json.Unmarshal(body, &videos); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -186,48 +199,47 @@ func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*video.BulkR
 	return &videos, nil
 }
 
-// UpdateVideo mutates the video's title / description / date. Body is
-// JSON-encoded and run through escapeStringToUTF for UTF-8 safety,
-// matching the other update endpoints in the package.
-func (c *Client) UpdateVideo(ctx context.Context, videoId string, request *video.Request) (*video.Video, error) {
+// Update mutates the video's title / description / date. Body is
+// JSON-encoded and run through transport.EscapeStringToUTF for UTF-8
+// safety, matching the other update endpoints in the package.
+func (c *Client) Update(ctx context.Context, videoId string, request *Request) (*Video, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := strings.ReplaceAll(string(jsonBody), "\\\\", "\\")
-	jsonStr = escapeString(jsonStr)
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/update"
+	url := c.transport.BaseURL() + "api/" + videoId + "/update"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var video video.Video
-	if err := json.Unmarshal(body, &video); err != nil {
+	var v Video
+	if err := json.Unmarshal(body, &v); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &video, nil
+	return &v, nil
 }
 
-// DeleteVideo deletes a video by id.
-func (c *Client) DeleteVideo(ctx context.Context, videoId string) error {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/delete"
+// Delete deletes a video by id.
+func (c *Client) Delete(ctx context.Context, videoId string) error {
+	url := c.transport.BaseURL() + "api/" + videoId + "/delete"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return err
 	}
@@ -240,41 +252,41 @@ func (c *Client) DeleteVideo(ctx context.Context, videoId string) error {
 	return nil
 }
 
-// TagVideo associates a profile with a video.
-func (c *Client) TagVideo(ctx context.Context, videoId, profileId string) (*video.Video, error) {
-	return c.videoTagAction(ctx, videoId, profileId, "tag")
+// Tag associates a profile with a video.
+func (c *Client) Tag(ctx context.Context, videoId, profileId string) (*Video, error) {
+	return c.tagAction(ctx, videoId, profileId, "tag")
 }
 
-// UntagVideo removes a profile-tag from a video.
-func (c *Client) UntagVideo(ctx context.Context, videoId, profileId string) (*video.Video, error) {
-	return c.videoTagAction(ctx, videoId, profileId, "untag")
+// Untag removes a profile-tag from a video.
+func (c *Client) Untag(ctx context.Context, videoId, profileId string) (*Video, error) {
+	return c.tagAction(ctx, videoId, profileId, "untag")
 }
 
-func (c *Client) videoTagAction(ctx context.Context, videoId, profileId, action string) (*video.Video, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/" + action + "/" + profileId
+func (c *Client) tagAction(ctx context.Context, videoId, profileId, action string) (*Video, error) {
+	url := c.transport.BaseURL() + "api/" + videoId + "/" + action + "/" + profileId
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var video video.Video
-	if err := json.Unmarshal(body, &video); err != nil {
+	var v Video
+	if err := json.Unmarshal(body, &v); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
-	return &video, nil
+	return &v, nil
 }
 
-// GetVideoTags returns the paginated list of profiles tagged in a
-// video. Mirrors [Client.GetPhotoTags].
-func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*profile.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/tags"
+// Tags returns the paginated list of profiles tagged in a video.
+// Mirrors photo.Client.Tags.
+func (c *Client) Tags(ctx context.Context, videoId string, page int) (*profile.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + videoId + "/tags"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -287,7 +299,7 @@ func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*p
 		req.URL.RawQuery = query.Encode()
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -297,16 +309,17 @@ func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*p
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
+	apiURL := c.transport.APIURL()
 	for i := range profiles.Results {
-		c.fixResponse(&profiles.Results[i])
+		profile.StripURLs(&profiles.Results[i], apiURL)
 	}
 	return &profiles, nil
 }
 
-// GetVideoComments returns the paginated list of comments on a video.
-// Mirrors [Client.GetPhotoComments].
-func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int) (*comment.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/comments"
+// Comments returns the paginated list of comments on a video.
+// Mirrors photo.Client.Comments.
+func (c *Client) Comments(ctx context.Context, videoId string, page int) (*comment.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + videoId + "/comments"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -319,7 +332,7 @@ func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int)
 		req.URL.RawQuery = query.Encode()
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -332,10 +345,10 @@ func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int)
 	return &comments, nil
 }
 
-// AddVideoComment posts a new comment on a video. Mirrors
-// [Client.AddPhotoComment].
-func (c *Client) AddVideoComment(ctx context.Context, videoId, text, title string) (*comment.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/comment"
+// AddComment posts a new comment on a video. Mirrors
+// photo.Client.AddComment.
+func (c *Client) AddComment(ctx context.Context, videoId, text, title string) (*comment.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + videoId + "/comment"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -349,7 +362,7 @@ func (c *Client) AddVideoComment(ctx context.Context, videoId, text, title strin
 	}
 	req.URL.RawQuery = query.Encode()
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}

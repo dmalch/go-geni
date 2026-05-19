@@ -141,6 +141,27 @@
   - `geni.WithPhotoAlbum(id)`                   → `photo.WithAlbum(id)`
   - `geni.WithPhotoDescription(d)`              → `photo.WithDescription(d)`
   - `geni.WithPhotoDate(d)`                     → `photo.WithDate(d)`
+- **BREAKING:** Video resource methods (10 of them) lift into
+  `github.com/dmalch/go-geni/video` (types lifted in PR 7). Root
+  gains `Video() *video.Client`. The Video coalescer call site
+  moves with it.
+  - `client.CreateVideo(ctx, t, fn, r, opts...)` → `client.Video().Create(ctx, t, fn, r, opts...)`
+  - `client.GetVideo(ctx, id)`                  → `client.Video().Get(ctx, id)`
+  - `client.GetVideos(ctx, ids)`                → `client.Video().GetBulk(ctx, ids)`
+  - `client.UpdateVideo(ctx, id, req)`          → `client.Video().Update(ctx, id, req)`
+  - `client.DeleteVideo(ctx, id)`               → `client.Video().Delete(ctx, id)`
+  - `client.TagVideo(ctx, vid, pid)`            → `client.Video().Tag(ctx, vid, pid)`
+  - `client.UntagVideo(ctx, vid, pid)`          → `client.Video().Untag(ctx, vid, pid)`
+  - `client.GetVideoTags(ctx, vid, p)`          → `client.Video().Tags(ctx, vid, p)`
+  - `client.GetVideoComments(ctx, vid, p)`      → `client.Video().Comments(ctx, vid, p)`
+  - `client.AddVideoComment(ctx, vid, t, ttl)`  → `client.Video().AddComment(ctx, vid, t, ttl)`
+  - `geni.CreateVideoOption`                    → `video.CreateOption`
+  - `geni.WithVideoDescription(d)`              → `video.WithDescription(d)`
+  - `geni.WithVideoDate(d)`                     → `video.WithDate(d)`
+  The transitional root helpers `errInvalidArg` (errors.go) and
+  `readMultipart` (multipart_test.go) added in PR 11 are removed —
+  `errInvalidArg` now lives only inside `photo/` and `video/`, and
+  `readMultipart` lives inside each package's tests.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

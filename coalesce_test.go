@@ -195,7 +195,7 @@ func TestCoalesce_GetPhoto(t *testing.T) {
 
 func TestCoalesce_GetVideo(t *testing.T) {
 	runCoalesceTest(t, "video", func(c *Client, ctx context.Context, id string) error {
-		_, err := c.GetVideo(ctx, id)
+		_, err := c.Video().Get(ctx, id)
 		return err
 	})
 }
