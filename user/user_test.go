@@ -1,6 +1,7 @@
-package geni
+package user
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -8,14 +9,68 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-func TestGetFollowedProfiles_Request(t *testing.T) {
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
+
+func TestGet_Request(t *testing.T) {
+	t.Run("GETs /api/user", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"user-42","name":"Test","account_type":"basic"}`)
+
+		u, err := c.Get(context.Background())
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(u.Id).To(Equal("user-42"))
+		Expect(u.Name).To(Equal("Test"))
+		Expect(u.AccountType).To(Equal("basic"))
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user"))
+	})
+
+	t.Run("403 maps to ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+
+		_, err := c.Get(context.Background())
+
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}
+
+func TestFollowedProfiles_Request(t *testing.T) {
 	t.Run("GETs /api/user/followed-profiles and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetFollowedProfiles(context.Background(), 0)
+		_, err := c.FollowedProfiles(context.Background(), 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/followed-profiles"))
@@ -26,7 +81,7 @@ func TestGetFollowedProfiles_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetFollowedProfiles(context.Background(), 3)
+		_, err := c.FollowedProfiles(context.Background(), 3)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("3"))
@@ -37,7 +92,7 @@ func TestGetFollowedProfiles_Request(t *testing.T) {
 		body := `{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"next_page":"…?page=2"}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetFollowedProfiles(context.Background(), 1)
+		res, err := c.FollowedProfiles(context.Background(), 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
@@ -45,36 +100,36 @@ func TestGetFollowedProfiles_Request(t *testing.T) {
 	})
 }
 
-func TestGetFollowedDocuments_Request(t *testing.T) {
+func TestFollowedDocuments_Request(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{"results":[{"id":"document-1","title":"T"}],"page":1}`
 	c, ft := newFakeClient(http.StatusOK, body)
 
-	res, err := c.GetFollowedDocuments(context.Background(), 0)
+	res, err := c.FollowedDocuments(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/followed-documents"))
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetFollowedProjects_Request(t *testing.T) {
+func TestFollowedProjects_Request(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{"results":[{"id":"project-1","name":"P"}]}`
 	c, ft := newFakeClient(http.StatusOK, body)
 
-	res, err := c.GetFollowedProjects(context.Background(), 0)
+	res, err := c.FollowedProjects(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/followed-projects"))
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetFollowedSurnames_Request(t *testing.T) {
+func TestFollowedSurnames_Request(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{"results":[{"id":"surname-1","slugged_name":"smith"}]}`
 	c, ft := newFakeClient(http.StatusOK, body)
 
-	res, err := c.GetFollowedSurnames(context.Background(), 0)
+	res, err := c.FollowedSurnames(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/followed-surnames"))
@@ -82,11 +137,11 @@ func TestGetFollowedSurnames_Request(t *testing.T) {
 	Expect(res.Results[0].SluggedName).To(Equal("smith"))
 }
 
-func TestGetMaxFamily_Request(t *testing.T) {
+func TestMaxFamily_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"profile-1"}],"page":1}`)
 
-	res, err := c.GetMaxFamily(context.Background(), 2)
+	res, err := c.MaxFamily(context.Background(), 2)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/max-family"))
@@ -94,34 +149,34 @@ func TestGetMaxFamily_Request(t *testing.T) {
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetUploadedPhotos_Request(t *testing.T) {
+func TestUploadedPhotos_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"photo-1"}]}`)
 
-	res, err := c.GetUploadedPhotos(context.Background(), 0)
+	res, err := c.UploadedPhotos(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/uploaded-photos"))
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetUploadedVideos_Request(t *testing.T) {
+func TestUploadedVideos_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"video-1"}]}`)
 
-	res, err := c.GetUploadedVideos(context.Background(), 0)
+	res, err := c.UploadedVideos(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/uploaded-videos"))
 	Expect(res.Results).To(HaveLen(1))
 }
 
-func TestGetMyAlbums_Request(t *testing.T) {
+func TestAlbums_Request(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{"results":[{"id":"album-1","name":"Vacation"}],"page":1}`
 	c, ft := newFakeClient(http.StatusOK, body)
 
-	res, err := c.GetMyAlbums(context.Background(), 0)
+	res, err := c.Albums(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/my-albums"))
@@ -129,29 +184,28 @@ func TestGetMyAlbums_Request(t *testing.T) {
 	Expect(res.Results[0].Name).To(Equal("Vacation"))
 }
 
-func TestGetMyLabels_Request(t *testing.T) {
+func TestLabels_Request(t *testing.T) {
 	RegisterTestingT(t)
 	body := `{"results":["family","work","travel"],"page":1}`
 	c, ft := newFakeClient(http.StatusOK, body)
 
-	res, err := c.GetMyLabels(context.Background(), 0)
+	res, err := c.Labels(context.Background(), 0)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/my-labels"))
 	Expect(res.Results).To(ConsistOf("family", "work", "travel"))
 }
 
-func TestGetMetadata_Request(t *testing.T) {
+func TestMetadata_Request(t *testing.T) {
 	t.Run("self call has no ids= param", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"data":{"theme":"dark"}}`)
 
-		md, err := c.GetMetadata(context.Background())
+		md, err := c.Metadata(context.Background())
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/metadata"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
-		// Data is opaque to the client; just confirm it round-tripped.
 		Expect(string(md.Data)).To(ContainSubstring(`"theme"`))
 	})
 
@@ -159,7 +213,7 @@ func TestGetMetadata_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"data":{}}`)
 
-		_, err := c.GetMetadata(context.Background(), "user-1", "user-2")
+		_, err := c.Metadata(context.Background(), "user-1", "user-2")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("user-1,user-2"))
@@ -177,9 +231,6 @@ func TestUpdateMetadata_Request(t *testing.T) {
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/update-metadata"))
 	got, _ := io.ReadAll(ft.lastRequest.Body)
-	// Geni expects data as a JSON-encoded string, so the wire
-	// body is `{"data":"{\"theme\":\"light\"}"}` — inner quotes
-	// are escaped.
 	Expect(string(got)).To(ContainSubstring(`"data":"{\"theme\":\"light\"}"`))
 	Expect(string(md.Data)).To(ContainSubstring(`"theme"`))
 }
@@ -188,13 +239,13 @@ func TestUserEndpoints_ErrorMapping(t *testing.T) {
 	t.Run("403 → ErrAccessDenied (followed-profiles)", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetFollowedProfiles(context.Background(), 0)
-		Expect(err).To(MatchError(ErrAccessDenied))
+		_, err := c.FollowedProfiles(context.Background(), 0)
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
 	t.Run("404 → ErrResourceNotFound (metadata)", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetMetadata(context.Background())
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		_, err := c.Metadata(context.Background())
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }

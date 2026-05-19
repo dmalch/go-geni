@@ -22,7 +22,7 @@ var _ = Describe("User API", func() {
 
 	Describe("GetUser", func() {
 		It("returns the authenticated user's account info", func() {
-			user, err := client.GetUser(ctx)
+			user, err := client.User().Get(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(user).ToNot(BeNil())
 
@@ -44,10 +44,10 @@ var _ = Describe("User API", func() {
 			// describe the same account. Catches regressions where
 			// the OAuth flow gets crossed mid-suite or the response
 			// envelope changes shape between requests.
-			first, err := client.GetUser(ctx)
+			first, err := client.User().Get(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			second, err := client.GetUser(ctx)
+			second, err := client.User().Get(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(second.Name).To(Equal(first.Name))

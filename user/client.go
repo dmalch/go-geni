@@ -1,4 +1,4 @@
-package geni
+package user
 
 import (
 	"bytes"
@@ -15,38 +15,55 @@ import (
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/project"
 	"github.com/dmalch/go-geni/surname"
+	"github.com/dmalch/go-geni/transport"
 	"github.com/dmalch/go-geni/video"
 )
 
-// LabelsResponse is the paginated envelope returned by
-// [Client.GetMyLabels]. Each result is a label string — Geni's docs
-// describe my-labels' results as "Array of Strings".
-type LabelsResponse struct {
-	Results  []string `json:"results,omitempty"`
-	Page     int      `json:"page,omitempty"`
-	NextPage string   `json:"next_page,omitempty"`
-	PrevPage string   `json:"prev_page,omitempty"`
+// Client wraps a transport.Client with the user-scoped endpoints.
+type Client struct {
+	transport *transport.Client
 }
 
-// Metadata is Geni's /user/metadata response. Data is the
-// application-specific JSON blob the caller previously stored via
-// [Client.UpdateMetadata]; the client leaves it as a raw message so
-// callers can unmarshal into whatever structure their app uses.
-type Metadata struct {
-	Data json.RawMessage `json:"data,omitempty"`
+// NewClient returns a user Client backed by the supplied transport.
+func NewClient(t *transport.Client) *Client {
+	return &Client{transport: t}
 }
 
-// GetFollowedProfiles returns the paginated list of profiles the
+// Get returns the authenticated user — the account behind the OAuth
+// token. Use this to ground "me" in API workflows that need to know
+// who's calling.
+func (c *Client) Get(ctx context.Context) (*User, error) {
+	url := c.transport.BaseURL() + "api/user"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var u User
+	if err := json.Unmarshal(body, &u); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &u, nil
+}
+
+// FollowedProfiles returns the paginated list of profiles the
 // authenticated user follows. page is 1-indexed; values ≤0 omit the
 // parameter (Geni defaults to page 1). Max 50 per page.
-func (c *Client) GetFollowedProfiles(ctx context.Context, page int) (*profile.BulkResponse, error) {
-	return c.getUserProfileListing(ctx, "followed-profiles", page)
+func (c *Client) FollowedProfiles(ctx context.Context, page int) (*profile.BulkResponse, error) {
+	return c.profileListing(ctx, "followed-profiles", page)
 }
 
-// GetFollowedDocuments returns the paginated list of documents the
+// FollowedDocuments returns the paginated list of documents the
 // authenticated user follows.
-func (c *Client) GetFollowedDocuments(ctx context.Context, page int) (*document.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/followed-documents"
+func (c *Client) FollowedDocuments(ctx context.Context, page int) (*document.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/followed-documents"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -59,10 +76,10 @@ func (c *Client) GetFollowedDocuments(ctx context.Context, page int) (*document.
 	return &res, nil
 }
 
-// GetFollowedProjects returns the paginated list of projects the
+// FollowedProjects returns the paginated list of projects the
 // authenticated user follows.
-func (c *Client) GetFollowedProjects(ctx context.Context, page int) (*project.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/followed-projects"
+func (c *Client) FollowedProjects(ctx context.Context, page int) (*project.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/followed-projects"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -75,10 +92,10 @@ func (c *Client) GetFollowedProjects(ctx context.Context, page int) (*project.Bu
 	return &res, nil
 }
 
-// GetFollowedSurnames returns the paginated list of surnames the
+// FollowedSurnames returns the paginated list of surnames the
 // authenticated user follows.
-func (c *Client) GetFollowedSurnames(ctx context.Context, page int) (*surname.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/followed-surnames"
+func (c *Client) FollowedSurnames(ctx context.Context, page int) (*surname.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/followed-surnames"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -91,17 +108,17 @@ func (c *Client) GetFollowedSurnames(ctx context.Context, page int) (*surname.Bu
 	return &res, nil
 }
 
-// GetMaxFamily returns the paginated list of profiles in the user's
+// MaxFamily returns the paginated list of profiles in the user's
 // "max family" — Geni's term for the set of relatives the user can
 // see at maximum depth.
-func (c *Client) GetMaxFamily(ctx context.Context, page int) (*profile.BulkResponse, error) {
-	return c.getUserProfileListing(ctx, "max-family", page)
+func (c *Client) MaxFamily(ctx context.Context, page int) (*profile.BulkResponse, error) {
+	return c.profileListing(ctx, "max-family", page)
 }
 
-// GetUploadedPhotos returns the paginated list of photos the
+// UploadedPhotos returns the paginated list of photos the
 // authenticated user has uploaded.
-func (c *Client) GetUploadedPhotos(ctx context.Context, page int) (*photo.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/uploaded-photos"
+func (c *Client) UploadedPhotos(ctx context.Context, page int) (*photo.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/uploaded-photos"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -114,10 +131,10 @@ func (c *Client) GetUploadedPhotos(ctx context.Context, page int) (*photo.BulkRe
 	return &res, nil
 }
 
-// GetUploadedVideos returns the paginated list of videos the
+// UploadedVideos returns the paginated list of videos the
 // authenticated user has uploaded.
-func (c *Client) GetUploadedVideos(ctx context.Context, page int) (*video.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/uploaded-videos"
+func (c *Client) UploadedVideos(ctx context.Context, page int) (*video.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/uploaded-videos"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -130,10 +147,10 @@ func (c *Client) GetUploadedVideos(ctx context.Context, page int) (*video.BulkRe
 	return &res, nil
 }
 
-// GetMyAlbums returns the paginated list of the authenticated user's
+// Albums returns the paginated list of the authenticated user's
 // photo albums.
-func (c *Client) GetMyAlbums(ctx context.Context, page int) (*photoalbum.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/my-albums"
+func (c *Client) Albums(ctx context.Context, page int) (*photoalbum.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/my-albums"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -146,10 +163,10 @@ func (c *Client) GetMyAlbums(ctx context.Context, page int) (*photoalbum.BulkRes
 	return &res, nil
 }
 
-// GetMyLabels returns the paginated list of label strings the
+// Labels returns the paginated list of label strings the
 // authenticated user has applied to their tree.
-func (c *Client) GetMyLabels(ctx context.Context, page int) (*LabelsResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/my-labels"
+func (c *Client) Labels(ctx context.Context, page int) (*LabelsResponse, error) {
+	url := c.transport.BaseURL() + "api/user/my-labels"
 	body, err := c.getPaginated(ctx, url, page)
 	if err != nil {
 		return nil, err
@@ -162,15 +179,15 @@ func (c *Client) GetMyLabels(ctx context.Context, page int) (*LabelsResponse, er
 	return &res, nil
 }
 
-// GetMetadata returns the authenticated user's application-specific
+// Metadata returns the authenticated user's application-specific
 // metadata (the JSON blob previously stored via UpdateMetadata).
 //
 // If userIds is non-empty, the call requests metadata for those
 // user ids instead of the calling user — Geni's docs describe the
 // ids parameter as "Comma separated list of ids of users you would
 // like to get metadata for".
-func (c *Client) GetMetadata(ctx context.Context, userIds ...string) (*Metadata, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/metadata"
+func (c *Client) Metadata(ctx context.Context, userIds ...string) (*Metadata, error) {
+	url := c.transport.BaseURL() + "api/user/metadata"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
@@ -182,7 +199,7 @@ func (c *Client) GetMetadata(ctx context.Context, userIds ...string) (*Metadata,
 		req.URL.RawQuery = query.Encode()
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -211,16 +228,16 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := escapeString(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
-	url := BaseURL(c.useSandboxEnv) + "api/user/update-metadata"
+	url := c.transport.BaseURL() + "api/user/update-metadata"
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -233,27 +250,25 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 	return &md, nil
 }
 
-// getUserProfileListing is the shared GET implementation for the
-// user-scoped sub-listings that return a ProfileBulkResponse
-// (followed-profiles, max-family). The followed-{documents,projects,
-// surnames} and uploaded-{photos,videos} paths each decode a
-// different envelope and are inlined above.
-func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page int) (*profile.BulkResponse, error) {
-	url := BaseURL(c.useSandboxEnv) + "api/user/" + sublist
+// profileListing is the shared GET implementation for the
+// user-scoped sub-listings that return a profile.BulkResponse
+// (followed-profiles, max-family).
+func (c *Client) profileListing(ctx context.Context, sublist string, page int) (*profile.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/" + sublist
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
 	}
 
-	c.addProfileFieldsQueryParams(req)
+	profile.AddFields(req)
 	if page > 0 {
 		query := req.URL.Query()
 		query.Set("page", strconv.Itoa(page))
 		req.URL.RawQuery = query.Encode()
 	}
 
-	body, err := c.doRequest(ctx, req)
+	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -263,17 +278,17 @@ func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
 	}
+	apiURL := c.transport.APIURL()
 	for i := range profiles.Results {
-		c.fixResponse(&profiles.Results[i])
+		profile.StripURLs(&profiles.Results[i], apiURL)
 	}
 	return &profiles, nil
 }
 
 // getPaginated builds a paginated GET request and returns the raw
 // response body. Used by the user-scoped listings that decode into
-// non-Profile envelopes (DocumentBulkResponse, ProjectBulkResponse,
-// surname.BulkResponse, PhotoBulkResponse, VideoBulkResponse,
-// PhotoAlbumBulkResponse, LabelsResponse).
+// non-Profile envelopes (document/project/surname/photo/video/
+// photoalbum/Labels bulk responses).
 func (c *Client) getPaginated(ctx context.Context, url string, page int) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -285,5 +300,5 @@ func (c *Client) getPaginated(ctx context.Context, url string, page int) ([]byte
 		query.Set("page", strconv.Itoa(page))
 		req.URL.RawQuery = query.Encode()
 	}
-	return c.doRequest(ctx, req)
+	return c.transport.Do(ctx, req, nil)
 }

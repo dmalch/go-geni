@@ -82,6 +82,29 @@
   - `*geni.UnionBulkResponse`    → `*union.BulkResponse`
   - `geni.Comment`               → `comment.Comment`
   - `*geni.CommentBulkResponse`  → `*comment.BulkResponse`
+- **BREAKING:** User resource (GetUser + the 10 v0.15.0 endpoint
+  methods) lifts into a new `github.com/dmalch/go-geni/user`
+  package. Root gains a `User() *user.Client` accessor.
+  - `client.GetUser(ctx)`                  → `client.User().Get(ctx)`
+  - `client.GetFollowedProfiles(ctx, p)`   → `client.User().FollowedProfiles(ctx, p)`
+  - `client.GetFollowedDocuments(ctx, p)`  → `client.User().FollowedDocuments(ctx, p)`
+  - `client.GetFollowedProjects(ctx, p)`   → `client.User().FollowedProjects(ctx, p)`
+  - `client.GetFollowedSurnames(ctx, p)`   → `client.User().FollowedSurnames(ctx, p)`
+  - `client.GetMaxFamily(ctx, p)`          → `client.User().MaxFamily(ctx, p)`
+  - `client.GetUploadedPhotos(ctx, p)`     → `client.User().UploadedPhotos(ctx, p)`
+  - `client.GetUploadedVideos(ctx, p)`     → `client.User().UploadedVideos(ctx, p)`
+  - `client.GetMyAlbums(ctx, p)`           → `client.User().Albums(ctx, p)`
+  - `client.GetMyLabels(ctx, p)`           → `client.User().Labels(ctx, p)`
+  - `client.GetMetadata(ctx, ids...)`      → `client.User().Metadata(ctx, ids...)`
+  - `client.UpdateMetadata(ctx, data)`     → `client.User().UpdateMetadata(ctx, data)`
+  - `*geni.User`            → `*user.User`
+  - `*geni.LabelsResponse`  → `*user.LabelsResponse` (renamed-and-relocated;
+    the bare `Labels` name collides with Ginkgo's dot-imported
+    `Labels` in test files, so the `Response` suffix stays)
+  - `*geni.Metadata`        → `*user.Metadata`
+  - `GetManagedProfiles` and `GetUploadedDocuments` stay on root
+    for now — they live in `profile.go` / `document.go` and migrate
+    when those resources lift later.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

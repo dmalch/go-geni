@@ -11,6 +11,7 @@ import (
 	"github.com/dmalch/go-geni/stats"
 	"github.com/dmalch/go-geni/surname"
 	"github.com/dmalch/go-geni/transport"
+	"github.com/dmalch/go-geni/user"
 )
 
 // ErrResourceNotFound is returned for 404 responses from the Geni API.
@@ -35,6 +36,7 @@ type Client struct {
 	surname       *surname.Client
 	revision      *revision.Client
 	search        *search.Client
+	user          *user.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -48,6 +50,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		surname:       surname.NewClient(t),
 		revision:      revision.NewClient(t),
 		search:        search.NewClient(t),
+		user:          user.NewClient(t),
 	}
 }
 
@@ -67,6 +70,12 @@ func (c *Client) Revision() *revision.Client { return c.revision }
 // Search returns the resource client for /profile/search.
 // Replaces the legacy Client.SearchProfiles method.
 func (c *Client) Search() *search.Client { return c.search }
+
+// User returns the resource client for the User resource and all
+// /user/* listings. Replaces Client.GetUser, GetFollowed{Profiles,
+// Documents,Projects,Surnames}, GetMaxFamily, GetUploaded{Photos,
+// Videos}, GetMyAlbums, GetMyLabels, GetMetadata, UpdateMetadata.
+func (c *Client) User() *user.Client { return c.user }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {
