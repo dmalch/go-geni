@@ -114,7 +114,7 @@ var _ = Describe("Profile media listings", func() {
 				File:  &b64,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			Eventually(func(g Gomega) {
 				listed, err := client.GetProfilePhotos(ctx, profile.Id, 0)

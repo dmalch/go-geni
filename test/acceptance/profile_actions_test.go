@@ -141,7 +141,7 @@ var _ = Describe("Profile actions API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(photo.Id).To(HavePrefix("photo-"))
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 		})
 	})
 
@@ -177,11 +177,11 @@ var _ = Describe("Profile actions API", func() {
 			var buf bytes.Buffer
 			Expect(png.Encode(&buf, img)).To(Succeed())
 
-			source, err := client.CreatePhoto(ctx,
+			source, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccMugshotSource-%d", time.Now().UnixNano()),
 				"mugshot.png", &buf)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), source.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), source.Id) })
 
 			mug, err := client.AddProfileMugshot(ctx, profile.Id, &geni.MugshotRequest{
 				PhotoId: ptr(source.Id),

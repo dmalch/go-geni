@@ -123,6 +123,24 @@
   - `client.GetPhotoAlbum(ctx, id)`            → `client.PhotoAlbum().Get(ctx, id)`
   - `client.GetPhotoAlbumPhotos(ctx, id, p)`   → `client.PhotoAlbum().Photos(ctx, id, p)`
   - `client.UpdatePhotoAlbum(ctx, id, req)`    → `client.PhotoAlbum().Update(ctx, id, req)`
+- **BREAKING:** Photo resource methods (10 of them) lift into
+  `github.com/dmalch/go-geni/photo` (types lifted in PR 7). Root
+  gains `Photo() *photo.Client`. The Photo coalescer call site
+  moves with it.
+  - `client.CreatePhoto(ctx, t, fn, r, opts...)` → `client.Photo().Create(ctx, t, fn, r, opts...)`
+  - `client.GetPhoto(ctx, id)`                  → `client.Photo().Get(ctx, id)`
+  - `client.GetPhotos(ctx, ids)`                → `client.Photo().GetBulk(ctx, ids)`
+  - `client.UpdatePhoto(ctx, id, req)`          → `client.Photo().Update(ctx, id, req)`
+  - `client.DeletePhoto(ctx, id)`               → `client.Photo().Delete(ctx, id)`
+  - `client.TagPhoto(ctx, pid, profileId)`      → `client.Photo().Tag(ctx, pid, profileId)`
+  - `client.UntagPhoto(ctx, pid, profileId)`    → `client.Photo().Untag(ctx, pid, profileId)`
+  - `client.GetPhotoTags(ctx, pid, p)`          → `client.Photo().Tags(ctx, pid, p)`
+  - `client.GetPhotoComments(ctx, pid, p)`      → `client.Photo().Comments(ctx, pid, p)`
+  - `client.AddPhotoComment(ctx, pid, t, ttl)`  → `client.Photo().AddComment(ctx, pid, t, ttl)`
+  - `geni.CreatePhotoOption`                    → `photo.CreateOption`
+  - `geni.WithPhotoAlbum(id)`                   → `photo.WithAlbum(id)`
+  - `geni.WithPhotoDescription(d)`              → `photo.WithDescription(d)`
+  - `geni.WithPhotoDate(d)`                     → `photo.WithDate(d)`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

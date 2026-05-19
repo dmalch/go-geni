@@ -119,7 +119,7 @@ func TestGetPhotos_BulkThreeIds(t *testing.T) {
 		{"id":"photo-3","title":"C"}
 	]}`)
 
-	res, err := c.GetPhotos(context.Background(), []string{"photo-1", "photo-2", "photo-3"})
+	res, err := c.Photo().GetBulk(context.Background(), []string{"photo-1", "photo-2", "photo-3"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo"))
@@ -131,13 +131,13 @@ func TestGetPhotos_BulkErrorMapping(t *testing.T) {
 	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetPhotos(context.Background(), []string{"photo-1", "photo-2"})
+		_, err := c.Photo().GetBulk(context.Background(), []string{"photo-1", "photo-2"})
 		Expect(err).To(MatchError(ErrResourceNotFound))
 	})
 	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetPhotos(context.Background(), []string{"photo-1", "photo-2"})
+		_, err := c.Photo().GetBulk(context.Background(), []string{"photo-1", "photo-2"})
 		Expect(err).To(MatchError(ErrAccessDenied))
 	})
 }
