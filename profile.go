@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 type DetailsString struct {
@@ -255,21 +256,10 @@ func (c *Client) CreateProfile(ctx context.Context, request *ProfileRequest) (*P
 	return &profile, nil
 }
 
-func escapeString(s string) string {
-	return escapeStringToUTF(s)
-}
-
-func escapeStringToUTF(s string) string {
-	var sb strings.Builder
-	for _, r := range s {
-		if r > 127 {
-			fmt.Fprintf(&sb, "\\u%04x", r)
-		} else {
-			sb.WriteRune(r)
-		}
-	}
-	return sb.String()
-}
+// escapeString and escapeStringToUTF are thin wrappers preserved for
+// existing call sites. The actual escape lives in transport.
+func escapeString(s string) string      { return transport.EscapeStringToUTF(s) }
+func escapeStringToUTF(s string) string { return transport.EscapeStringToUTF(s) }
 
 func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId
@@ -281,21 +271,21 @@ func (c *Client) GetProfile(ctx context.Context, profileId string) (*ProfileResp
 
 	c.addProfileFieldsQueryParams(req)
 
-	coalescer := bulkCoalescer[ProfileResponse, ProfileBulkResponse]{
-		currentId: profileId,
-		idPrefix:  "profile",
-		decodeBulk: func(body []byte) (ProfileBulkResponse, error) {
+	coalescer := &transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse]{
+		CurrentID: profileId,
+		IDPrefix:  "profile",
+		DecodeBulk: func(body []byte) (ProfileBulkResponse, error) {
 			var env ProfileBulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		listResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
-		idOfResult:  func(p ProfileResponse) string { return p.Id },
+		ListResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
+		IDOfResult:  func(p ProfileResponse) string { return p.Id },
 	}
 
-	body, err := c.doRequest(ctx, req, coalescer.options()...)
+	body, err := c.doRequest(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}

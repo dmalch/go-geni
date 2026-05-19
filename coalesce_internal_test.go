@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-// Direct unit tests for bulkCoalescer's two methods. The
+// Direct unit tests for transport.BulkCoalescer's two methods. The
 // coalesce_test.go file in this package proves the *integrated*
 // concurrency behaviour by spawning real goroutines through
-// doRequest; these tests poke prepareBulkRequest and
-// parseBulkResponse directly with a synthetic urlMap so the
+// doRequest; these tests poke PrepareBulkRequest and
+// ParseBulkResponse directly with a synthetic urlMap so the
 // coalescing logic is verifiable without goroutine timing.
 
 // All tests below run against "profile-1" as the calling request's
@@ -27,17 +29,17 @@ const coalescerTestCurrentId = "profile-1"
 // Keeping it private and inline mirrors how each Get* singular sets
 // up its own coalescer; if those ever diverge, the per-resource
 // tests in bulk_test.go will catch it.
-func newCoalescer() *bulkCoalescer[ProfileResponse, ProfileBulkResponse] {
-	return &bulkCoalescer[ProfileResponse, ProfileBulkResponse]{
-		currentId: coalescerTestCurrentId,
-		idPrefix:  "profile",
-		decodeBulk: func(body []byte) (ProfileBulkResponse, error) {
+func newCoalescer() *transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse] {
+	return &transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse]{
+		CurrentID: coalescerTestCurrentId,
+		IDPrefix:  "profile",
+		DecodeBulk: func(body []byte) (ProfileBulkResponse, error) {
 			var e ProfileBulkResponse
 			err := json.Unmarshal(body, &e)
 			return e, err
 		},
-		listResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
-		idOfResult:  func(p ProfileResponse) string { return p.Id },
+		ListResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
+		IDOfResult:  func(p ProfileResponse) string { return p.Id },
 	}
 }
 
@@ -65,7 +67,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		req := mustRequest(t, "https://example.com/api/profile-1")
 		urlMap.Store("profile-1", dummyCancel())
 
-		newCoalescer().prepareBulkRequest(req, urlMap)
+		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		Expect(req.URL.Query().Has("ids")).To(BeFalse())
 	})
@@ -78,7 +80,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		urlMap.Store("profile-3", dummyCancel())
 		req := mustRequest(t, "https://example.com/api/profile-1")
 
-		newCoalescer().prepareBulkRequest(req, urlMap)
+		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		Expect(req.URL.Query().Has("ids")).To(BeTrue())
 		gotIds := req.URL.Query().Get("ids")
@@ -97,7 +99,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		urlMap.Store("profile-2", dummyCancel())
 		req := mustRequest(t, "https://example.com/api/profile-1")
 
-		newCoalescer().prepareBulkRequest(req, urlMap)
+		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		gotIds := req.URL.Query().Get("ids")
 		// Count occurrences of "profile-1" — should appear exactly
@@ -112,7 +114,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 	})
 
 	t.Run("other resource families are not pulled in", func(t *testing.T) {
-		// Verifies the idPrefix filter excludes mismatched
+		// Verifies the IDPrefix filter excludes mismatched
 		// resource families even when they're concurrently
 		// queued in the same urlMap.
 		RegisterTestingT(t)
@@ -122,7 +124,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		urlMap.Store("document-7", dummyCancel())
 		req := mustRequest(t, "https://example.com/api/profile-1")
 
-		newCoalescer().prepareBulkRequest(req, urlMap)
+		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		// Singleton → no ids= param.
 		Expect(req.URL.Query().Has("ids")).To(BeFalse())
@@ -138,7 +140,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		urlMap.Store("profile-3", dummyCancel())
 		req := mustRequest(t, "https://example.com/api/profile-1")
 
-		newCoalescer().prepareBulkRequest(req, urlMap)
+		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		gotIds := req.URL.Query().Get("ids")
 		ids := splitCSV(gotIds)
@@ -154,7 +156,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		req := mustRequest(t, "https://example.com/api/profile-1")
 		body := []byte(`{"id":"profile-1","first_name":"A"}`)
 
-		out, err := newCoalescer().parseBulkResponse(req, body, urlMap)
+		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(Equal(body))
@@ -178,7 +180,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 			{"id":"profile-3","first_name":"C"}
 		]}`)
 
-		out, err := newCoalescer().parseBulkResponse(req, body, urlMap)
+		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
 		Expect(err).ToNot(HaveOccurred())
 
@@ -217,7 +219,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		req := mustRequest(t, "https://example.com/api/profile-1?ids=profile-1,profile-2")
 		body := []byte(`{"results":[{"id":"profile-2","first_name":"B"}]}`)
 
-		out, err := newCoalescer().parseBulkResponse(req, body, urlMap)
+		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out).To(BeNil())
@@ -229,7 +231,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		req := mustRequest(t, "https://example.com/api/profile-1?ids=profile-1,profile-2")
 		body := []byte(`not json`)
 
-		out, err := newCoalescer().parseBulkResponse(req, body, urlMap)
+		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
 		Expect(err).To(HaveOccurred())
 		Expect(out).To(BeNil())

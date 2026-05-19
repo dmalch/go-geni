@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 // PhotoRequest is the JSON-encoded body for [Client.UpdatePhoto]
@@ -186,21 +188,21 @@ func (c *Client) GetPhoto(ctx context.Context, photoId string) (*PhotoResponse, 
 		return nil, err
 	}
 
-	coalescer := bulkCoalescer[PhotoResponse, PhotoBulkResponse]{
-		currentId: photoId,
-		idPrefix:  "photo",
-		decodeBulk: func(body []byte) (PhotoBulkResponse, error) {
+	coalescer := &transport.BulkCoalescer[PhotoResponse, PhotoBulkResponse]{
+		CurrentID: photoId,
+		IDPrefix:  "photo",
+		DecodeBulk: func(body []byte) (PhotoBulkResponse, error) {
 			var env PhotoBulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		listResults: func(env PhotoBulkResponse) []PhotoResponse { return env.Results },
-		idOfResult:  func(p PhotoResponse) string { return p.Id },
+		ListResults: func(env PhotoBulkResponse) []PhotoResponse { return env.Results },
+		IDOfResult:  func(p PhotoResponse) string { return p.Id },
 	}
 
-	body, err := c.doRequest(ctx, req, coalescer.options()...)
+	body, err := c.doRequest(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}

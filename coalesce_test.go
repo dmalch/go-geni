@@ -68,14 +68,14 @@ func (t *countingTransport) snapshot() []*http.Request {
 func newClientWithCountingTransport(builder func(req *http.Request) (status int, body []byte)) (*Client, *countingTransport) {
 	ct := &countingTransport{bodyBuilder: builder}
 	c := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
-	c.client = &http.Client{Transport: ct}
+	c.transport.SetHTTPClient(&http.Client{Transport: ct})
 	// 1 token / 500ms, burst 1 — first goroutine consumes burst
 	// immediately, the rest queue and get coalesced when the
 	// first sweeps urlMap.
-	c.limiter = rate.NewLimiter(rate.Every(500*time.Millisecond), 1)
+	c.transport.SetLimiter(rate.NewLimiter(rate.Every(500*time.Millisecond), 1))
 	// Pre-consume the burst so even the first goroutine has to
 	// wait — guarantees all N concurrent calls queue together.
-	_ = c.limiter.Wait(context.Background())
+	_ = c.transport.Limiter().Wait(context.Background())
 	return c, ct
 }
 

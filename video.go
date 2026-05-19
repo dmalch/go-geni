@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 // VideoRequest is the JSON-encoded body for [Client.UpdateVideo].
@@ -156,27 +158,8 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 	return &video, nil
 }
 
-// GetVideo fetches a single video by id.
-// videoCoalescer returns the options needed to coalesce concurrent
-// GetVideo calls into a single bulk request. See bulkCoalescer in
-// coalesce.go for the mechanism.
-func (c *Client) videoCoalescer(videoId string) []func(*opt) {
-	coalescer := bulkCoalescer[VideoResponse, VideoBulkResponse]{
-		currentId: videoId,
-		idPrefix:  "video",
-		decodeBulk: func(body []byte) (VideoBulkResponse, error) {
-			var env VideoBulkResponse
-			if err := json.Unmarshal(body, &env); err != nil {
-				return env, err
-			}
-			return env, nil
-		},
-		listResults: func(env VideoBulkResponse) []VideoResponse { return env.Results },
-		idOfResult:  func(v VideoResponse) string { return v.Id },
-	}
-	return coalescer.options()
-}
-
+// GetVideo fetches a single video by id. Concurrent GetVideo calls
+// are coalesced into one bulk request via transport.BulkCoalescer.
 func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -185,7 +168,21 @@ func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, 
 		return nil, err
 	}
 
-	body, err := c.doRequest(ctx, req, c.videoCoalescer(videoId)...)
+	coalescer := &transport.BulkCoalescer[VideoResponse, VideoBulkResponse]{
+		CurrentID: videoId,
+		IDPrefix:  "video",
+		DecodeBulk: func(body []byte) (VideoBulkResponse, error) {
+			var env VideoBulkResponse
+			if err := json.Unmarshal(body, &env); err != nil {
+				return env, err
+			}
+			return env, nil
+		},
+		ListResults: func(env VideoBulkResponse) []VideoResponse { return env.Results },
+		IDOfResult:  func(v VideoResponse) string { return v.Id },
+	}
+
+	body, err := c.doRequest(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}

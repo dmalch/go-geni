@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"log/slog"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 type DocumentRequest struct {
@@ -107,21 +109,21 @@ func (c *Client) GetDocument(ctx context.Context, documentId string) (*DocumentR
 		return nil, err
 	}
 
-	coalescer := bulkCoalescer[DocumentResponse, DocumentBulkResponse]{
-		currentId: documentId,
-		idPrefix:  "document",
-		decodeBulk: func(body []byte) (DocumentBulkResponse, error) {
+	coalescer := &transport.BulkCoalescer[DocumentResponse, DocumentBulkResponse]{
+		CurrentID: documentId,
+		IDPrefix:  "document",
+		DecodeBulk: func(body []byte) (DocumentBulkResponse, error) {
 			var env DocumentBulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		listResults: func(env DocumentBulkResponse) []DocumentResponse { return env.Results },
-		idOfResult:  func(d DocumentResponse) string { return d.Id },
+		ListResults: func(env DocumentBulkResponse) []DocumentResponse { return env.Results },
+		IDOfResult:  func(d DocumentResponse) string { return d.Id },
 	}
 
-	body, err := c.doRequest(ctx, req, coalescer.options()...)
+	body, err := c.doRequest(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 func newFakeClient(status int, body string) (*Client, *fakeTransport) {
 	ft := &fakeTransport{status: status, body: body}
 	c := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
-	c.client = &http.Client{Transport: ft}
+	c.transport.SetHTTPClient(&http.Client{Transport: ft})
 	return c, ft
 }
 
