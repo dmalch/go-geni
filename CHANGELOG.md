@@ -42,6 +42,13 @@
     until the user/ resource lifts later)
   - New helper `profile.StripURLs(p, apiURL)` lets sub-packages
     post-process Profile listings without depending on root.
+- **BREAKING:** Revision resource lifts into a new
+  `github.com/dmalch/go-geni/revision` package.
+  - `client.GetRevision(ctx, id)`  → `client.Revision().Get(ctx, id)`
+  - `client.GetRevisions(ctx, ids)` → `client.Revision().GetBulk(ctx, ids)`
+  - `*geni.Revision`               → `*revision.Revision`
+  - `*geni.RevisionBulkResponse`   → `*revision.BulkResponse`
+  The single-id bulk fallback behaviour is preserved.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

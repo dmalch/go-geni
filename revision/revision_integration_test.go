@@ -1,13 +1,37 @@
-package geni
+package revision
 
 import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
+
+type rewriteTransport struct {
+	base   http.RoundTripper
+	target *url.URL
+}
+
+func (r *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.URL.Scheme = r.target.Scheme
+	req.URL.Host = r.target.Host
+	return r.base.RoundTrip(req)
+}
+
+func newClientFor(server *httptest.Server) *Client {
+	target, err := url.Parse(server.URL)
+	Expect(err).ToNot(HaveOccurred())
+
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "acc-test"}), true)
+	t.SetHTTPClient(&http.Client{Transport: &rewriteTransport{base: http.DefaultTransport, target: target}})
+	return NewClient(t)
+}
 
 var _ = Describe("Revision endpoints", func() {
 	var (
@@ -40,7 +64,7 @@ var _ = Describe("Revision endpoints", func() {
 		client = newClientFor(server)
 	}
 
-	Describe("GetRevision", func() {
+	Describe("Get", func() {
 		It("decodes the documented Revision fields", func() {
 			serve(http.StatusOK,
 				[]byte(`{
@@ -54,7 +78,7 @@ var _ = Describe("Revision endpoints", func() {
 				}`),
 				http.MethodGet, "/api/revision-101")
 
-			r, err := client.GetRevision(ctx, "revision-101")
+			r, err := client.Get(ctx, "revision-101")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(r.Id).To(Equal("revision-101"))
@@ -63,13 +87,13 @@ var _ = Describe("Revision endpoints", func() {
 		})
 	})
 
-	Describe("GetRevisions (bulk)", func() {
+	Describe("GetBulk", func() {
 		It("2-id call hits /api/revision?ids=…", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"revision-101"},{"id":"revision-102"}]}`),
 				http.MethodGet, "/api/revision")
 
-			res, err := client.GetRevisions(ctx, []string{"revision-101", "revision-102"})
+			res, err := client.GetBulk(ctx, []string{"revision-101", "revision-102"})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("ids")).To(Equal("revision-101,revision-102"))
@@ -81,12 +105,11 @@ var _ = Describe("Revision endpoints", func() {
 				[]byte(`{"id":"revision-101","action":"create"}`),
 				http.MethodGet, "/api/revision-101")
 
-			res, err := client.GetRevisions(ctx, []string{"revision-101"})
+			res, err := client.GetBulk(ctx, []string{"revision-101"})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Has("ids")).To(BeFalse())
 			Expect(res.Results).To(HaveLen(1))
 		})
 	})
-
 })
