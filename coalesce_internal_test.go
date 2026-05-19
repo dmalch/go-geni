@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
@@ -29,17 +30,17 @@ const coalescerTestCurrentId = "profile-1"
 // Keeping it private and inline mirrors how each Get* singular sets
 // up its own coalescer; if those ever diverge, the per-resource
 // tests in bulk_test.go will catch it.
-func newCoalescer() *transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse] {
-	return &transport.BulkCoalescer[ProfileResponse, ProfileBulkResponse]{
+func newCoalescer() *transport.BulkCoalescer[profile.Profile, profile.BulkResponse] {
+	return &transport.BulkCoalescer[profile.Profile, profile.BulkResponse]{
 		CurrentID: coalescerTestCurrentId,
 		IDPrefix:  "profile",
-		DecodeBulk: func(body []byte) (ProfileBulkResponse, error) {
-			var e ProfileBulkResponse
+		DecodeBulk: func(body []byte) (profile.BulkResponse, error) {
+			var e profile.BulkResponse
 			err := json.Unmarshal(body, &e)
 			return e, err
 		},
-		ListResults: func(env ProfileBulkResponse) []ProfileResponse { return env.Results },
-		IDOfResult:  func(p ProfileResponse) string { return p.Id },
+		ListResults: func(env profile.BulkResponse) []profile.Profile { return env.Results },
+		IDOfResult:  func(p profile.Profile) string { return p.Id },
 	}
 }
 
@@ -186,7 +187,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 
 		// Own id: returned as bytes that decode into the right
 		// profile.
-		var ownProfile ProfileResponse
+		var ownProfile profile.Profile
 		Expect(json.Unmarshal(out, &ownProfile)).To(Succeed())
 		Expect(ownProfile.Id).To(Equal("profile-1"))
 
@@ -200,7 +201,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 			Expect(ok).To(BeTrue(), "expected %s in urlMap", sibId)
 			raw, ok := v.([]byte)
 			Expect(ok).To(BeTrue(), "expected %s to be []byte, got %T", sibId, v)
-			var got ProfileResponse
+			var got profile.Profile
 			Expect(json.Unmarshal(raw, &got)).To(Succeed())
 			Expect(got.Id).To(Equal(sibId))
 		}

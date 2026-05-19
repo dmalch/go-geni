@@ -7,12 +7,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/profile"
 )
 
 // createCoupleAndUnion creates a focus profile, adds a partner, and
 // returns the focus profile, partner profile, and the id of the union
 // joining them. Both profiles register their own cleanup hooks.
-func createCoupleAndUnion(ctx context.Context, client *geni.Client) (*geni.ProfileResponse, *geni.ProfileResponse, string) {
+func createCoupleAndUnion(ctx context.Context, client *geni.Client) (*profile.Profile, *profile.Profile, string) {
 	GinkgoHelper()
 
 	focus := createFixtureProfile(ctx, client, "UnionFocus")
@@ -84,8 +85,8 @@ var _ = Describe("Union API", func() {
 			year := int32(1925)
 
 			updated, err := client.UpdateUnion(ctx, unionId, &geni.UnionRequest{
-				Marriage: &geni.EventElement{
-					Date: &geni.DateElement{Year: &year},
+				Marriage: &profile.EventElement{
+					Date: &profile.DateElement{Year: &year},
 				},
 			})
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dmalch/go-geni/profile"
 	. "github.com/onsi/gomega"
 )
 
@@ -56,8 +57,8 @@ func TestAddParent_Request(t *testing.T) {
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-parent","first_name":"Mom"}`)
 
 		first := "Mom"
-		_, err := c.AddParent(context.Background(), "profile-1", &ProfileRequest{
-			Names: map[string]NameElement{
+		_, err := c.AddParent(context.Background(), "profile-1", &profile.Request{
+			Names: map[string]profile.NameElement{
 				"en-US": {FirstName: &first},
 			},
 		})
@@ -73,7 +74,7 @@ func TestAddParent_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-parent"}`)
 
-		_, err := c.AddParent(context.Background(), "profile-1", &ProfileRequest{}, WithModifier("adopt"))
+		_, err := c.AddParent(context.Background(), "profile-1", &profile.Request{}, WithModifier("adopt"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
@@ -85,8 +86,8 @@ func TestUpdateProfileBasics_Request(t *testing.T) {
 	c, ft := newFakeClient(http.StatusOK, `{"id":"profile-1","first_name":"After"}`)
 
 	first := "After"
-	_, err := c.UpdateProfileBasics(context.Background(), "profile-1", &ProfileRequest{
-		Names: map[string]NameElement{
+	_, err := c.UpdateProfileBasics(context.Background(), "profile-1", &profile.Request{
+		Names: map[string]profile.NameElement{
 			"en-US": {FirstName: &first},
 		},
 	})

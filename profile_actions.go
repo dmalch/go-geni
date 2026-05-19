@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 // ProfileComparison is the response shape of [Client.CompareProfiles].
@@ -38,17 +40,17 @@ type MugshotRequest struct {
 
 // FollowProfile makes the calling user follow the named profile.
 // Returns the followed profile.
-func (c *Client) FollowProfile(ctx context.Context, profileId string) (*ProfileResponse, error) {
+func (c *Client) FollowProfile(ctx context.Context, profileId string) (*profile.Profile, error) {
 	return c.profileFollowAction(ctx, profileId, "follow")
 }
 
 // UnfollowProfile reverses FollowProfile. Returns the unfollowed
 // profile.
-func (c *Client) UnfollowProfile(ctx context.Context, profileId string) (*ProfileResponse, error) {
+func (c *Client) UnfollowProfile(ctx context.Context, profileId string) (*profile.Profile, error) {
 	return c.profileFollowAction(ctx, profileId, "unfollow")
 }
 
-func (c *Client) profileFollowAction(ctx context.Context, profileId, action string) (*ProfileResponse, error) {
+func (c *Client) profileFollowAction(ctx context.Context, profileId, action string) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/" + action
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -63,7 +65,7 @@ func (c *Client) profileFollowAction(ctx context.Context, profileId, action stri
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -102,7 +104,7 @@ func (c *Client) CompareProfiles(ctx context.Context, profile1Id, profile2Id str
 // records an adopted or foster relationship.
 //
 // Counterpart to AddChild / AddPartner / AddSibling.
-func (c *Client) AddParent(ctx context.Context, profileId string, request *ProfileRequest, opts ...AddOption) (*ProfileResponse, error) {
+func (c *Client) AddParent(ctx context.Context, profileId string, request *profile.Request, opts ...AddOption) (*profile.Profile, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -127,7 +129,7 @@ func (c *Client) AddParent(ctx context.Context, profileId string, request *Profi
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -140,7 +142,7 @@ func (c *Client) AddParent(ctx context.Context, profileId string, request *Profi
 // profile fields — a narrower target than UpdateProfile. The
 // request body uses the same ProfileRequest shape but only fields
 // in the basics/about scope take effect.
-func (c *Client) UpdateProfileBasics(ctx context.Context, profileId string, request *ProfileRequest) (*ProfileResponse, error) {
+func (c *Client) UpdateProfileBasics(ctx context.Context, profileId string, request *profile.Request) (*profile.Profile, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -162,7 +164,7 @@ func (c *Client) UpdateProfileBasics(ctx context.Context, profileId string, requ
 		return nil, err
 	}
 
-	var profile ProfileResponse
+	var profile profile.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

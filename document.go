@@ -10,6 +10,7 @@ import (
 
 	"log/slog"
 
+	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
 
@@ -21,9 +22,9 @@ type DocumentRequest struct {
 	// ContentType is the document's content type
 	ContentType *string `json:"content_type,omitempty"`
 	// Date is the document's date
-	Date *DateElement `json:"date,omitempty"`
+	Date *profile.DateElement `json:"date,omitempty"`
 	// Location is the document's location
-	Location *LocationElement `json:"location,omitempty"`
+	Location *profile.LocationElement `json:"location,omitempty"`
 	// Labels is the document's comma separated labels
 	Labels *string `json:"labels,omitempty"`
 	// File is the Base64 encoded file to create a document from
@@ -55,9 +56,9 @@ type DocumentResponse struct {
 	// ContentType is the document's content type
 	ContentType *string `json:"content_type"`
 	// Date is the document's date
-	Date *DateElement `json:"date"`
+	Date *profile.DateElement `json:"date"`
 	// Location is the document's location
-	Location *LocationElement `json:"location,omitempty"`
+	Location *profile.LocationElement `json:"location,omitempty"`
 	// Profiles is the list of profiles tagged in the document
 	Tags []string `json:"tags"`
 	// Labels is the list of labels associated with the document
@@ -215,7 +216,7 @@ func (c *Client) DeleteDocument(ctx context.Context, documentId string) error {
 		return err
 	}
 
-	var result ResultResponse
+	var result transport.Result
 	err = json.Unmarshal(body, &result)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -258,7 +259,7 @@ func (c *Client) UpdateDocument(ctx context.Context, documentId string, request 
 	return &document, nil
 }
 
-func (c *Client) TagDocument(ctx context.Context, documentId, profileId string) (*ProfileBulkResponse, error) {
+func (c *Client) TagDocument(ctx context.Context, documentId, profileId string) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/tag/" + profileId
 
 	req, err := http.NewRequest(http.MethodPost, url, nil)
@@ -272,7 +273,7 @@ func (c *Client) TagDocument(ctx context.Context, documentId, profileId string) 
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	err = json.Unmarshal(body, &profiles)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -378,7 +379,7 @@ func (c *Client) GetDocumentProjects(ctx context.Context, documentId string, pag
 // document. page is 1-indexed; values ≤0 omit the parameter (Geni
 // defaults to page 1). Max 50 tags per page. Symmetric with
 // [Client.GetPhotoTags].
-func (c *Client) GetDocumentTags(ctx context.Context, documentId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetDocumentTags(ctx context.Context, documentId string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/tags"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -397,7 +398,7 @@ func (c *Client) GetDocumentTags(ctx context.Context, documentId string, page in
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -408,7 +409,7 @@ func (c *Client) GetDocumentTags(ctx context.Context, documentId string, page in
 	return &profiles, nil
 }
 
-func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string) (*ProfileBulkResponse, error) {
+func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + documentId + "/untag/" + profileId
 
 	req, err := http.NewRequest(http.MethodPost, url, nil)
@@ -422,7 +423,7 @@ func (c *Client) UntagDocument(ctx context.Context, documentId, profileId string
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	err = json.Unmarshal(body, &profiles)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)

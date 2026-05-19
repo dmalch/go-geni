@@ -13,6 +13,24 @@
   `github.com/dmalch/go-geni/stats`. Callers update from
   `client.GetStats(ctx)` to `client.Stats().Get(ctx)`, and
   `*geni.StatsResponse` becomes `*stats.Response`.
+- **BREAKING:** Profile wire types lift into a new
+  `github.com/dmalch/go-geni/profile` package. Profile *methods*
+  (`GetProfile`, `CreateProfile`, …) still live on the root
+  `geni.Client` for this PR — the type-only move unblocks the leaf
+  sub-packages (surname, search, project, …) that take or return
+  Profile-shaped values. Rename map:
+  - `*geni.ProfileResponse`     → `*profile.Profile`
+  - `*geni.ProfileRequest`      → `*profile.Request`
+  - `*geni.ProfileBulkResponse` → `*profile.BulkResponse`
+  - `geni.NameElement`          → `profile.NameElement`
+  - `geni.EventElement`         → `profile.EventElement`
+  - `geni.DateElement`          → `profile.DateElement`
+  - `geni.LocationElement`      → `profile.LocationElement`
+  - `geni.DetailsString`        → `profile.DetailsString`
+- **BREAKING:** `geni.ResultResponse` → `transport.Result`. The
+  generic `{"result":"OK"}` envelope returned by delete / tag /
+  follow endpoints moves into the transport package so each
+  resource doesn't redeclare it.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

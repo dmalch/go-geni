@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 // SurnameBulkResponse is the paginated envelope returned by
@@ -57,18 +59,18 @@ func (c *Client) GetSurname(ctx context.Context, surnameId string) (*Surname, er
 // GetSurnameFollowers returns the paginated list of profiles
 // following a surname. page is 1-indexed; values ≤0 omit the
 // parameter. Max 50 per page.
-func (c *Client) GetSurnameFollowers(ctx context.Context, surnameId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetSurnameFollowers(ctx context.Context, surnameId string, page int) (*profile.BulkResponse, error) {
 	return c.getSurnameProfileListing(ctx, surnameId, "followers", page)
 }
 
 // GetSurnameProfiles returns the paginated list of profiles
 // associated with a surname. page is 1-indexed; values ≤0 omit the
 // parameter. Max 50 per page.
-func (c *Client) GetSurnameProfiles(ctx context.Context, surnameId string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetSurnameProfiles(ctx context.Context, surnameId string, page int) (*profile.BulkResponse, error) {
 	return c.getSurnameProfileListing(ctx, surnameId, "profiles", page)
 }
 
-func (c *Client) getSurnameProfileListing(ctx context.Context, surnameId, sublist string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) getSurnameProfileListing(ctx context.Context, surnameId, sublist string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + surnameId + "/" + sublist
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -87,7 +89,7 @@ func (c *Client) getSurnameProfileListing(ctx context.Context, surnameId, sublis
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

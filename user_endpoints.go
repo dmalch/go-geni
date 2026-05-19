@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/dmalch/go-geni/profile"
 )
 
 // PhotoAlbum is Geni's PhotoAlbum resource — a container for related
@@ -57,7 +59,7 @@ type Metadata struct {
 // GetFollowedProfiles returns the paginated list of profiles the
 // authenticated user follows. page is 1-indexed; values ≤0 omit the
 // parameter (Geni defaults to page 1). Max 50 per page.
-func (c *Client) GetFollowedProfiles(ctx context.Context, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetFollowedProfiles(ctx context.Context, page int) (*profile.BulkResponse, error) {
 	return c.getUserProfileListing(ctx, "followed-profiles", page)
 }
 
@@ -112,7 +114,7 @@ func (c *Client) GetFollowedSurnames(ctx context.Context, page int) (*SurnameBul
 // GetMaxFamily returns the paginated list of profiles in the user's
 // "max family" — Geni's term for the set of relatives the user can
 // see at maximum depth.
-func (c *Client) GetMaxFamily(ctx context.Context, page int) (*ProfileBulkResponse, error) {
+func (c *Client) GetMaxFamily(ctx context.Context, page int) (*profile.BulkResponse, error) {
 	return c.getUserProfileListing(ctx, "max-family", page)
 }
 
@@ -256,7 +258,7 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 // (followed-profiles, max-family). The followed-{documents,projects,
 // surnames} and uploaded-{photos,videos} paths each decode a
 // different envelope and are inlined above.
-func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page int) (*ProfileBulkResponse, error) {
+func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page int) (*profile.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/user/" + sublist
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -276,7 +278,7 @@ func (c *Client) getUserProfileListing(ctx context.Context, sublist string, page
 		return nil, err
 	}
 
-	var profiles ProfileBulkResponse
+	var profiles profile.BulkResponse
 	if err := json.Unmarshal(body, &profiles); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
