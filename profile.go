@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
@@ -187,7 +189,7 @@ func (c *Client) GetManagedProfiles(ctx context.Context, page int) (*profile.Bul
 // GetProfileDocuments returns the paginated list of documents
 // attached to a profile. page is 1-indexed; values ≤0 omit the
 // parameter (Geni defaults to page 1). Max 50 per page.
-func (c *Client) GetProfileDocuments(ctx context.Context, profileId string, page int) (*DocumentBulkResponse, error) {
+func (c *Client) GetProfileDocuments(ctx context.Context, profileId string, page int) (*document.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/documents"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -206,7 +208,7 @@ func (c *Client) GetProfileDocuments(ctx context.Context, profileId string, page
 		return nil, err
 	}
 
-	var documents DocumentBulkResponse
+	var documents document.BulkResponse
 	if err := json.Unmarshal(body, &documents); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -217,7 +219,7 @@ func (c *Client) GetProfileDocuments(ctx context.Context, profileId string, page
 // GetProfilePhotos returns the paginated list of photos attached to
 // a profile. page is 1-indexed; values ≤0 omit the parameter (Geni
 // defaults to page 1). Max 50 per page.
-func (c *Client) GetProfilePhotos(ctx context.Context, profileId string, page int) (*PhotoBulkResponse, error) {
+func (c *Client) GetProfilePhotos(ctx context.Context, profileId string, page int) (*photo.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/photos"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -236,7 +238,7 @@ func (c *Client) GetProfilePhotos(ctx context.Context, profileId string, page in
 		return nil, err
 	}
 
-	var photos PhotoBulkResponse
+	var photos photo.BulkResponse
 	if err := json.Unmarshal(body, &photos); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

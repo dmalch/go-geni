@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dmalch/go-geni/photoalbum"
 	. "github.com/onsi/gomega"
 )
 
@@ -16,7 +17,7 @@ func TestCreatePhotoAlbum_Request(t *testing.T) {
 			`{"id":"album-9","name":"Vacation 1972","photos_count":0}`)
 
 		desc := "Family trip"
-		album, err := c.CreatePhotoAlbum(context.Background(), &PhotoAlbumRequest{
+		album, err := c.CreatePhotoAlbum(context.Background(), &photoalbum.Request{
 			Name:        "Vacation 1972",
 			Description: &desc,
 		})
@@ -33,7 +34,7 @@ func TestCreatePhotoAlbum_Request(t *testing.T) {
 	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.CreatePhotoAlbum(context.Background(), &PhotoAlbumRequest{Name: "X"})
+		_, err := c.CreatePhotoAlbum(context.Background(), &photoalbum.Request{Name: "X"})
 		Expect(err).To(MatchError(ErrAccessDenied))
 	})
 }
@@ -113,7 +114,7 @@ func TestUpdatePhotoAlbum_Request(t *testing.T) {
 		`{"id":"album-1","name":"After","description":"Renamed"}`)
 
 	desc := "Renamed"
-	album, err := c.UpdatePhotoAlbum(context.Background(), "album-1", &PhotoAlbumRequest{
+	album, err := c.UpdatePhotoAlbum(context.Background(), "album-1", &photoalbum.Request{
 		Name:        "After",
 		Description: &desc,
 	})

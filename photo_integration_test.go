@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dmalch/go-geni/photo"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -50,7 +51,7 @@ var _ = Describe("Client photo CRUD endpoints", func() {
 				[]byte(`{"id":"photo-1","title":"After","description":"updated"}`),
 				http.MethodPost, "/api/photo-1/update")
 
-			photo, err := client.UpdatePhoto(ctx, "photo-1", &PhotoRequest{
+			photo, err := client.UpdatePhoto(ctx, "photo-1", &photo.Request{
 				Title:       "After",
 				Description: "updated",
 			})

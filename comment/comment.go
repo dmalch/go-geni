@@ -1,4 +1,8 @@
-package geni
+// Package comment carries the Comment resource's wire types. Comment
+// API methods still live on github.com/dmalch/go-geni's root Client
+// during the pre-1.0 reshape and migrate into the relevant
+// per-resource sub-packages later; this PR lifts only the types.
+package comment
 
 // Comment is Geni's Comment resource — the body of a single comment
 // returned by document/photo/video comment-listing endpoints.
@@ -15,10 +19,10 @@ type Comment struct {
 	CreatedAt string `json:"created_at,omitempty"`
 }
 
-// CommentBulkResponse is the paginated envelope returned by the
+// BulkResponse is the paginated envelope returned by the
 // `*/comments` and `*/comment` endpoints (document.comments,
 // document.comment, photo.comments, etc.).
-type CommentBulkResponse struct {
+type BulkResponse struct {
 	Results  []Comment `json:"results,omitempty"`
 	Page     int       `json:"page,omitempty"`
 	NextPage string    `json:"next_page,omitempty"`

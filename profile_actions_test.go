@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/video"
 	. "github.com/onsi/gomega"
 )
 
@@ -102,7 +105,7 @@ func TestAddProfilePhoto_Request(t *testing.T) {
 	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-9","title":"Snapshot"}`)
 
 	b64 := "aGVsbG8="
-	res, err := c.AddProfilePhoto(context.Background(), "profile-1", &PhotoRequest{
+	res, err := c.AddProfilePhoto(context.Background(), "profile-1", &photo.Request{
 		Title: "Snapshot",
 		File:  &b64,
 	})
@@ -120,7 +123,7 @@ func TestAddProfileVideo_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"id":"video-9","title":"Reel"}`)
 
-	_, err := c.AddProfileVideo(context.Background(), "profile-1", &VideoRequest{Title: "Reel"})
+	_, err := c.AddProfileVideo(context.Background(), "profile-1", &video.Request{Title: "Reel"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-video"))
@@ -131,7 +134,7 @@ func TestAddProfileDocument_Request(t *testing.T) {
 	c, ft := newFakeClient(http.StatusOK, `{"id":"document-9","title":"Letter"}`)
 
 	text := "Lorem ipsum"
-	_, err := c.AddProfileDocument(context.Background(), "profile-1", &DocumentRequest{
+	_, err := c.AddProfileDocument(context.Background(), "profile-1", &document.Request{
 		Title: "Letter",
 		Text:  &text,
 	})

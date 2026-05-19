@@ -11,60 +11,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dmalch/go-geni/comment"
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
+	"github.com/dmalch/go-geni/video"
 )
 
 // VideoRequest is the JSON-encoded body for [Client.UpdateVideo].
 // All fields are optional; omitted fields leave the existing value
 // in place.
-// VideoRequest is the JSON-encoded body for [Client.UpdateVideo]
-// and [Client.AddProfileVideo]. File is the Base64-encoded video
-// content for AddProfileVideo only — the /video/add multipart
-// endpoint ([Client.CreateVideo]) uses a streaming io.Reader
-// instead.
-type VideoRequest struct {
-	Title       string  `json:"title,omitempty"`
-	Description string  `json:"description,omitempty"`
-	Date        string  `json:"date,omitempty"`
-	File        *string `json:"file,omitempty"`
-}
-
-// VideoResponse is Geni's Video resource — a single uploaded video
-// (or a link to an externally-hosted video) with metadata and tagging.
-type VideoResponse struct {
-	// Id is the video's identifier.
-	Id string `json:"id,omitempty"`
-	// Guid is the video's legacy global identifier.
-	Guid string `json:"guid,omitempty"`
-	// Title is the video's title.
-	Title string `json:"title,omitempty"`
-	// Description is the video's description.
-	Description string `json:"description,omitempty"`
-	// Date is the video's date, as returned by Geni (string format).
-	Date string `json:"date,omitempty"`
-	// Attribution is the video's attribution string.
-	Attribution string `json:"attribution,omitempty"`
-	// ContentType is the original MIME type of the upload.
-	ContentType string `json:"content_type,omitempty"`
-	// Location is the video's optional location.
-	Location *profile.LocationElement `json:"location,omitempty"`
-	// Tags is the list of profiles tagged in the video (urls or ids
-	// depending on the `only_ids` query parameter).
-	Tags []string `json:"tags,omitempty"`
-	// Sizes maps Geni-defined size names to fully-qualified URLs.
-	Sizes map[string]string `json:"sizes,omitempty"`
-	// Url is the API URL for the video.
-	Url string `json:"url,omitempty"`
-	// CreatedAt / UpdatedAt are the resource lifecycle timestamps.
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
-}
-
-// VideoBulkResponse is the envelope returned by [Client.GetVideos].
-type VideoBulkResponse struct {
-	Results []VideoResponse `json:"results,omitempty"`
-}
 
 // CreateVideoOption customises an outgoing CreateVideo request.
 type CreateVideoOption func(*createVideoOptions)
@@ -100,7 +55,7 @@ func WithVideoDate(date string) CreateVideoOption {
 // encoded video file. `title` is required by Geni and is enforced
 // client-side; `file` and `fileName` may be nil/empty but expect
 // the server to reject the call.
-func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file io.Reader, opts ...CreateVideoOption) (*VideoResponse, error) {
+func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file io.Reader, opts ...CreateVideoOption) (*video.Video, error) {
 	if title == "" {
 		return nil, errInvalidArg("CreateVideo: title is required")
 	}
@@ -151,7 +106,7 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 		return nil, err
 	}
 
-	var video VideoResponse
+	var video video.Video
 	if err := json.Unmarshal(respBody, &video); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -161,7 +116,7 @@ func (c *Client) CreateVideo(ctx context.Context, title, fileName string, file i
 
 // GetVideo fetches a single video by id. Concurrent GetVideo calls
 // are coalesced into one bulk request via transport.BulkCoalescer.
-func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, error) {
+func (c *Client) GetVideo(ctx context.Context, videoId string) (*video.Video, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -169,18 +124,18 @@ func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, 
 		return nil, err
 	}
 
-	coalescer := &transport.BulkCoalescer[VideoResponse, VideoBulkResponse]{
+	coalescer := &transport.BulkCoalescer[video.Video, video.BulkResponse]{
 		CurrentID: videoId,
 		IDPrefix:  "video",
-		DecodeBulk: func(body []byte) (VideoBulkResponse, error) {
-			var env VideoBulkResponse
+		DecodeBulk: func(body []byte) (video.BulkResponse, error) {
+			var env video.BulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		ListResults: func(env VideoBulkResponse) []VideoResponse { return env.Results },
-		IDOfResult:  func(v VideoResponse) string { return v.Id },
+		ListResults: func(env video.BulkResponse) []video.Video { return env.Results },
+		IDOfResult:  func(v video.Video) string { return v.Id },
 	}
 
 	body, err := c.doRequest(ctx, req, coalescer)
@@ -188,7 +143,7 @@ func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, 
 		return nil, err
 	}
 
-	var video VideoResponse
+	var video video.Video
 	if err := json.Unmarshal(body, &video); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -197,14 +152,14 @@ func (c *Client) GetVideo(ctx context.Context, videoId string) (*VideoResponse, 
 }
 
 // GetVideos fetches multiple videos in a single bulk request.
-func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*VideoBulkResponse, error) {
+func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*video.BulkResponse, error) {
 	// Single-id fallback — see GetUnions for the Geni-side quirk.
 	if len(videoIds) == 1 {
 		one, err := c.GetVideo(ctx, videoIds[0])
 		if err != nil {
 			return nil, err
 		}
-		return &VideoBulkResponse{Results: []VideoResponse{*one}}, nil
+		return &video.BulkResponse{Results: []video.Video{*one}}, nil
 	}
 
 	url := BaseURL(c.useSandboxEnv) + "api/video"
@@ -223,7 +178,7 @@ func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*VideoBulkRe
 		return nil, err
 	}
 
-	var videos VideoBulkResponse
+	var videos video.BulkResponse
 	if err := json.Unmarshal(body, &videos); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -234,7 +189,7 @@ func (c *Client) GetVideos(ctx context.Context, videoIds []string) (*VideoBulkRe
 // UpdateVideo mutates the video's title / description / date. Body is
 // JSON-encoded and run through escapeStringToUTF for UTF-8 safety,
 // matching the other update endpoints in the package.
-func (c *Client) UpdateVideo(ctx context.Context, videoId string, request *VideoRequest) (*VideoResponse, error) {
+func (c *Client) UpdateVideo(ctx context.Context, videoId string, request *video.Request) (*video.Video, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)
@@ -255,7 +210,7 @@ func (c *Client) UpdateVideo(ctx context.Context, videoId string, request *Video
 		return nil, err
 	}
 
-	var video VideoResponse
+	var video video.Video
 	if err := json.Unmarshal(body, &video); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -286,16 +241,16 @@ func (c *Client) DeleteVideo(ctx context.Context, videoId string) error {
 }
 
 // TagVideo associates a profile with a video.
-func (c *Client) TagVideo(ctx context.Context, videoId, profileId string) (*VideoResponse, error) {
+func (c *Client) TagVideo(ctx context.Context, videoId, profileId string) (*video.Video, error) {
 	return c.videoTagAction(ctx, videoId, profileId, "tag")
 }
 
 // UntagVideo removes a profile-tag from a video.
-func (c *Client) UntagVideo(ctx context.Context, videoId, profileId string) (*VideoResponse, error) {
+func (c *Client) UntagVideo(ctx context.Context, videoId, profileId string) (*video.Video, error) {
 	return c.videoTagAction(ctx, videoId, profileId, "untag")
 }
 
-func (c *Client) videoTagAction(ctx context.Context, videoId, profileId, action string) (*VideoResponse, error) {
+func (c *Client) videoTagAction(ctx context.Context, videoId, profileId, action string) (*video.Video, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/" + action + "/" + profileId
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -308,7 +263,7 @@ func (c *Client) videoTagAction(ctx context.Context, videoId, profileId, action 
 		return nil, err
 	}
 
-	var video VideoResponse
+	var video video.Video
 	if err := json.Unmarshal(body, &video); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -350,7 +305,7 @@ func (c *Client) GetVideoTags(ctx context.Context, videoId string, page int) (*p
 
 // GetVideoComments returns the paginated list of comments on a video.
 // Mirrors [Client.GetPhotoComments].
-func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int) (*CommentBulkResponse, error) {
+func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/comments"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -369,7 +324,7 @@ func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int)
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err
@@ -379,7 +334,7 @@ func (c *Client) GetVideoComments(ctx context.Context, videoId string, page int)
 
 // AddVideoComment posts a new comment on a video. Mirrors
 // [Client.AddPhotoComment].
-func (c *Client) AddVideoComment(ctx context.Context, videoId, text, title string) (*CommentBulkResponse, error) {
+func (c *Client) AddVideoComment(ctx context.Context, videoId, text, title string) (*comment.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + videoId + "/comment"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -399,7 +354,7 @@ func (c *Client) AddVideoComment(ctx context.Context, videoId, text, title strin
 		return nil, err
 	}
 
-	var comments CommentBulkResponse
+	var comments comment.BulkResponse
 	if err := json.Unmarshal(body, &comments); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
 		return nil, err

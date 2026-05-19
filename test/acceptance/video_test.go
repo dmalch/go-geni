@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/video"
 )
 
 var _ = Describe("Video API", func() {
@@ -28,7 +29,7 @@ var _ = Describe("Video API", func() {
 	// We send a small non-mp4 byte payload labeled as .mp4 so the
 	// multipart file part is present; if Geni does content-type
 	// validation we Skip rather than ship a real video fixture.
-	createOrSkip := func() *geni.VideoResponse {
+	createOrSkip := func() *video.Video {
 		GinkgoHelper()
 		title := fmt.Sprintf("AccCreateVideo-%d", time.Now().UnixNano())
 		payload := bytes.NewReader([]byte("not-really-a-video-just-placeholder-bytes"))
@@ -63,7 +64,7 @@ var _ = Describe("Video API", func() {
 			created := createOrSkip()
 			newTitle := "AccUpdateVideoAfter"
 
-			updated, err := client.UpdateVideo(ctx, created.Id, &geni.VideoRequest{
+			updated, err := client.UpdateVideo(ctx, created.Id, &video.Request{
 				Title: newTitle,
 			})
 			Expect(err).ToNot(HaveOccurred())

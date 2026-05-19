@@ -7,30 +7,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/dmalch/go-geni/document"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/project"
 )
 
-type ProjectBulkResponse struct {
-	Results  []ProjectResponse `json:"results,omitempty"`
-	Page     int               `json:"page,omitempty"`
-	NextPage string            `json:"next_page,omitempty"`
-	PrevPage string            `json:"prev_page,omitempty"`
-}
-
-type ProjectResponse struct {
-	// The project's id
-	Id string `json:"id,omitempty"`
-	// The project's name
-	Name string `json:"name,omitempty"`
-	// The project's description
-	Description *string `json:"description,omitempty"`
-	// UpdatedAt is the timestamp of when the project was last updated
-	UpdatedAt string `json:"updated_at,omitempty"`
-	// CreatedAt is the timestamp of when the project was created
-	CreatedAt string `json:"created_at,omitempty"`
-}
-
-func (c *Client) GetProject(ctx context.Context, projectId string) (*ProjectResponse, error) {
+func (c *Client) GetProject(ctx context.Context, projectId string) (*project.Project, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + projectId
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -43,7 +25,7 @@ func (c *Client) GetProject(ctx context.Context, projectId string) (*ProjectResp
 		return nil, err
 	}
 
-	var project ProjectResponse
+	var project project.Project
 	err = json.Unmarshal(body, &project)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
@@ -137,7 +119,7 @@ func (c *Client) AddProfileToProject(ctx context.Context, profileId, projectId s
 	return &profileResponse, nil
 }
 
-func (c *Client) AddDocumentToProject(ctx context.Context, docimentId, projectId string) (*DocumentBulkResponse, error) {
+func (c *Client) AddDocumentToProject(ctx context.Context, docimentId, projectId string) (*document.BulkResponse, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + projectId + "/add_documents"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -154,7 +136,7 @@ func (c *Client) AddDocumentToProject(ctx context.Context, docimentId, projectId
 		return nil, err
 	}
 
-	var documentResponse DocumentBulkResponse
+	var documentResponse document.BulkResponse
 	err = json.Unmarshal(body, &documentResponse)
 	if err != nil {
 		slog.Error("Error unmarshaling response", "error", err)

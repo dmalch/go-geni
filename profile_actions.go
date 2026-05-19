@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dmalch/go-geni/document"
+	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/video"
 )
 
 // ProfileComparison is the response shape of [Client.CompareProfiles].
@@ -177,31 +180,31 @@ func (c *Client) UpdateProfileBasics(ctx context.Context, profileId string, requ
 // created Photo. Unlike [Client.CreatePhoto] (which uses
 // multipart/form-data), this endpoint takes a JSON body with the
 // file encoded as Base64 in PhotoRequest.File.
-func (c *Client) AddProfilePhoto(ctx context.Context, profileId string, request *PhotoRequest) (*PhotoResponse, error) {
-	return doJSONPost[PhotoResponse](ctx, c, profileId, "add-photo", request)
+func (c *Client) AddProfilePhoto(ctx context.Context, profileId string, request *photo.Request) (*photo.Photo, error) {
+	return doJSONPost[photo.Photo](ctx, c, profileId, "add-photo", request)
 }
 
 // AddProfileVideo attaches a new video to a profile. Returns the
 // created Video. Unlike [Client.CreateVideo] (which uses
 // multipart/form-data), this endpoint takes a JSON body with the
 // file encoded as Base64 in VideoRequest.File.
-func (c *Client) AddProfileVideo(ctx context.Context, profileId string, request *VideoRequest) (*VideoResponse, error) {
-	return doJSONPost[VideoResponse](ctx, c, profileId, "add-video", request)
+func (c *Client) AddProfileVideo(ctx context.Context, profileId string, request *video.Request) (*video.Video, error) {
+	return doJSONPost[video.Video](ctx, c, profileId, "add-video", request)
 }
 
 // AddProfileDocument attaches a new document to a profile. Returns
 // the created Document. Accepts the same DocumentRequest used by
 // [Client.CreateDocument] — text/file/source_url are mutually
 // exclusive content sources.
-func (c *Client) AddProfileDocument(ctx context.Context, profileId string, request *DocumentRequest) (*DocumentResponse, error) {
-	return doJSONPost[DocumentResponse](ctx, c, profileId, "add-document", request)
+func (c *Client) AddProfileDocument(ctx context.Context, profileId string, request *document.Request) (*document.Document, error) {
+	return doJSONPost[document.Document](ctx, c, profileId, "add-document", request)
 }
 
 // AddProfileMugshot sets a profile's mugshot — either by uploading a
 // new image (MugshotRequest.File, Base64) or by reusing an existing
 // photo (MugshotRequest.PhotoId).
-func (c *Client) AddProfileMugshot(ctx context.Context, profileId string, request *MugshotRequest) (*PhotoResponse, error) {
-	return doJSONPost[PhotoResponse](ctx, c, profileId, "add-mugshot", request)
+func (c *Client) AddProfileMugshot(ctx context.Context, profileId string, request *MugshotRequest) (*photo.Photo, error) {
+	return doJSONPost[photo.Photo](ctx, c, profileId, "add-mugshot", request)
 }
 
 // doJSONPost is the shared body of AddProfilePhoto / AddProfileVideo

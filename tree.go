@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/union"
 )
 
 // FamilyNodes is the heterogeneous map of related entities returned by
@@ -39,7 +40,7 @@ func (n FamilyNodes) Profile(id string) (*profile.Profile, error) {
 
 // Union decodes the node at id into a [UnionResponse]. It errors if id
 // does not name a union node in the map.
-func (n FamilyNodes) Union(id string) (*UnionResponse, error) {
+func (n FamilyNodes) Union(id string) (*union.Union, error) {
 	if !strings.HasPrefix(id, "union-") {
 		return nil, fmt.Errorf("not a union id: %s", id)
 	}
@@ -47,7 +48,7 @@ func (n FamilyNodes) Union(id string) (*UnionResponse, error) {
 	if !ok {
 		return nil, fmt.Errorf("union node %s not found", id)
 	}
-	var u UnionResponse
+	var u union.Union
 	if err := json.Unmarshal(raw, &u); err != nil {
 		return nil, fmt.Errorf("decode union node %s: %w", id, err)
 	}

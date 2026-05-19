@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	photopkg "github.com/dmalch/go-geni/photo"
 )
 
 // tinyPng returns a 1×1 black PNG generated in-process so we don't
@@ -121,7 +122,7 @@ var _ = Describe("Photo API", func() {
 			DeferCleanup(func() { _ = client.DeletePhoto(context.Background(), photo.Id) })
 
 			newTitle := "AccUpdatePhotoAfter"
-			updated, err := client.UpdatePhoto(ctx, photo.Id, &geni.PhotoRequest{
+			updated, err := client.UpdatePhoto(ctx, photo.Id, &photopkg.Request{
 				Title:       newTitle,
 				Description: "edited by acceptance",
 			})

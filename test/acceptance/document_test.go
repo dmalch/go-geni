@@ -8,13 +8,14 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/document"
 )
 
 // createFixtureDocument creates a text-only document in the sandbox
 // and registers a DeferCleanup hook to delete it.
-func createFixtureDocument(ctx context.Context, client *geni.Client, title, body string) *geni.DocumentResponse {
+func createFixtureDocument(ctx context.Context, client *geni.Client, title, body string) *document.Document {
 	GinkgoHelper()
-	created, err := client.CreateDocument(ctx, &geni.DocumentRequest{
+	created, err := client.CreateDocument(ctx, &document.Request{
 		Title: title,
 		Text:  strPtr(body),
 	})
@@ -50,7 +51,7 @@ var _ = Describe("Document API", func() {
 		It("updates a document title", func() {
 			created := createFixtureDocument(ctx, client, "AccUpdateBefore", "initial")
 
-			updated, err := client.UpdateDocument(ctx, created.Id, &geni.DocumentRequest{
+			updated, err := client.UpdateDocument(ctx, created.Id, &document.Request{
 				Title: "AccUpdateAfter",
 			})
 
@@ -64,7 +65,7 @@ var _ = Describe("Document API", func() {
 			// post-delete state inline. The sandbox soft-deletes
 			// documents (a follow-up GET still succeeds), so we only
 			// assert the delete call itself returns no error.
-			created, err := client.CreateDocument(ctx, &geni.DocumentRequest{
+			created, err := client.CreateDocument(ctx, &document.Request{
 				Title: "AccDeleteMe",
 				Text:  strPtr("to-be-deleted"),
 			})

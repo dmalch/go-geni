@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/dmalch/go-geni/video"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -106,7 +107,7 @@ var _ = Describe("Client video endpoints", func() {
 				[]byte(`{"id":"video-1","title":"After"}`),
 				http.MethodPost, "/api/video-1/update")
 
-			video, err := client.UpdateVideo(ctx, "video-1", &VideoRequest{Title: "After"})
+			video, err := client.UpdateVideo(ctx, "video-1", &video.Request{Title: "After"})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(video.Title).To(Equal("After"))

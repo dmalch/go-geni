@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/photoalbum"
 )
 
 var _ = Describe("Photo Album API", func() {
@@ -26,10 +27,10 @@ var _ = Describe("Photo Album API", func() {
 	// registers a no-op cleanup (the photo_album resource has no
 	// documented delete endpoint). Sandbox state accumulates;
 	// using high-entropy names so test runs don't collide.
-	createFixtureAlbum := func() *geni.PhotoAlbum {
+	createFixtureAlbum := func() *photoalbum.PhotoAlbum {
 		GinkgoHelper()
 		desc := "sandbox-test"
-		album, err := client.CreatePhotoAlbum(ctx, &geni.PhotoAlbumRequest{
+		album, err := client.CreatePhotoAlbum(ctx, &photoalbum.Request{
 			Name:        fmt.Sprintf("AccAlbum-%d", time.Now().UnixNano()),
 			Description: &desc,
 		})
@@ -61,7 +62,7 @@ var _ = Describe("Photo Album API", func() {
 			created := createFixtureAlbum()
 			newName := fmt.Sprintf("AccAlbumRenamed-%d", time.Now().UnixNano())
 
-			updated, err := client.UpdatePhotoAlbum(ctx, created.Id, &geni.PhotoAlbumRequest{
+			updated, err := client.UpdatePhotoAlbum(ctx, created.Id, &photoalbum.Request{
 				Name: newName,
 			})
 			Expect(err).ToNot(HaveOccurred())
