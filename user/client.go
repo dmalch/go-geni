@@ -76,6 +76,22 @@ func (c *Client) FollowedDocuments(ctx context.Context, page int) (*document.Bul
 	return &res, nil
 }
 
+// UploadedDocuments returns the paginated list of documents the
+// authenticated user has uploaded.
+func (c *Client) UploadedDocuments(ctx context.Context, page int) (*document.BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/user/uploaded-documents"
+	body, err := c.getPaginated(ctx, url, page)
+	if err != nil {
+		return nil, err
+	}
+	var res document.BulkResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &res, nil
+}
+
 // FollowedProjects returns the paginated list of projects the
 // authenticated user follows.
 func (c *Client) FollowedProjects(ctx context.Context, page int) (*project.BulkResponse, error) {

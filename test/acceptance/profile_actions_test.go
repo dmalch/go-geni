@@ -126,7 +126,7 @@ var _ = Describe("Profile actions API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(doc.Id).To(HavePrefix("document-"))
-			DeferCleanup(func() { _ = client.DeleteDocument(context.Background(), doc.Id) })
+			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.Id) })
 		})
 	})
 

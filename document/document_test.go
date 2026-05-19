@@ -1,19 +1,50 @@
-package geni
+package document
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
-func TestGetDocumentComments_Request(t *testing.T) {
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
+
+func TestComments_Request(t *testing.T) {
 	t.Run("GETs /api/<documentId>/comments and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetDocumentComments(context.Background(), "doc-1", 0)
+		_, err := c.Comments(context.Background(), "doc-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -25,7 +56,7 @@ func TestGetDocumentComments_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetDocumentComments(context.Background(), "doc-1", 2)
+		_, err := c.Comments(context.Background(), "doc-1", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
@@ -43,7 +74,7 @@ func TestGetDocumentComments_Request(t *testing.T) {
 		}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetDocumentComments(context.Background(), "doc-1", 1)
+		res, err := c.Comments(context.Background(), "doc-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
@@ -58,18 +89,18 @@ func TestGetDocumentComments_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.GetDocumentComments(context.Background(), "doc-1", 0)
+		_, err := c.Comments(context.Background(), "doc-1", 0)
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
 
-func TestAddDocumentComment_Request(t *testing.T) {
+func TestAddComment_Request(t *testing.T) {
 	t.Run("POSTs to /api/<documentId>/comment with text and title", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.AddDocumentComment(context.Background(), "doc-1", "hello", "greeting")
+		_, err := c.AddComment(context.Background(), "doc-1", "hello", "greeting")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -82,7 +113,7 @@ func TestAddDocumentComment_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.AddDocumentComment(context.Background(), "doc-1", "hello", "")
+		_, err := c.AddComment(context.Background(), "doc-1", "hello", "")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("text")).To(Equal("hello"))
@@ -93,18 +124,18 @@ func TestAddDocumentComment_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
 
-		_, err := c.AddDocumentComment(context.Background(), "doc-1", "hello", "")
+		_, err := c.AddComment(context.Background(), "doc-1", "hello", "")
 
-		Expect(err).To(MatchError(ErrAccessDenied))
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
 }
 
-func TestGetDocumentTags_Request(t *testing.T) {
+func TestTags_Request(t *testing.T) {
 	t.Run("GETs /api/<documentId>/tags and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetDocumentTags(context.Background(), "document-1", 0)
+		_, err := c.Tags(context.Background(), "document-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -116,7 +147,7 @@ func TestGetDocumentTags_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetDocumentTags(context.Background(), "document-1", 2)
+		_, err := c.Tags(context.Background(), "document-1", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
@@ -127,7 +158,7 @@ func TestGetDocumentTags_Request(t *testing.T) {
 		body := `{"results":[{"id":"profile-1"},{"id":"profile-2"}],"page":1,"next_page":"…?page=2"}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetDocumentTags(context.Background(), "document-1", 1)
+		res, err := c.Tags(context.Background(), "document-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
@@ -137,17 +168,17 @@ func TestGetDocumentTags_Request(t *testing.T) {
 	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetDocumentTags(context.Background(), "document-1", 0)
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		_, err := c.Tags(context.Background(), "document-1", 0)
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
 
-func TestGetDocumentProjects_Request(t *testing.T) {
+func TestProjects_Request(t *testing.T) {
 	t.Run("GETs /api/<documentId>/projects and omits page by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
 
-		_, err := c.GetDocumentProjects(context.Background(), "doc-1", 0)
+		_, err := c.Projects(context.Background(), "doc-1", 0)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -155,7 +186,7 @@ func TestGetDocumentProjects_Request(t *testing.T) {
 		Expect(ft.lastRequest.URL.Query().Has("page")).To(BeFalse())
 	})
 
-	t.Run("decodes ProjectBulkResponse with pagination", func(t *testing.T) {
+	t.Run("decodes project.BulkResponse with pagination", func(t *testing.T) {
 		RegisterTestingT(t)
 		body := `{
 			"results": [
@@ -167,7 +198,7 @@ func TestGetDocumentProjects_Request(t *testing.T) {
 		}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetDocumentProjects(context.Background(), "doc-1", 1)
+		res, err := c.Projects(context.Background(), "doc-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))

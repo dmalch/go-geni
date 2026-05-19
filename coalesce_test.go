@@ -181,7 +181,7 @@ func TestCoalesce_GetUnion(t *testing.T) {
 
 func TestCoalesce_GetDocument(t *testing.T) {
 	runCoalesceTest(t, "document", func(c *Client, ctx context.Context, id string) error {
-		_, err := c.GetDocument(ctx, id)
+		_, err := c.Document().Get(ctx, id)
 		return err
 	})
 }

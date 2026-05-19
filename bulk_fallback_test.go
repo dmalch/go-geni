@@ -46,7 +46,7 @@ func TestGetDocuments_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"document-1","title":"X"}`)
 
-		res, err := c.GetDocuments(context.Background(), []string{"document-1"})
+		res, err := c.Document().GetBulk(context.Background(), []string{"document-1"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document-1"))
@@ -59,7 +59,7 @@ func TestGetDocuments_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"document-1"},{"id":"document-2"}]}`)
 
-		_, err := c.GetDocuments(context.Background(), []string{"document-1", "document-2"})
+		_, err := c.Document().GetBulk(context.Background(), []string{"document-1", "document-2"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document"))

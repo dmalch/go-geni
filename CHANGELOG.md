@@ -162,6 +162,27 @@
   `readMultipart` (multipart_test.go) added in PR 11 are removed —
   `errInvalidArg` now lives only inside `photo/` and `video/`, and
   `readMultipart` lives inside each package's tests.
+- **BREAKING:** Document resource methods (11 of them) lift into
+  `github.com/dmalch/go-geni/document` (types lifted in PR 7). Root
+  gains `Document() *document.Client`. The Document coalescer call
+  site moves with it.
+  - `client.CreateDocument(ctx, req)`              → `client.Document().Create(ctx, req)`
+  - `client.GetDocument(ctx, id)`                  → `client.Document().Get(ctx, id)`
+  - `client.GetDocuments(ctx, ids)`                → `client.Document().GetBulk(ctx, ids)`
+  - `client.UpdateDocument(ctx, id, req)`          → `client.Document().Update(ctx, id, req)`
+  - `client.DeleteDocument(ctx, id)`               → `client.Document().Delete(ctx, id)`
+  - `client.TagDocument(ctx, did, pid)`            → `client.Document().Tag(ctx, did, pid)`
+  - `client.UntagDocument(ctx, did, pid)`          → `client.Document().Untag(ctx, did, pid)`
+  - `client.GetDocumentTags(ctx, did, p)`          → `client.Document().Tags(ctx, did, p)`
+  - `client.GetDocumentComments(ctx, did, p)`      → `client.Document().Comments(ctx, did, p)`
+  - `client.AddDocumentComment(ctx, did, t, ttl)`  → `client.Document().AddComment(ctx, did, t, ttl)`
+  - `client.GetDocumentProjects(ctx, did, p)`      → `client.Document().Projects(ctx, did, p)`
+- **BREAKING:** `GetUploadedDocuments` moves from root to the user
+  resource (it's user-scoped — `/api/user/uploaded-documents`):
+  - `client.GetUploadedDocuments(ctx, page)` → `client.User().UploadedDocuments(ctx, page)`
+- **BREAKING:** `AddDocumentToProject` moves to the document resource
+  to break a circular import between document/ and project/:
+  - `client.Project().AddDocument(ctx, docId, projectId)` → `client.Document().AddToProject(ctx, docId, projectId)`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

@@ -87,7 +87,7 @@ func TestGetDocuments_BulkThreeIds(t *testing.T) {
 		{"id":"document-3","title":"C"}
 	]}`)
 
-	res, err := c.GetDocuments(context.Background(), []string{"document-1", "document-2", "document-3"})
+	res, err := c.Document().GetBulk(context.Background(), []string{"document-1", "document-2", "document-3"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document"))
@@ -100,13 +100,13 @@ func TestGetDocuments_BulkErrorMapping(t *testing.T) {
 	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetDocuments(context.Background(), []string{"document-1", "document-2"})
+		_, err := c.Document().GetBulk(context.Background(), []string{"document-1", "document-2"})
 		Expect(err).To(MatchError(ErrResourceNotFound))
 	})
 	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetDocuments(context.Background(), []string{"document-1", "document-2"})
+		_, err := c.Document().GetBulk(context.Background(), []string{"document-1", "document-2"})
 		Expect(err).To(MatchError(ErrAccessDenied))
 	})
 }
