@@ -53,7 +53,7 @@ var _ = Describe("Project API", func() {
 		It("adds a freshly-created document to the project", func() {
 			doc := createFixtureDocument(ctx, client, "AccProjectDoc", "project content")
 
-			res, err := client.Project().AddDocument(ctx, doc.Id, projectId)
+			res, err := client.Document().AddToProject(ctx, doc.Id, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})

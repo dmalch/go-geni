@@ -15,13 +15,13 @@ import (
 // and registers a DeferCleanup hook to delete it.
 func createFixtureDocument(ctx context.Context, client *geni.Client, title, body string) *document.Document {
 	GinkgoHelper()
-	created, err := client.CreateDocument(ctx, &document.Request{
+	created, err := client.Document().Create(ctx, &document.Request{
 		Title: title,
 		Text:  strPtr(body),
 	})
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
-		_ = client.DeleteDocument(context.Background(), created.Id)
+		_ = client.Document().Delete(context.Background(), created.Id)
 	})
 	return created
 }
@@ -42,7 +42,7 @@ var _ = Describe("Document API", func() {
 			created := createFixtureDocument(ctx, client, "AccCreateDoc", "hello acceptance")
 			Expect(created.Id).ToNot(BeEmpty())
 
-			got, err := client.GetDocument(ctx, created.Id)
+			got, err := client.Document().Get(ctx, created.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Id).To(Equal(created.Id))
 			Expect(got.Title).To(Equal("AccCreateDoc"))
@@ -51,7 +51,7 @@ var _ = Describe("Document API", func() {
 		It("updates a document title", func() {
 			created := createFixtureDocument(ctx, client, "AccUpdateBefore", "initial")
 
-			updated, err := client.UpdateDocument(ctx, created.Id, &document.Request{
+			updated, err := client.Document().Update(ctx, created.Id, &document.Request{
 				Title: "AccUpdateAfter",
 			})
 
@@ -65,13 +65,13 @@ var _ = Describe("Document API", func() {
 			// post-delete state inline. The sandbox soft-deletes
 			// documents (a follow-up GET still succeeds), so we only
 			// assert the delete call itself returns no error.
-			created, err := client.CreateDocument(ctx, &document.Request{
+			created, err := client.Document().Create(ctx, &document.Request{
 				Title: "AccDeleteMe",
 				Text:  strPtr("to-be-deleted"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(client.DeleteDocument(ctx, created.Id)).To(Succeed())
+			Expect(client.Document().Delete(ctx, created.Id)).To(Succeed())
 		})
 	})
 
@@ -84,10 +84,10 @@ var _ = Describe("Document API", func() {
 			profile := createFixtureProfile(ctx, client, "DocTag")
 			doc := createFixtureDocument(ctx, client, "AccTagDoc", "tagged content")
 
-			_, err := client.TagDocument(ctx, doc.Id, profile.Id)
+			_, err := client.Document().Tag(ctx, doc.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tags, err := client.GetDocumentTags(ctx, doc.Id, 0)
+			tags, err := client.Document().Tags(ctx, doc.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(tags.Results))
 			for _, p := range tags.Results {
@@ -95,10 +95,10 @@ var _ = Describe("Document API", func() {
 			}
 			Expect(ids).To(ContainElement(profile.Id))
 
-			_, err = client.UntagDocument(ctx, doc.Id, profile.Id)
+			_, err = client.Document().Untag(ctx, doc.Id, profile.Id)
 			Expect(err).ToNot(HaveOccurred())
 
-			tagsAfter, err := client.GetDocumentTags(ctx, doc.Id, 0)
+			tagsAfter, err := client.Document().Tags(ctx, doc.Id, 0)
 			Expect(err).ToNot(HaveOccurred())
 			idsAfter := make([]string, 0, len(tagsAfter.Results))
 			for _, p := range tagsAfter.Results {
@@ -119,7 +119,7 @@ var _ = Describe("Document API", func() {
 			b := createFixtureDocument(ctx, client, "AccBulkB", "b")
 
 			Eventually(func(g Gomega) {
-				res, err := client.GetDocuments(ctx, []string{a.Id, b.Id})
+				res, err := client.Document().GetBulk(ctx, []string{a.Id, b.Id})
 				g.Expect(err).ToNot(HaveOccurred())
 				gotIds := make([]string, 0, len(res.Results))
 				for _, d := range res.Results {
@@ -135,7 +135,7 @@ var _ = Describe("Document API", func() {
 		It("GetUploadedDocuments returns the caller's uploads page", func() {
 			createFixtureDocument(ctx, client, "AccUploadedFixture", "seed")
 
-			res, err := client.GetUploadedDocuments(ctx, 1)
+			res, err := client.User().UploadedDocuments(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).ToNot(BeEmpty())
 		})
@@ -157,11 +157,11 @@ var _ = Describe("Document API", func() {
 			doc := createFixtureDocument(ctx, client, "AccCommentDoc", "to-be-commented")
 			body := "first comment"
 
-			_, err := client.AddDocumentComment(ctx, doc.Id, body, "title-1")
+			_, err := client.Document().AddComment(ctx, doc.Id, body, "title-1")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				listed, err := client.GetDocumentComments(ctx, doc.Id, 0)
+				listed, err := client.Document().Comments(ctx, doc.Id, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				texts := make([]string, 0, len(listed.Results))
 				for _, c := range listed.Results {
@@ -183,7 +183,7 @@ var _ = Describe("Document API", func() {
 		It("returns the document's project list (possibly empty)", func() {
 			doc := createFixtureDocument(ctx, client, "AccProjectsDoc", "project-listing")
 
-			res, err := client.GetDocumentProjects(ctx, doc.Id, 0)
+			res, err := client.Document().Projects(ctx, doc.Id, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())

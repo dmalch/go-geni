@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/dmalch/go-geni/document"
 	"github.com/dmalch/go-geni/profile"
 	"github.com/dmalch/go-geni/transport"
 )
@@ -93,34 +92,6 @@ func (c *Client) AddProfile(ctx context.Context, profileId, projectId string) (*
 		return nil, err
 	}
 	return &p, nil
-}
-
-// AddDocument tags a document into a project. Returns the bulk
-// envelope of documents Geni associates with the project after the
-// add.
-func (c *Client) AddDocument(ctx context.Context, documentId, projectId string) (*document.BulkResponse, error) {
-	url := c.transport.BaseURL() + "api/" + projectId + "/add_documents"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		slog.Error("Error creating request", "error", err)
-		return nil, err
-	}
-
-	query := req.URL.Query()
-	query.Add("ids", documentId)
-	req.URL.RawQuery = query.Encode()
-
-	body, err := c.transport.Do(ctx, req, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var docs document.BulkResponse
-	if err := json.Unmarshal(body, &docs); err != nil {
-		slog.Error("Error unmarshaling response", "error", err)
-		return nil, err
-	}
-	return &docs, nil
 }
 
 func (c *Client) profileListing(ctx context.Context, projectId, sublist string, page int) (*profile.BulkResponse, error) {

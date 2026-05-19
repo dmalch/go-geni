@@ -147,7 +147,7 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 			ids := []string{a.Id, b.Id, c.Id}
 
 			results, errs := runConcurrent(ids, func(id string) (string, error) {
-				d, err := client.GetDocument(ctx, id)
+				d, err := client.Document().Get(ctx, id)
 				if err != nil {
 					return "", err
 				}

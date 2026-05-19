@@ -76,7 +76,7 @@ var _ = Describe("Profile media listings", func() {
 				Text:  &text,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeleteDocument(context.Background(), doc.Id) })
+			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.Id) })
 
 			Eventually(func(g Gomega) {
 				listed, err := client.GetProfileDocuments(ctx, profile.Id, 0)
