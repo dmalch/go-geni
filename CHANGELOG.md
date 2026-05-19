@@ -1,3 +1,27 @@
+## 0.18.0 (Unreleased)
+
+- **Internal restructuring — first PR of the pre-1.0 reshape.**
+  HTTP plumbing (auth, rate limiting, retry, error sentinels, bulk
+  coalescing, the `escapeStringToUTF` helper) moves out of the root
+  package into a new `github.com/dmalch/go-geni/transport` package.
+  The root `Client` now holds a `*transport.Client` and delegates;
+  the public surface is **unchanged** — every endpoint method, the
+  `BaseURL` helper, and the `ErrResourceNotFound` /
+  `ErrAccessDenied` sentinels continue to live on the root package
+  and work identically. Subsequent PRs will lift each resource
+  (Profile, Union, Document, …) into its own sub-package.
+- `bulkCoalescer[Item, Envelope]` renamed to
+  `transport.BulkCoalescer[Item, Envelope]` with exported fields
+  (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,
+  `IDOfResult`) and methods (`RequestKey`, `PrepareBulkRequest`,
+  `ParseBulkResponse`). The Coalescer interface in `transport` is
+  the new contract for opt-in bulk-read coalescing.
+- Field rename: `Id` → `ID` on the new `BulkCoalescer` type only
+  (per the 1.0 acronym policy: `Id` → `ID` allowed; `Url`, `Guid`,
+  etc. stay as-is). The wire-bearing response types (`ProfileResponse`,
+  `UnionResponse`, …) keep `Id` until their respective sub-package
+  PRs.
+
 ## 0.17.0
 
 - Photo Album API: four new methods completing the resource.

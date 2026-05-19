@@ -32,7 +32,7 @@ func newClientFor(server *httptest.Server) *Client {
 	Expect(err).ToNot(HaveOccurred())
 
 	c := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "acc-test"}), true)
-	c.client = &http.Client{Transport: &rewriteTransport{base: http.DefaultTransport, target: target}}
+	c.transport.SetHTTPClient(&http.Client{Transport: &rewriteTransport{base: http.DefaultTransport, target: target}})
 	return c
 }
 

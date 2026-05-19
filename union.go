@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 type UnionRequest struct {
@@ -47,21 +49,21 @@ func (c *Client) GetUnion(ctx context.Context, unionId string) (*UnionResponse, 
 		return nil, err
 	}
 
-	coalescer := bulkCoalescer[UnionResponse, UnionBulkResponse]{
-		currentId: unionId,
-		idPrefix:  "union",
-		decodeBulk: func(body []byte) (UnionBulkResponse, error) {
+	coalescer := &transport.BulkCoalescer[UnionResponse, UnionBulkResponse]{
+		CurrentID: unionId,
+		IDPrefix:  "union",
+		DecodeBulk: func(body []byte) (UnionBulkResponse, error) {
 			var env UnionBulkResponse
 			if err := json.Unmarshal(body, &env); err != nil {
 				return env, err
 			}
 			return env, nil
 		},
-		listResults: func(env UnionBulkResponse) []UnionResponse { return env.Results },
-		idOfResult:  func(u UnionResponse) string { return u.Id },
+		ListResults: func(env UnionBulkResponse) []UnionResponse { return env.Results },
+		IDOfResult:  func(u UnionResponse) string { return u.Id },
 	}
 
-	body, err := c.doRequest(ctx, req, coalescer.options()...)
+	body, err := c.doRequest(ctx, req, coalescer)
 	if err != nil {
 		return nil, err
 	}

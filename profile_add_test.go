@@ -27,7 +27,7 @@ func (t *captureTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 func newCapturingClient() (*Client, *captureTransport) {
 	ct := &captureTransport{}
 	c := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
-	c.client = &http.Client{Transport: ct}
+	c.transport.SetHTTPClient(&http.Client{Transport: ct})
 	return c, ct
 }
 
