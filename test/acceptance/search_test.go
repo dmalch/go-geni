@@ -41,7 +41,7 @@ var _ = Describe("SearchProfiles", func() {
 		created := createFixtureProfile(ctx, client, uniq)
 
 		Eventually(func(g Gomega) {
-			res, err := client.SearchProfiles(ctx, uniq, 1)
+			res, err := client.Search().Profiles(ctx, uniq, 1)
 			g.Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(res.Results))
 			for _, p := range res.Results {

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/dmalch/go-geni/revision"
+	"github.com/dmalch/go-geni/search"
 	"github.com/dmalch/go-geni/stats"
 	"github.com/dmalch/go-geni/surname"
 	"github.com/dmalch/go-geni/transport"
@@ -33,6 +34,7 @@ type Client struct {
 	stats         *stats.Client
 	surname       *surname.Client
 	revision      *revision.Client
+	search        *search.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -45,6 +47,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		stats:         stats.NewClient(t),
 		surname:       surname.NewClient(t),
 		revision:      revision.NewClient(t),
+		search:        search.NewClient(t),
 	}
 }
 
@@ -60,6 +63,10 @@ func (c *Client) Surname() *surname.Client { return c.surname }
 // Revision returns the resource client for the Revision resource.
 // Replaces the legacy Client.GetRevision / GetRevisions methods.
 func (c *Client) Revision() *revision.Client { return c.revision }
+
+// Search returns the resource client for /profile/search.
+// Replaces the legacy Client.SearchProfiles method.
+func (c *Client) Search() *search.Client { return c.search }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {
