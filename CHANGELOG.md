@@ -31,6 +31,17 @@
   generic `{"result":"OK"}` envelope returned by delete / tag /
   follow endpoints moves into the transport package so each
   resource doesn't redeclare it.
+- **BREAKING:** Surname resource lifts into a new
+  `github.com/dmalch/go-geni/surname` package.
+  - `client.GetSurname(ctx, id)` → `client.Surname().Get(ctx, id)`
+  - `client.GetSurnameFollowers(ctx, id, page)` → `client.Surname().Followers(ctx, id, page)`
+  - `client.GetSurnameProfiles(ctx, id, page)` → `client.Surname().Profiles(ctx, id, page)`
+  - `*geni.Surname` → `*surname.Surname`
+  - `*geni.SurnameBulkResponse` → `*surname.BulkResponse` (still
+    returned by `client.GetFollowedSurnames`, which stays on root
+    until the user/ resource lifts later)
+  - New helper `profile.StripURLs(p, apiURL)` lets sub-packages
+    post-process Profile listings without depending on root.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

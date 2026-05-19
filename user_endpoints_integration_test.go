@@ -82,7 +82,7 @@ var _ = Describe("User endpoints", func() {
 			Expect(res.Results).To(HaveLen(1))
 		})
 
-		It("GetFollowedSurnames decodes the new SurnameBulkResponse", func() {
+		It("GetFollowedSurnames decodes a paginated surname.BulkResponse", func() {
 			serve(http.StatusOK,
 				[]byte(`{"results":[{"id":"surname-1","slugged_name":"smith"},{"id":"surname-2","slugged_name":"jones"}],"page":1}`),
 				http.MethodGet, "/api/user/followed-surnames")
