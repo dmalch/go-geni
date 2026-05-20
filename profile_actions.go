@@ -107,7 +107,7 @@ func (c *Client) CompareProfiles(ctx context.Context, profile1Id, profile2Id str
 // records an adopted or foster relationship.
 //
 // Counterpart to AddChild / AddPartner / AddSibling.
-func (c *Client) AddParent(ctx context.Context, profileId string, request *profile.Request, opts ...AddOption) (*profile.Profile, error) {
+func (c *Client) AddParent(ctx context.Context, profileId string, request *profile.Request, opts ...profile.AddOption) (*profile.Profile, error) {
 	jsonBody, err := json.Marshal(request)
 	if err != nil {
 		slog.Error("Error marshaling request", "error", err)

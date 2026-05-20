@@ -379,7 +379,7 @@ func (c *Client) AddPartner(ctx context.Context, profileId string) (*profile.Pro
 	return &profile, nil
 }
 
-func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOption) (*profile.Profile, error) {
+func (c *Client) AddChild(ctx context.Context, profileId string, opts ...profile.AddOption) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/add-child"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -409,7 +409,7 @@ func (c *Client) AddChild(ctx context.Context, profileId string, opts ...AddOpti
 	return &profile, nil
 }
 
-func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...AddOption) (*profile.Profile, error) {
+func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...profile.AddOption) (*profile.Profile, error) {
 	url := BaseURL(c.useSandboxEnv) + "api/" + profileId + "/add-sibling"
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {

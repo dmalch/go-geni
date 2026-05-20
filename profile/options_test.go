@@ -1,4 +1,4 @@
-package geni
+package profile
 
 import (
 	"net/http"

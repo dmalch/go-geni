@@ -121,7 +121,7 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 			ids := []string{unionA, unionB, unionC}
 
 			results, errs := runConcurrent(ids, func(id string) (string, error) {
-				u, err := client.GetUnion(ctx, id)
+				u, err := client.Union().Get(ctx, id)
 				if err != nil {
 					return "", err
 				}

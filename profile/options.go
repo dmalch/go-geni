@@ -1,4 +1,4 @@
-package geni
+package profile
 
 import "net/http"
 
@@ -6,8 +6,8 @@ import "net/http"
 // endpoints (add-child, add-sibling, add-partner).
 type AddOption func(*http.Request)
 
-// WithModifier sets the relationship_modifier query parameter. An empty
-// value is a no-op.
+// WithModifier sets the relationship_modifier query parameter. An
+// empty value is a no-op.
 func WithModifier(modifier string) AddOption {
 	return func(r *http.Request) {
 		if modifier == "" {

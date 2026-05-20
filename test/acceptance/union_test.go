@@ -55,7 +55,7 @@ var _ = Describe("Union API", func() {
 		It("returns the union joining two newly-paired profiles", func() {
 			focus, partner, unionId := createCoupleAndUnion(ctx, client)
 
-			union, err := client.GetUnion(ctx, unionId)
+			union, err := client.Union().Get(ctx, unionId)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(union.Id).To(Equal(unionId))
@@ -72,7 +72,7 @@ var _ = Describe("Union API", func() {
 		It("returns the requested union via the single-id fallback", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 
-			res, err := client.GetUnions(ctx, []string{unionId})
+			res, err := client.Union().GetBulk(ctx, []string{unionId})
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
@@ -85,7 +85,7 @@ var _ = Describe("Union API", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 			year := int32(1925)
 
-			updated, err := client.UpdateUnion(ctx, unionId, &union.Request{
+			updated, err := client.Union().Update(ctx, unionId, &union.Request{
 				Marriage: &profile.EventElement{
 					Date: &profile.DateElement{Year: &year},
 				},
@@ -122,12 +122,12 @@ var _ = Describe("Union API", func() {
 			Expect(got.Unions).ToNot(BeEmpty())
 			unionId := got.Unions[0]
 
-			partner, err := client.AddPartnerToUnion(ctx, unionId)
+			partner, err := client.Union().AddPartner(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(partner.Id).To(HavePrefix("profile-"))
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), partner.Id) })
 
-			after, err := client.GetUnion(ctx, unionId)
+			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(after.Partners).To(ContainElement(partner.Id))
 		})
@@ -137,15 +137,15 @@ var _ = Describe("Union API", func() {
 		It("creates a new child profile bound to the union", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 
-			before, err := client.GetUnion(ctx, unionId)
+			before, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 
-			child, err := client.AddChildToUnion(ctx, unionId)
+			child, err := client.Union().AddChild(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(child.Id).To(HavePrefix("profile-"))
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
-			after, err := client.GetUnion(ctx, unionId)
+			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(after.Children).To(ContainElement(child.Id))
 			Expect(len(after.Children)).To(Equal(len(before.Children) + 1))
@@ -154,11 +154,11 @@ var _ = Describe("Union API", func() {
 		It("records `adopt` on the union's adopted_children list", func() {
 			_, _, unionId := createCoupleAndUnion(ctx, client)
 
-			child, err := client.AddChildToUnion(ctx, unionId, geni.WithModifier("adopt"))
+			child, err := client.Union().AddChild(ctx, unionId, profile.WithModifier("adopt"))
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
-			after, err := client.GetUnion(ctx, unionId)
+			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(after.AdoptedChildren).To(ContainElement(child.Id))
 		})

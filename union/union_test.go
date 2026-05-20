@@ -1,39 +1,67 @@
-package geni
+package union
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"testing"
 
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/transport"
 )
 
-func TestGetUnion1(t *testing.T) {
-	t.Skip()
+type fakeTransport struct {
+	lastRequest *http.Request
+	status      int
+	body        string
+}
+
+func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastRequest = req.Clone(req.Context())
+	body := t.body
+	if body == "" {
+		body = "{}"
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(bytes.NewBufferString(body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func newFakeClient(status int, body string) (*Client, *fakeTransport) {
+	ft := &fakeTransport{status: status, body: body}
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
+}
+
+func TestGet_Request(t *testing.T) {
 	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"union-9","status":"spouse"}`)
 
-	unionId := "union-1838"
-
-	client := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: testAccessToken}), true)
-
-	union, err := client.GetUnion(t.Context(), unionId)
+	u, err := c.Get(context.Background(), "union-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(union.Id).To(BeEquivalentTo(unionId))
+	Expect(u.Id).To(Equal("union-9"))
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-9"))
 }
 
 // Geni's bulk-by-id endpoint returns empty results when ids= carries
 // exactly one identifier. The client falls back to the singular Get
-// for that case; this test asserts the fallback wires the right
-// URL and returns the wrapped bulk envelope. Two-id calls still hit
-// the bulk path — covered separately.
-func TestGetUnions_SingleIdFallback(t *testing.T) {
-	t.Run("single id call goes through singular GetUnion path", func(t *testing.T) {
+// for that case; this test asserts the fallback wires the right URL
+// and returns the wrapped bulk envelope. Two-id calls still hit the
+// bulk path.
+func TestGetBulk_SingleIdFallback(t *testing.T) {
+	t.Run("single id call goes through singular Get path", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"union-9","status":"spouse"}`)
 
-		res, err := c.GetUnions(context.Background(), []string{"union-9"})
+		res, err := c.GetBulk(context.Background(), []string{"union-9"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-9"))
@@ -46,7 +74,7 @@ func TestGetUnions_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"union-9"},{"id":"union-10"}]}`)
 
-		_, err := c.GetUnions(context.Background(), []string{"union-9", "union-10"})
+		_, err := c.GetBulk(context.Background(), []string{"union-9", "union-10"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union"))
@@ -54,12 +82,12 @@ func TestGetUnions_SingleIdFallback(t *testing.T) {
 	})
 }
 
-func TestAddPartnerToUnion_Request(t *testing.T) {
+func TestAddPartner_Request(t *testing.T) {
 	t.Run("POSTs to /api/<unionId>/add-partner", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-200"}`)
 
-		_, err := c.AddPartnerToUnion(context.Background(), "union-9")
+		_, err := c.AddPartner(context.Background(), "union-9")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -71,7 +99,7 @@ func TestAddPartnerToUnion_Request(t *testing.T) {
 		body := `{"id":"profile-200","first_name":"NewPartner","is_alive":true,"public":true}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		partner, err := c.AddPartnerToUnion(context.Background(), "union-9")
+		partner, err := c.AddPartner(context.Background(), "union-9")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(partner.Id).To(Equal("profile-200"))
@@ -83,27 +111,27 @@ func TestAddPartnerToUnion_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.AddPartnerToUnion(context.Background(), "union-9")
+		_, err := c.AddPartner(context.Background(), "union-9")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 
 	t.Run("403 maps to ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
 
-		_, err := c.AddPartnerToUnion(context.Background(), "union-9")
+		_, err := c.AddPartner(context.Background(), "union-9")
 
-		Expect(err).To(MatchError(ErrAccessDenied))
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
 }
 
-func TestAddChildToUnion_Request(t *testing.T) {
+func TestAddChild_Request(t *testing.T) {
 	t.Run("POSTs to /api/<unionId>/add-child without modifier by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-201"}`)
 
-		_, err := c.AddChildToUnion(context.Background(), "union-9")
+		_, err := c.AddChild(context.Background(), "union-9")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
@@ -115,7 +143,7 @@ func TestAddChildToUnion_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-201"}`)
 
-		_, err := c.AddChildToUnion(context.Background(), "union-9", WithModifier("adopt"))
+		_, err := c.AddChild(context.Background(), "union-9", profile.WithModifier("adopt"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
@@ -126,7 +154,7 @@ func TestAddChildToUnion_Request(t *testing.T) {
 		body := `{"id":"profile-201","first_name":"NewChild","is_alive":true,"public":true}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		child, err := c.AddChildToUnion(context.Background(), "union-9", WithModifier("foster"))
+		child, err := c.AddChild(context.Background(), "union-9", profile.WithModifier("foster"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(child.Id).To(Equal("profile-201"))
@@ -138,8 +166,8 @@ func TestAddChildToUnion_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.AddChildToUnion(context.Background(), "union-9")
+		_, err := c.AddChild(context.Background(), "union-9")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }

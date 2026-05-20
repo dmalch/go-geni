@@ -73,11 +73,11 @@ func TestAddParent_Request(t *testing.T) {
 		Expect(string(got)).To(ContainSubstring(`"first_name":"Mom"`))
 	})
 
-	t.Run("WithModifier sets the relationship_modifier query param", func(t *testing.T) {
+	t.Run("profile.WithModifier sets the relationship_modifier query param", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-parent"}`)
 
-		_, err := c.AddParent(context.Background(), "profile-1", &profile.Request{}, WithModifier("adopt"))
+		_, err := c.AddParent(context.Background(), "profile-1", &profile.Request{}, profile.WithModifier("adopt"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
