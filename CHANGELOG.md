@@ -1,4 +1,11 @@
-## 0.18.0 (Unreleased)
+## 1.0.0
+
+First stable release. The pre-1.0 reshape is complete: HTTP plumbing
+lives in the `transport/` package, every Geni resource has its own
+sub-package reached through a typed accessor on the root façade, and
+`Id` is spelled `ID` across the public API. The exported surface is
+now stable under semantic versioning. The breaking changes below are
+the cumulative diff from `0.17.0`.
 
 - Dependency diet (no API change). The `auth` package's OAuth
   callback server is rewritten on the standard library's `net/http`
