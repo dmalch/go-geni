@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	. "github.com/onsi/gomega"
 )
 
@@ -19,17 +18,14 @@ func TestCallbackHandle(t *testing.T) {
 			shutdownCh:    make(chan error, 1),
 		}
 
-		e := echo.New()
 		q := make(url.Values)
 		q.Set("state", "valid-state")
 		q.Set("access_token", "my-token")
 		q.Set("expires_in", "3600")
 		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
-		err := handler.handle(c)
-		Expect(err).ToNot(HaveOccurred())
+		handler.handle(rec, req)
 
 		shutdownErr := <-handler.shutdownCh
 		Expect(shutdownErr).ToNot(HaveOccurred())
@@ -46,16 +42,13 @@ func TestCallbackHandle(t *testing.T) {
 			shutdownCh:    make(chan error, 1),
 		}
 
-		e := echo.New()
 		q := make(url.Values)
 		q.Set("state", "wrong-state")
 		q.Set("access_token", "my-token")
 		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
-		err := handler.handle(c)
-		Expect(err).ToNot(HaveOccurred())
+		handler.handle(rec, req)
 
 		shutdownErr := <-handler.shutdownCh
 		Expect(shutdownErr).To(HaveOccurred())
@@ -72,13 +65,10 @@ func TestCallbackHandle(t *testing.T) {
 			shutdownCh:    make(chan error, 1),
 		}
 
-		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/callback?access_token=my-token", nil)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
-		err := handler.handle(c)
-		Expect(err).ToNot(HaveOccurred())
+		handler.handle(rec, req)
 
 		shutdownErr := <-handler.shutdownCh
 		Expect(shutdownErr).To(HaveOccurred())
@@ -93,15 +83,12 @@ func TestCallbackHandle(t *testing.T) {
 			shutdownCh:    make(chan error, 1),
 		}
 
-		e := echo.New()
 		q := make(url.Values)
 		q.Set("state", "valid-state")
 		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
 
-		err := handler.handle(c)
-		Expect(err).ToNot(HaveOccurred())
+		handler.handle(rec, req)
 
 		shutdownErr := <-handler.shutdownCh
 		Expect(shutdownErr).ToNot(HaveOccurred())
