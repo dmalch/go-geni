@@ -214,6 +214,39 @@
     under `tree`
   `Client.CompareProfiles` still lives on root (Profile resource) but
   its `ProfileComparison.Results` field is now `[]tree.FamilyResponse`.
+- **BREAKING — final reshape PR.** The Profile resource lifts into
+  `github.com/dmalch/go-geni/profile` and the root `geni` package
+  collapses to a pure façade: `NewClient` + 13 resource accessors +
+  `BaseURL` + the `ErrResourceNotFound` / `ErrAccessDenied`
+  re-exports. No endpoint methods remain on `geni.Client` directly.
+  - 14 pure-profile methods → `profile.Client`:
+    - `client.CreateProfile`  → `client.Profile().Create`
+    - `client.GetProfile`     → `client.Profile().Get`
+    - `client.GetProfiles`    → `client.Profile().GetBulk`
+    - `client.UpdateProfile`  → `client.Profile().Update`
+    - `client.UpdateProfileBasics` → `client.Profile().UpdateBasics`
+    - `client.DeleteProfile`  → `client.Profile().Delete`
+    - `client.AddPartner`     → `client.Profile().AddPartner`
+    - `client.AddChild`       → `client.Profile().AddChild`
+    - `client.AddSibling`     → `client.Profile().AddSibling`
+    - `client.AddParent`      → `client.Profile().AddParent`
+    - `client.MergeProfiles`  → `client.Profile().Merge`
+    - `client.FollowProfile`  → `client.Profile().Follow`
+    - `client.UnfollowProfile`→ `client.Profile().Unfollow`
+    - `client.WipeEventDates` → `client.Profile().WipeEventDates`
+  - 8 methods that return a non-profile resource cross-place onto
+    that resource (so `profile/` stays foundational — imported by
+    every package, importing only `transport/`):
+    - `client.GetProfileDocuments` → `client.Document().ForProfile`
+    - `client.GetProfilePhotos`    → `client.Photo().ForProfile`
+    - `client.AddProfilePhoto`     → `client.Photo().AddToProfile`
+    - `client.AddProfileVideo`     → `client.Video().AddToProfile`
+    - `client.AddProfileDocument`  → `client.Document().AddToProfile`
+    - `client.AddProfileMugshot`   → `client.Photo().AddMugshotToProfile`
+      (`geni.MugshotRequest` → `photo.MugshotRequest`)
+    - `client.CompareProfiles`     → `client.Tree().Compare`
+      (`*geni.ProfileComparison` → `*tree.Comparison`)
+    - `client.GetManagedProfiles`  → `client.User().ManagedProfiles`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

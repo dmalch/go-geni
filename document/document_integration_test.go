@@ -154,3 +154,61 @@ var _ = Describe("Document comments + projects + tags endpoints", func() {
 		})
 	})
 })
+
+var _ = Describe("Document profile-scoped endpoints", func() {
+	var (
+		ctx      context.Context
+		server   *httptest.Server
+		client   *Client
+		recorded *http.Request
+	)
+
+	BeforeEach(func() { ctx = context.Background(); recorded = nil })
+	AfterEach(func() {
+		if server != nil {
+			server.Close()
+		}
+	})
+
+	serve := func(status int, body []byte, wantMethod, wantPath string) {
+		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			recorded = r.Clone(r.Context())
+			Expect(r.Method).To(Equal(wantMethod))
+			Expect(r.URL.Path).To(Equal(wantPath))
+			Expect(r.URL.Query().Get("access_token")).To(Equal("acc-test"))
+			w.WriteHeader(status)
+			_, _ = w.Write(body)
+		}))
+		client = newClientFor(server)
+	}
+
+	Describe("ForProfile", func() {
+		It("decodes the document bulk envelope with pagination + total_count", func() {
+			serve(http.StatusOK, []byte(`{
+				"results":[{"id":"document-1","title":"Birth certificate"},{"id":"document-2","title":"Marriage record"}],
+				"page":1,"total_count":17,"next_page":"…?page=2"
+			}`), http.MethodGet, "/api/profile-1/documents")
+
+			res, err := client.ForProfile(ctx, "profile-1", 1)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
+			Expect(res.Results).To(HaveLen(2))
+			Expect(res.Results[0].Title).To(Equal("Birth certificate"))
+			Expect(res.TotalCount).To(Equal(17))
+		})
+	})
+
+	Describe("AddToProfile", func() {
+		It("POSTs a text-body Request to /add-document", func() {
+			serve(http.StatusOK, []byte(`{"id":"document-9","title":"Letter"}`),
+				http.MethodPost, "/api/profile-1/add-document")
+
+			text := "Lorem ipsum"
+			doc, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Letter", Text: &text})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(doc.Id).To(Equal("document-9"))
+		})
+	})
+})

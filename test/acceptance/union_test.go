@@ -19,10 +19,10 @@ func createCoupleAndUnion(ctx context.Context, client *geni.Client) (*profile.Pr
 
 	focus := createFixtureProfile(ctx, client, "UnionFocus")
 
-	partner, err := client.AddPartner(ctx, focus.Id)
+	partner, err := client.Profile().AddPartner(ctx, focus.Id)
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
-		_ = client.DeleteProfile(context.Background(), partner.Id)
+		_ = client.Profile().Delete(context.Background(), partner.Id)
 	})
 
 	// AddPartner returns the new partner profile with the freshly
@@ -32,7 +32,7 @@ func createCoupleAndUnion(ctx context.Context, client *geni.Client) (*profile.Pr
 	if len(partner.Unions) > 0 {
 		unionId = partner.Unions[0]
 	} else {
-		got, err := client.GetProfile(ctx, focus.Id)
+		got, err := client.Profile().Get(ctx, focus.Id)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got.Unions).ToNot(BeEmpty())
 		unionId = got.Unions[0]
@@ -113,11 +113,11 @@ var _ = Describe("Union API", func() {
 			// AddChild on a sole profile creates a single-parent
 			// union (focus as the only partner, new child as the
 			// only child).
-			child, err := client.AddChild(ctx, focus.Id)
+			child, err := client.Profile().AddChild(ctx, focus.Id)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
-			got, err := client.GetProfile(ctx, focus.Id)
+			got, err := client.Profile().Get(ctx, focus.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Unions).ToNot(BeEmpty())
 			unionId := got.Unions[0]
@@ -125,7 +125,7 @@ var _ = Describe("Union API", func() {
 			partner, err := client.Union().AddPartner(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(partner.Id).To(HavePrefix("profile-"))
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), partner.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), partner.Id) })
 
 			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
@@ -143,7 +143,7 @@ var _ = Describe("Union API", func() {
 			child, err := client.Union().AddChild(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(child.Id).To(HavePrefix("profile-"))
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
 			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())
@@ -156,7 +156,7 @@ var _ = Describe("Union API", func() {
 
 			child, err := client.Union().AddChild(ctx, unionId, profile.WithModifier("adopt"))
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
 			after, err := client.Union().Get(ctx, unionId)
 			Expect(err).ToNot(HaveOccurred())

@@ -101,3 +101,27 @@ func (c *Client) PathTo(ctx context.Context, fromId, toId string, opts ...Option
 	}
 	return &path, nil
 }
+
+// Compare fetches the immediate-family graphs of both profiles in a
+// single call. The returned Results slice has two entries, one per
+// profile, in the order they were requested.
+func (c *Client) Compare(ctx context.Context, profile1Id, profile2Id string) (*Comparison, error) {
+	url := c.transport.BaseURL() + "api/" + profile1Id + "/compare/" + profile2Id
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var cmp Comparison
+	if err := json.Unmarshal(body, &cmp); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &cmp, nil
+}

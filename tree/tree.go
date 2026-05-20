@@ -123,3 +123,11 @@ type PathToResponse struct {
 	Relationship string         `json:"relationship,omitempty"`
 	Status       PathStatus     `json:"status,omitempty"`
 }
+
+// Comparison is the response shape of [Client.Compare]. Geni returns
+// immediate-family graphs for both profiles in one call; each Results
+// entry mirrors what [Client.ImmediateFamily] would return for one of
+// the two profiles, in the order requested.
+type Comparison struct {
+	Results []FamilyResponse `json:"results,omitempty"`
+}

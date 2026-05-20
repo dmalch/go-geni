@@ -20,7 +20,7 @@ func TestGetProfiles_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"id":"profile-1","first_name":"A"}`)
 
-		res, err := c.GetProfiles(context.Background(), []string{"profile-1"})
+		res, err := c.Profile().GetBulk(context.Background(), []string{"profile-1"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1"))
@@ -33,7 +33,7 @@ func TestGetProfiles_SingleIdFallback(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"profile-1"},{"id":"profile-2"}]}`)
 
-		_, err := c.GetProfiles(context.Background(), []string{"profile-1", "profile-2"})
+		_, err := c.Profile().GetBulk(context.Background(), []string{"profile-1", "profile-2"})
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile"))

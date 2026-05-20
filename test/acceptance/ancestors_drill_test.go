@@ -66,7 +66,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 	// these but rejects freshly-created ones, the access rule is
 	// "focus must be in the caller's managed tree".
 	It("managed-profiles[0] → ancestors", func() {
-		managed, err := client.GetManagedProfiles(ctx, 1)
+		managed, err := client.User().ManagedProfiles(ctx, 1)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managed.Results).ToNot(BeEmpty(), "GetManagedProfiles returned no results; can't probe")
 
@@ -99,13 +99,13 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 	// "must have at least one resolvable ancestor in the tree".
 	It("created chain root→child → ancestors(child)", func() {
 		gp := createFixtureProfile(ctx, client, "DrillGrandparent")
-		parent, err := client.AddChild(ctx, gp.Id)
+		parent, err := client.Profile().AddChild(ctx, gp.Id)
 		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), parent.Id) })
+		DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), parent.Id) })
 
-		child, err := client.AddChild(ctx, parent.Id)
+		child, err := client.Profile().AddChild(ctx, parent.Id)
 		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+		DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
 		fam, err := client.Tree().Ancestors(ctx, child.Id, tree.WithGenerations(3))
 		AddReportEntry("chain-child-ancestors-err", fmt.Sprintf("%v", err))

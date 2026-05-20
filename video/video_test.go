@@ -277,3 +277,17 @@ func TestAddComment_Request(t *testing.T) {
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-1/comment"))
 	Expect(ft.lastRequest.URL.Query().Get("text")).To(Equal("nice clip"))
 }
+
+func TestAddToProfile_Request(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"video-9","title":"Reel"}`)
+
+	v, err := c.AddToProfile(context.Background(), "profile-1", &Request{Title: "Reel"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(v.Id).To(Equal("video-9"))
+	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-video"))
+	got, _ := io.ReadAll(ft.lastRequest.Body)
+	Expect(string(got)).To(ContainSubstring(`"title":"Reel"`))
+}

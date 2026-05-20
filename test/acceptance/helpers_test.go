@@ -85,7 +85,7 @@ func strPtr(s string) *string { return &s }
 // "Acceptance" so fixtures are easy to recognise + scrub manually.
 func createFixtureProfile(ctx context.Context, client *geni.Client, firstName string) *profile.Profile {
 	GinkgoHelper()
-	created, err := client.CreateProfile(ctx, &profile.Request{
+	created, err := client.Profile().Create(ctx, &profile.Request{
 		Names: map[string]profile.NameElement{
 			"en-US": {
 				FirstName: strPtr(firstName),
@@ -97,7 +97,7 @@ func createFixtureProfile(ctx context.Context, client *geni.Client, firstName st
 	})
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
-		_ = client.DeleteProfile(context.Background(), created.Id)
+		_ = client.Profile().Delete(context.Background(), created.Id)
 	})
 	return created
 }

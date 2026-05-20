@@ -367,6 +367,78 @@ func (c *Client) AddComment(ctx context.Context, photoId, text, title string) (*
 	return &comments, nil
 }
 
+// ForProfile returns the paginated list of photos attached to a
+// profile. page is 1-indexed; values ≤0 omit the parameter (Geni
+// defaults to page 1). Max 50 per page.
+func (c *Client) ForProfile(ctx context.Context, profileId string, page int) (*BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + profileId + "/photos"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var photos BulkResponse
+	if err := json.Unmarshal(body, &photos); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &photos, nil
+}
+
+// AddToProfile attaches a new photo to a profile. Unlike Create
+// (which uses multipart/form-data), this endpoint takes a JSON body
+// with the file encoded as Base64 in Request.File.
+func (c *Client) AddToProfile(ctx context.Context, profileId string, request *Request) (*Photo, error) {
+	return c.jsonPost(ctx, profileId, "add-photo", request)
+}
+
+// AddMugshotToProfile sets a profile's mugshot — either by uploading
+// a new image (MugshotRequest.File, Base64) or by reusing an existing
+// photo (MugshotRequest.PhotoId).
+func (c *Client) AddMugshotToProfile(ctx context.Context, profileId string, request *MugshotRequest) (*Photo, error) {
+	return c.jsonPost(ctx, profileId, "add-mugshot", request)
+}
+
+func (c *Client) jsonPost(ctx context.Context, profileId, action string, request any) (*Photo, error) {
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		slog.Error("Error marshaling request", "error", err)
+		return nil, err
+	}
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+
+	url := c.transport.BaseURL() + "api/" + profileId + "/" + action
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var p Photo
+	if err := json.Unmarshal(body, &p); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &p, nil
+}
+
 // Delete deletes a photo by id.
 func (c *Client) Delete(ctx context.Context, photoId string) error {
 	url := c.transport.BaseURL() + "api/" + photoId + "/delete"

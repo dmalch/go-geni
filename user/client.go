@@ -131,6 +131,12 @@ func (c *Client) MaxFamily(ctx context.Context, page int) (*profile.BulkResponse
 	return c.profileListing(ctx, "max-family", page)
 }
 
+// ManagedProfiles returns the paginated list of profiles the
+// authenticated user manages.
+func (c *Client) ManagedProfiles(ctx context.Context, page int) (*profile.BulkResponse, error) {
+	return c.profileListing(ctx, "managed-profiles", page)
+}
+
 // UploadedPhotos returns the paginated list of photos the
 // authenticated user has uploaded.
 func (c *Client) UploadedPhotos(ctx context.Context, page int) (*photo.BulkResponse, error) {

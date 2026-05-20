@@ -252,6 +252,37 @@ func (c *Client) Delete(ctx context.Context, videoId string) error {
 	return nil
 }
 
+// AddToProfile attaches a new video to a profile. Unlike Create
+// (which uses multipart/form-data), this endpoint takes a JSON body
+// with the file encoded as Base64 in Request.File.
+func (c *Client) AddToProfile(ctx context.Context, profileId string, request *Request) (*Video, error) {
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		slog.Error("Error marshaling request", "error", err)
+		return nil, err
+	}
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+
+	url := c.transport.BaseURL() + "api/" + profileId + "/add-video"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var v Video
+	if err := json.Unmarshal(body, &v); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &v, nil
+}
+
 // Tag associates a profile with a video.
 func (c *Client) Tag(ctx context.Context, videoId, profileId string) (*Video, error) {
 	return c.tagAction(ctx, videoId, profileId, "tag")

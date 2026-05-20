@@ -21,7 +21,7 @@ func TestGetProfiles_BulkThreeIds(t *testing.T) {
 		{"id":"profile-3","first_name":"C"}
 	]}`)
 
-	res, err := c.GetProfiles(context.Background(), []string{"profile-1", "profile-2", "profile-3"})
+	res, err := c.Profile().GetBulk(context.Background(), []string{"profile-1", "profile-2", "profile-3"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile"))
@@ -36,13 +36,13 @@ func TestGetProfiles_BulkErrorMapping(t *testing.T) {
 	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetProfiles(context.Background(), []string{"profile-1", "profile-2"})
+		_, err := c.Profile().GetBulk(context.Background(), []string{"profile-1", "profile-2"})
 		Expect(err).To(MatchError(ErrResourceNotFound))
 	})
 	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetProfiles(context.Background(), []string{"profile-1", "profile-2"})
+		_, err := c.Profile().GetBulk(context.Background(), []string{"profile-1", "profile-2"})
 		Expect(err).To(MatchError(ErrAccessDenied))
 	})
 }

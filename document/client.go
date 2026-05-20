@@ -309,6 +309,67 @@ func (c *Client) AddComment(ctx context.Context, documentId, text, title string)
 	return &comments, nil
 }
 
+// ForProfile returns the paginated list of documents attached to a
+// profile. page is 1-indexed; values ≤0 omit the parameter (Geni
+// defaults to page 1). Max 50 per page.
+func (c *Client) ForProfile(ctx context.Context, profileId string, page int) (*BulkResponse, error) {
+	url := c.transport.BaseURL() + "api/" + profileId + "/documents"
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	if page > 0 {
+		query := req.URL.Query()
+		query.Set("page", strconv.Itoa(page))
+		req.URL.RawQuery = query.Encode()
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var docs BulkResponse
+	if err := json.Unmarshal(body, &docs); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &docs, nil
+}
+
+// AddToProfile attaches a new document to a profile. Accepts the same
+// Request used by Create — text/file/source_url are mutually
+// exclusive content sources.
+func (c *Client) AddToProfile(ctx context.Context, profileId string, request *Request) (*Document, error) {
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		slog.Error("Error marshaling request", "error", err)
+		return nil, err
+	}
+	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+
+	url := c.transport.BaseURL() + "api/" + profileId + "/add-document"
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	body, err := c.transport.Do(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var d Document
+	if err := json.Unmarshal(body, &d); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+	return &d, nil
+}
+
 // AddToProject tags a document into a project. Returns the bulk
 // envelope of documents Geni associates with the project after the
 // add. The endpoint is project-scoped (/api/<projectId>/add_documents)

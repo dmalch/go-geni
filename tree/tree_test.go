@@ -273,3 +273,22 @@ func TestPathTo_DecodesStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestCompare_Request(t *testing.T) {
+	RegisterTestingT(t)
+	body := `{"results":[
+		{"focus":{"id":"profile-1"},"nodes":{"profile-1":{"id":"profile-1"}}},
+		{"focus":{"id":"profile-2"},"nodes":{"profile-2":{"id":"profile-2"}}}
+	]}`
+	c, ft := newFakeClient(http.StatusOK, body)
+
+	res, err := c.Compare(context.Background(), "profile-1", "profile-2")
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/compare/profile-2"))
+	Expect(res.Results).To(HaveLen(2))
+	Expect(res.Results[0].Focus).ToNot(BeNil())
+	Expect(res.Results[0].Focus.Id).To(Equal("profile-1"))
+	Expect(res.Results[1].Focus.Id).To(Equal("profile-2"))
+}

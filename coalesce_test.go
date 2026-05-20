@@ -167,7 +167,7 @@ func runCoalesceTest(
 
 func TestCoalesce_GetProfile(t *testing.T) {
 	runCoalesceTest(t, "profile", func(c *Client, ctx context.Context, id string) error {
-		_, err := c.GetProfile(ctx, id)
+		_, err := c.Profile().Get(ctx, id)
 		return err
 	})
 }
@@ -217,7 +217,7 @@ func TestCoalesce_DifferentResourcesDoNotMerge(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		_, _ = c.GetProfile(context.Background(), "profile-1")
+		_, _ = c.Profile().Get(context.Background(), "profile-1")
 	}()
 	go func() {
 		defer wg.Done()

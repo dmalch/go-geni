@@ -249,3 +249,15 @@ func TestUserEndpoints_ErrorMapping(t *testing.T) {
 		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
+
+func TestManagedProfiles_Request(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"profile-1"}],"page":1}`)
+
+	res, err := c.ManagedProfiles(context.Background(), 2)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/managed-profiles"))
+	Expect(ft.lastRequest.URL.Query().Get("page")).To(Equal("2"))
+	Expect(res.Results).To(HaveLen(1))
+}

@@ -32,9 +32,9 @@ var _ = Describe("Tree traversal API", func() {
 		It("eventually lists a child added to the focus profile", func() {
 			focus := createFixtureProfile(ctx, client, "FocusFamily")
 
-			child, err := client.AddChild(ctx, focus.Id)
+			child, err := client.Profile().AddChild(ctx, focus.Id)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
 			Eventually(func(g Gomega) {
 				family, err := client.Tree().ImmediateFamily(ctx, focus.Id)
@@ -83,9 +83,9 @@ var _ = Describe("Tree traversal API", func() {
 		It("settles on a terminal PathStatus for a parent→child path", func() {
 			parent := createFixtureProfile(ctx, client, "PathToParent")
 
-			child, err := client.AddChild(ctx, parent.Id)
+			child, err := client.Profile().AddChild(ctx, parent.Id)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
 
 			var lastStatus tree.PathStatus
 			Eventually(func(g Gomega) {
