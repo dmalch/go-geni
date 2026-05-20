@@ -44,3 +44,29 @@ type LabelsResponse struct {
 type Metadata struct {
 	Data json.RawMessage `json:"data,omitempty"`
 }
+
+// AddRequest is the body for [Client.Add]. Geni's /user/add endpoint
+// requires all four fields, so none carry omitempty — an empty value
+// is sent through for the server to reject explicitly.
+type AddRequest struct {
+	// Email is the new user's email address.
+	Email string `json:"email"`
+	// FirstName is the new user's first name.
+	FirstName string `json:"first_name"`
+	// LastName is the new user's last name.
+	LastName string `json:"last_name"`
+	// Gender is the new user's gender: "m", "f", or "u".
+	Gender string `json:"gender"`
+}
+
+// AddResult is the outcome of [Client.Add]: the newly-created user
+// plus the OAuth access token Geni issues for that account. The token
+// arrives in the X-API-OAuth-access_token response header (not the
+// body); it lets the caller immediately act on behalf of the new
+// user.
+type AddResult struct {
+	// User is the created account, as returned in the response body.
+	User *User
+	// AccessToken is the new account's OAuth access token.
+	AccessToken string
+}

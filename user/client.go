@@ -53,6 +53,50 @@ func (c *Client) Get(ctx context.Context) (*User, error) {
 	return &u, nil
 }
 
+// addUserTokenHeader is the response header Geni's /user/add returns
+// the new account's OAuth access token in.
+const addUserTokenHeader = "X-API-OAuth-access_token"
+
+// Add creates a new Geni user account. Geni issues a fresh OAuth
+// access token for the new account and returns it in the
+// X-API-OAuth-access_token response header; it is surfaced as
+// [AddResult.AccessToken] so the caller can immediately act as the
+// new user.
+//
+// All four [AddRequest] fields are required by Geni; Gender must be
+// "m", "f", or "u".
+func (c *Client) Add(ctx context.Context, req *AddRequest) (*AddResult, error) {
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		slog.Error("Error marshaling request", "error", err)
+		return nil, err
+	}
+	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
+
+	url := c.transport.BaseURL() + "api/user/add"
+	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	if err != nil {
+		slog.Error("Error creating request", "error", err)
+		return nil, err
+	}
+
+	resp, err := c.transport.DoWithResponse(ctx, httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	var u User
+	if err := json.Unmarshal(resp.Body, &u); err != nil {
+		slog.Error("Error unmarshaling response", "error", err)
+		return nil, err
+	}
+
+	return &AddResult{
+		User:        &u,
+		AccessToken: resp.Header.Get(addUserTokenHeader),
+	}, nil
+}
+
 // FollowedProfiles returns the paginated list of profiles the
 // authenticated user follows. page is 1-indexed; values ≤0 omit the
 // parameter (Geni defaults to page 1). Max 50 per page.

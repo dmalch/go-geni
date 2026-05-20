@@ -18,6 +18,7 @@ type fakeTransport struct {
 	lastRequest *http.Request
 	status      int
 	body        string
+	respHeader  http.Header
 }
 
 func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -26,10 +27,14 @@ func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if body == "" {
 		body = "{}"
 	}
+	header := t.respHeader
+	if header == nil {
+		header = make(http.Header)
+	}
 	return &http.Response{
 		StatusCode: t.status,
 		Body:       io.NopCloser(bytes.NewBufferString(body)),
-		Header:     make(http.Header),
+		Header:     header,
 	}, nil
 }
 
@@ -60,6 +65,70 @@ func TestGet_Request(t *testing.T) {
 		c, _ := newFakeClient(http.StatusForbidden, ``)
 
 		_, err := c.Get(context.Background())
+
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}
+
+func TestAdd_Request(t *testing.T) {
+	t.Run("POSTs /api/user/add with the request body", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"name":"Jane Roe","account_type":"basic"}`)
+
+		_, err := c.Add(context.Background(), &AddRequest{
+			Email:     "jane@example.com",
+			FirstName: "Jane",
+			LastName:  "Roe",
+			Gender:    "f",
+		})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/user/add"))
+		got, _ := io.ReadAll(ft.lastRequest.Body)
+		Expect(string(got)).To(ContainSubstring(`"email":"jane@example.com"`))
+		Expect(string(got)).To(ContainSubstring(`"first_name":"Jane"`))
+		Expect(string(got)).To(ContainSubstring(`"last_name":"Roe"`))
+		Expect(string(got)).To(ContainSubstring(`"gender":"f"`))
+	})
+
+	t.Run("surfaces the new user and the token from the response header", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"name":"Jane Roe","account_type":"basic"}`)
+		ft.respHeader = http.Header{}
+		ft.respHeader.Set("X-API-OAuth-access_token", "new-user-token")
+
+		res, err := c.Add(context.Background(), &AddRequest{
+			Email: "jane@example.com", FirstName: "Jane", LastName: "Roe", Gender: "f",
+		})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.User.Name).To(Equal("Jane Roe"))
+		Expect(res.User.AccountType).To(Equal("basic"))
+		Expect(res.AccessToken).To(Equal("new-user-token"))
+	})
+
+	t.Run("escapes non-ASCII runes in the request body", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"name":"José Müller"}`)
+
+		_, err := c.Add(context.Background(), &AddRequest{
+			Email: "j@example.com", FirstName: "José", LastName: "Müller", Gender: "m",
+		})
+
+		Expect(err).ToNot(HaveOccurred())
+		got, _ := io.ReadAll(ft.lastRequest.Body)
+		Expect(string(got)).To(ContainSubstring("Jos\\u00e9"))
+		Expect(string(got)).To(ContainSubstring("M\\u00fcller"))
+	})
+
+	t.Run("403 maps to ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+
+		_, err := c.Add(context.Background(), &AddRequest{
+			Email: "j@example.com", FirstName: "J", LastName: "R", Gender: "u",
+		})
 
 		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
