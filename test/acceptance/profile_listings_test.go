@@ -71,7 +71,7 @@ var _ = Describe("Profile media listings", func() {
 			profile := createFixtureProfile(ctx, client, "ProfileDocs")
 			text := "profile-listing fixture"
 
-			doc, err := client.AddProfileDocument(ctx, profile.Id, &document.Request{
+			doc, err := client.Document().AddToProfile(ctx, profile.Id, &document.Request{
 				Title: fmt.Sprintf("AccProfileDocsDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
@@ -79,7 +79,7 @@ var _ = Describe("Profile media listings", func() {
 			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.Id) })
 
 			Eventually(func(g Gomega) {
-				listed, err := client.GetProfileDocuments(ctx, profile.Id, 0)
+				listed, err := client.Document().ForProfile(ctx, profile.Id, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				ids := make([]string, 0, len(listed.Results))
 				for _, d := range listed.Results {
@@ -109,7 +109,7 @@ var _ = Describe("Profile media listings", func() {
 			Expect(err).ToNot(HaveOccurred())
 			b64 := base64.StdEncoding.EncodeToString(raw)
 
-			photo, err := client.AddProfilePhoto(ctx, profile.Id, &photo.Request{
+			photo, err := client.Photo().AddToProfile(ctx, profile.Id, &photo.Request{
 				Title: fmt.Sprintf("AccProfilePhotosPhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
@@ -117,7 +117,7 @@ var _ = Describe("Profile media listings", func() {
 			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
 
 			Eventually(func(g Gomega) {
-				listed, err := client.GetProfilePhotos(ctx, profile.Id, 0)
+				listed, err := client.Photo().ForProfile(ctx, profile.Id, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				ids := make([]string, 0, len(listed.Results))
 				for _, p := range listed.Results {

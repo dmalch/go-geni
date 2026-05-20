@@ -207,3 +207,56 @@ func TestProjects_Request(t *testing.T) {
 		Expect(res.NextPage).To(ContainSubstring("page=2"))
 	})
 }
+
+func TestForProfile_Request(t *testing.T) {
+	t.Run("GETs /api/<profileId>/documents and omits page by default", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
+
+		_, err := c.ForProfile(context.Background(), "profile-1", 0)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/documents"))
+		Expect(ft.lastRequest.URL.Query().Has("page")).To(BeFalse())
+	})
+
+	t.Run("decodes results + pagination + total_count", func(t *testing.T) {
+		RegisterTestingT(t)
+		body := `{"results":[{"id":"document-1","title":"Birth certificate"}],"page":1,"total_count":17,"next_page":"…?page=2"}`
+		c, _ := newFakeClient(http.StatusOK, body)
+
+		res, err := c.ForProfile(context.Background(), "profile-1", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.Results).To(HaveLen(1))
+		Expect(res.Results[0].Id).To(Equal("document-1"))
+		Expect(res.TotalCount).To(Equal(17))
+		Expect(res.NextPage).To(ContainSubstring("page=2"))
+	})
+
+	t.Run("404 maps to ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.ForProfile(context.Background(), "profile-1", 0)
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+}
+
+func TestAddToProfile_Request(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"document-9","title":"Letter"}`)
+
+	text := "Lorem ipsum"
+	d, err := c.AddToProfile(context.Background(), "profile-1", &Request{
+		Title: "Letter",
+		Text:  &text,
+	})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(d.Id).To(Equal("document-9"))
+	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-document"))
+	got, _ := io.ReadAll(ft.lastRequest.Body)
+	Expect(string(got)).To(ContainSubstring(`"text":"Lorem ipsum"`))
+}

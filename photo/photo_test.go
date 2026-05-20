@@ -330,3 +330,77 @@ func TestDelete_Request(t *testing.T) {
 		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
+
+func TestForProfile_Request(t *testing.T) {
+	t.Run("GETs /api/<profileId>/photos", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[]}`)
+
+		_, err := c.ForProfile(context.Background(), "profile-1", 0)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/photos"))
+	})
+
+	t.Run("decodes results + pagination", func(t *testing.T) {
+		RegisterTestingT(t)
+		body := `{"results":[{"id":"photo-9","title":"Family portrait"}],"page":1,"next_page":"…?page=2"}`
+		c, _ := newFakeClient(http.StatusOK, body)
+
+		res, err := c.ForProfile(context.Background(), "profile-1", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.Results).To(HaveLen(1))
+		Expect(res.Results[0].Id).To(Equal("photo-9"))
+		Expect(res.NextPage).To(ContainSubstring("page=2"))
+	})
+}
+
+func TestAddToProfile_Request(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-9","title":"Snapshot"}`)
+
+	b64 := "aGVsbG8="
+	res, err := c.AddToProfile(context.Background(), "profile-1", &Request{
+		Title: "Snapshot",
+		File:  &b64,
+	})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res.Id).To(Equal("photo-9"))
+	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-photo"))
+	got, _ := io.ReadAll(ft.lastRequest.Body)
+	Expect(string(got)).To(ContainSubstring(`"title":"Snapshot"`))
+	Expect(string(got)).To(ContainSubstring(`"file":"aGVsbG8="`))
+}
+
+func TestAddMugshotToProfile_Request(t *testing.T) {
+	t.Run("File path sets file, omits photo_id", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-9"}`)
+
+		b64 := "aGVsbG8="
+		_, err := c.AddMugshotToProfile(context.Background(), "profile-1", &MugshotRequest{File: &b64})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-mugshot"))
+		got, _ := io.ReadAll(ft.lastRequest.Body)
+		Expect(string(got)).To(ContainSubstring(`"file":"aGVsbG8="`))
+		Expect(string(got)).ToNot(ContainSubstring(`"photo_id"`))
+	})
+
+	t.Run("PhotoId path sets photo_id, omits file", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"photo-9"}`)
+
+		existing := "photo-100"
+		_, err := c.AddMugshotToProfile(context.Background(), "profile-1", &MugshotRequest{PhotoId: &existing})
+
+		Expect(err).ToNot(HaveOccurred())
+		got, _ := io.ReadAll(ft.lastRequest.Body)
+		Expect(string(got)).To(ContainSubstring(`"photo_id":"photo-100"`))
+		Expect(string(got)).ToNot(ContainSubstring(`"file"`))
+	})
+}

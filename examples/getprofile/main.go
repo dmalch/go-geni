@@ -32,7 +32,7 @@ func main() {
 		true, // sandbox
 	)
 
-	profile, err := client.GetProfile(context.Background(), profileID)
+	profile, err := client.Profile().Get(context.Background(), profileID)
 	if err != nil {
 		log.Fatalf("GetProfile(%q): %v", profileID, err)
 	}

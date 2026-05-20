@@ -199,3 +199,39 @@ var _ = Describe("Tree endpoints", func() {
 		})
 	})
 })
+
+var _ = Describe("Tree Compare", func() {
+	var (
+		ctx    context.Context
+		server *httptest.Server
+		client *Client
+	)
+
+	BeforeEach(func() { ctx = context.Background() })
+	AfterEach(func() {
+		if server != nil {
+			server.Close()
+		}
+	})
+
+	It("GETs /compare/<other> and decodes both family graphs", func() {
+		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Expect(r.Method).To(Equal(http.MethodGet))
+			Expect(r.URL.Path).To(Equal("/api/profile-1/compare/profile-2"))
+			Expect(r.URL.Query().Get("access_token")).To(Equal("acc-test"))
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"results":[
+				{"focus":{"id":"profile-1"},"nodes":{"profile-1":{"id":"profile-1"}}},
+				{"focus":{"id":"profile-2"},"nodes":{"profile-2":{"id":"profile-2"}}}
+			]}`))
+		}))
+		client = newClientFor(server)
+
+		cmp, err := client.Compare(ctx, "profile-1", "profile-2")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cmp.Results).To(HaveLen(2))
+		Expect(cmp.Results[0].Focus.Id).To(Equal("profile-1"))
+		Expect(cmp.Results[1].Nodes).To(HaveKey("profile-2"))
+	})
+})

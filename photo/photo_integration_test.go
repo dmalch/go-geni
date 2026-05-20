@@ -230,3 +230,74 @@ var _ = Describe("Photo Create end-to-end", func() {
 		Expect(capturedFileBody).To(Equal(raw))
 	})
 })
+
+var _ = Describe("Photo profile-scoped endpoints", func() {
+	var (
+		ctx      context.Context
+		server   *httptest.Server
+		client   *Client
+		recorded *http.Request
+	)
+
+	BeforeEach(func() { ctx = context.Background(); recorded = nil })
+	AfterEach(func() {
+		if server != nil {
+			server.Close()
+		}
+	})
+
+	serve := func(status int, body []byte, wantMethod, wantPath string) {
+		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			recorded = r.Clone(r.Context())
+			Expect(r.Method).To(Equal(wantMethod))
+			Expect(r.URL.Path).To(Equal(wantPath))
+			Expect(r.URL.Query().Get("access_token")).To(Equal("acc-test"))
+			w.WriteHeader(status)
+			_, _ = w.Write(body)
+		}))
+		client = newClientFor(server)
+	}
+
+	Describe("ForProfile", func() {
+		It("decodes the photo bulk envelope with pagination links", func() {
+			serve(http.StatusOK, []byte(`{
+				"results":[{"id":"photo-100","title":"Family portrait","sizes":{"small":"https://x/small.jpg"}}],
+				"page":1,"next_page":"…?page=2"
+			}`), http.MethodGet, "/api/profile-1/photos")
+
+			res, err := client.ForProfile(ctx, "profile-1", 0)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.Results).To(HaveLen(1))
+			Expect(res.Results[0].Id).To(Equal("photo-100"))
+			Expect(res.Results[0].Sizes).To(HaveKeyWithValue("small", "https://x/small.jpg"))
+		})
+	})
+
+	Describe("AddToProfile", func() {
+		It("POSTs a JSON body with the Base64 file to /add-photo", func() {
+			serve(http.StatusOK,
+				[]byte(`{"id":"photo-9","title":"Snapshot"}`),
+				http.MethodPost, "/api/profile-1/add-photo")
+
+			b64 := "aGVsbG8="
+			p, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Snapshot", File: &b64})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Id).To(Equal("photo-9"))
+			Expect(recorded.Header.Get("Content-Type")).To(HavePrefix("application/json"))
+		})
+	})
+
+	Describe("AddMugshotToProfile", func() {
+		It("POSTs the mugshot body to /add-mugshot", func() {
+			serve(http.StatusOK, []byte(`{"id":"photo-9"}`),
+				http.MethodPost, "/api/profile-1/add-mugshot")
+
+			existing := "photo-100"
+			_, err := client.AddMugshotToProfile(ctx, "profile-1", &MugshotRequest{PhotoId: &existing})
+
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+})

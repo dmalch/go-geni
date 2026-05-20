@@ -172,3 +172,34 @@ var _ = Describe("Video endpoints", func() {
 		})
 	})
 })
+
+var _ = Describe("Video profile-scoped endpoints", func() {
+	var (
+		ctx    context.Context
+		server *httptest.Server
+		client *Client
+	)
+
+	BeforeEach(func() { ctx = context.Background() })
+	AfterEach(func() {
+		if server != nil {
+			server.Close()
+		}
+	})
+
+	It("AddToProfile POSTs a JSON body to /add-video", func() {
+		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Expect(r.Method).To(Equal(http.MethodPost))
+			Expect(r.URL.Path).To(Equal("/api/profile-1/add-video"))
+			Expect(r.URL.Query().Get("access_token")).To(Equal("acc-test"))
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"id":"video-9","title":"Reel"}`))
+		}))
+		client = newClientFor(server)
+
+		v, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Reel"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v.Id).To(Equal("video-9"))
+	})
+})

@@ -49,11 +49,11 @@ var _ = Describe("Profile actions API", func() {
 		It("round-trips follow then unfollow", func() {
 			target := createFixtureProfile(ctx, client, "FollowTarget")
 
-			followed, err := client.FollowProfile(ctx, target.Id)
+			followed, err := client.Profile().Follow(ctx, target.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(followed.Id).To(Equal(target.Id))
 
-			unfollowed, err := client.UnfollowProfile(ctx, target.Id)
+			unfollowed, err := client.Profile().Unfollow(ctx, target.Id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(unfollowed.Id).To(Equal(target.Id))
 		})
@@ -64,7 +64,7 @@ var _ = Describe("Profile actions API", func() {
 			a := createFixtureProfile(ctx, client, "CompareA")
 			b := createFixtureProfile(ctx, client, "CompareB")
 
-			res, err := client.CompareProfiles(ctx, a.Id, b.Id)
+			res, err := client.Tree().Compare(ctx, a.Id, b.Id)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
@@ -80,7 +80,7 @@ var _ = Describe("Profile actions API", func() {
 
 			first := "ParentOf"
 			last := "Acceptance"
-			parent, err := client.AddParent(ctx, child.Id, &profile.Request{
+			parent, err := client.Profile().AddParent(ctx, child.Id, &profile.Request{
 				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &first, LastName: &last},
 				},
@@ -89,7 +89,7 @@ var _ = Describe("Profile actions API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(parent.Id).To(HavePrefix("profile-"))
-			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), parent.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), parent.Id) })
 
 			Expect(parent.FirstName).ToNot(BeNil())
 			Expect(*parent.FirstName).To(Equal("ParentOf"))
@@ -102,7 +102,7 @@ var _ = Describe("Profile actions API", func() {
 
 			afterFirst := "BasicsAfter"
 			afterLast := "Acceptance"
-			updated, err := client.UpdateProfileBasics(ctx, created.Id, &profile.Request{
+			updated, err := client.Profile().UpdateBasics(ctx, created.Id, &profile.Request{
 				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &afterFirst, LastName: &afterLast},
 				},
@@ -120,7 +120,7 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddDocOwner")
 
 			text := "attached via add-document"
-			doc, err := client.AddProfileDocument(ctx, profile.Id, &document.Request{
+			doc, err := client.Document().AddToProfile(ctx, profile.Id, &document.Request{
 				Title: fmt.Sprintf("AccAddProfileDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
@@ -135,7 +135,7 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddPhotoOwner")
 
 			b64 := tinyPngBase64()
-			photo, err := client.AddProfilePhoto(ctx, profile.Id, &photo.Request{
+			photo, err := client.Photo().AddToProfile(ctx, profile.Id, &photo.Request{
 				Title: fmt.Sprintf("AccAddProfilePhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
@@ -154,7 +154,7 @@ var _ = Describe("Profile actions API", func() {
 
 			profile := createFixtureProfile(ctx, client, "AddVideoOwner")
 			b64 := "" // placeholder
-			video, err := client.AddProfileVideo(ctx, profile.Id, &video.Request{
+			video, err := client.Video().AddToProfile(ctx, profile.Id, &video.Request{
 				Title: fmt.Sprintf("AccAddProfileVideo-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
@@ -183,7 +183,7 @@ var _ = Describe("Profile actions API", func() {
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), source.Id) })
 
-			mug, err := client.AddProfileMugshot(ctx, profile.Id, &geni.MugshotRequest{
+			mug, err := client.Photo().AddMugshotToProfile(ctx, profile.Id, &photo.MugshotRequest{
 				PhotoId: ptr(source.Id),
 			})
 			Expect(err).ToNot(HaveOccurred())

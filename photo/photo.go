@@ -64,3 +64,22 @@ type BulkResponse struct {
 	NextPage string  `json:"next_page,omitempty"`
 	PrevPage string  `json:"prev_page,omitempty"`
 }
+
+// MugshotRequest is the JSON-encoded body for
+// [Client.AddMugshotToProfile]. Either File or PhotoId is required —
+// File uploads a new image via Base64 (the JSON path; not the
+// multipart one), PhotoId reuses an existing photo as the mugshot.
+type MugshotRequest struct {
+	// File is the Base64-encoded image to upload as the mugshot.
+	// Mutually exclusive with PhotoId; required when PhotoId is not
+	// set.
+	File *string `json:"file,omitempty"`
+	// PhotoId reuses an existing photo as the mugshot. Mutually
+	// exclusive with File; required when File is not set.
+	PhotoId *string `json:"photo_id,omitempty"`
+	// Title, Description, Date, AlbumId are all optional.
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Date        *string `json:"date,omitempty"`
+	AlbumId     *string `json:"album_id,omitempty"`
+}
