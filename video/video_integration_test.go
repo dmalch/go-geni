@@ -116,7 +116,7 @@ var _ = Describe("Video endpoints", func() {
 				WithDescription("annual family reunion"))
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(v.Id).To(Equal("video-42"))
+			Expect(v.ID).To(Equal("video-42"))
 			Expect(v.Sizes).To(HaveKeyWithValue("small", "https://videos.geni.test/v-42/small.mp4"))
 			Expect(capturedTitle).To(Equal("Reunion 1972"))
 			Expect(capturedFileName).To(Equal("reunion.mp4"))
@@ -200,6 +200,6 @@ var _ = Describe("Video profile-scoped endpoints", func() {
 		v, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Reel"})
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(v.Id).To(Equal("video-9"))
+		Expect(v.ID).To(Equal("video-9"))
 	})
 })

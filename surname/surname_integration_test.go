@@ -80,7 +80,7 @@ var _ = Describe("Surname endpoints", func() {
 			s, err := client.Get(ctx, "surname-1")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(s.Id).To(Equal("surname-1"))
+			Expect(s.ID).To(Equal("surname-1"))
 			Expect(s.Description).To(Equal("Family surname"))
 			Expect(s.SluggedName).To(Equal("smith"))
 			Expect(s.Url).To(ContainSubstring("/api/surname-1"))

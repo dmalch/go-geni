@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `github.com/dmalch/go-geni` — Go client for the Geni.com genealogy API.
 Extracted from `terraform-provider-genealogy` v0.20.1's `internal/geni/`
 so the same HTTP layer is reusable from CLI tools and migration scripts.
-Pre-1.0 (`0.1.x`); see `CHANGELOG.md` for the deferred ID/URL casing
-cleanup planned for 1.0.
+The package was reshaped for 1.0 into one sub-package per resource
+(`profile/`, `union/`, `document/`, …) behind a thin root façade; see
+`CHANGELOG.md`.
 
 ## Commands
 
@@ -124,8 +125,8 @@ sandbox; production calls cost rate-limit budget against real users.
 
 - Module path is `github.com/dmalch/go-geni`. `go.mod` pins `go 1.26`.
 - Logging is `log/slog` only — no `fmt.Println` / `log` package.
-- Identifiers like `Id`, `Guid`, `Url` violate Go's all-caps acronym rule
-  but are kept until 1.0 to keep the parallel provider migration
-  tractable (see CHANGELOG). Don't bulk-rename in feature PRs; that's
-  reserved for the 1.0 cleanup with deprecation aliases.
+- `Id` was renamed to `ID` across the public API in the 1.0 reshape.
+  `Guid`, `Url`, `Html`, `Json` keep their mixed-case spelling
+  deliberately — only `Id` → `ID` was in scope. Don't "fix" the
+  remaining acronyms.
 - Apache-2.0 licensed; library is **not endorsed by Geni.com**.

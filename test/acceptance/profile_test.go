@@ -25,12 +25,12 @@ var _ = Describe("Profile API", func() {
 	Describe("Lifecycle", func() {
 		It("creates a profile and reads it back", func() {
 			created := createFixtureProfile(ctx, client, "CreateGet")
-			Expect(created.Id).ToNot(BeEmpty())
+			Expect(created.ID).ToNot(BeEmpty())
 			Expect(created.Guid).ToNot(BeEmpty())
 
-			got, err := client.Profile().Get(ctx, created.Id)
+			got, err := client.Profile().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Id).To(Equal(created.Id))
+			Expect(got.ID).To(Equal(created.ID))
 			Expect(got.FirstName).ToNot(BeNil())
 			Expect(*got.FirstName).To(Equal("CreateGet"))
 		})
@@ -39,14 +39,14 @@ var _ = Describe("Profile API", func() {
 			created := createFixtureProfile(ctx, client, "UpdateBefore")
 			about := "Updated bio for acceptance test"
 
-			updated, err := client.Profile().Update(ctx, created.Id, &profile.Request{
+			updated, err := client.Profile().Update(ctx, created.ID, &profile.Request{
 				AboutMe: &about,
 				IsAlive: false,
 				Public:  true,
 			})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.Id).To(Equal(created.Id))
+			Expect(updated.ID).To(Equal(created.ID))
 			Expect(updated.AboutMe).ToNot(BeNil())
 			Expect(*updated.AboutMe).To(Equal(about))
 		})
@@ -63,9 +63,9 @@ var _ = Describe("Profile API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(client.Profile().Delete(ctx, created.Id)).To(Succeed())
+			Expect(client.Profile().Delete(ctx, created.ID)).To(Succeed())
 
-			got, err := client.Profile().Get(ctx, created.Id)
+			got, err := client.Profile().Get(ctx, created.ID)
 			if errors.Is(err, geni.ErrResourceNotFound) {
 				return
 			}
@@ -84,24 +84,24 @@ var _ = Describe("Profile API", func() {
 		})
 
 		It("AddPartner returns a partner profile", func() {
-			partner, err := client.Profile().AddPartner(ctx, focus.Id)
+			partner, err := client.Profile().AddPartner(ctx, focus.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(partner.Id).ToNot(BeEmpty())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), partner.Id) })
+			Expect(partner.ID).ToNot(BeEmpty())
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), partner.ID) })
 		})
 
 		It("AddChild returns a child profile", func() {
-			child, err := client.Profile().AddChild(ctx, focus.Id)
+			child, err := client.Profile().AddChild(ctx, focus.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(child.Id).ToNot(BeEmpty())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
+			Expect(child.ID).ToNot(BeEmpty())
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.ID) })
 		})
 
 		It("AddSibling returns a sibling profile", func() {
-			sibling, err := client.Profile().AddSibling(ctx, focus.Id)
+			sibling, err := client.Profile().AddSibling(ctx, focus.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(sibling.Id).ToNot(BeEmpty())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), sibling.Id) })
+			Expect(sibling.ID).ToNot(BeEmpty())
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), sibling.ID) })
 		})
 	})
 
@@ -110,10 +110,10 @@ var _ = Describe("Profile API", func() {
 			a := createFixtureProfile(ctx, client, "BulkA")
 			b := createFixtureProfile(ctx, client, "BulkB")
 
-			res, err := client.Profile().GetBulk(ctx, []string{a.Id, b.Id})
+			res, err := client.Profile().GetBulk(ctx, []string{a.ID, b.ID})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
-			Expect([]string{res.Results[0].Id, res.Results[1].Id}).To(ConsistOf(a.Id, b.Id))
+			Expect([]string{res.Results[0].ID, res.Results[1].ID}).To(ConsistOf(a.ID, b.ID))
 		})
 
 		It("GetManagedProfiles returns the caller's managed page", func() {
@@ -140,9 +140,9 @@ var _ = Describe("Profile API", func() {
 			Expect(err).ToNot(HaveOccurred())
 			// dup may be consumed by merge; cleanup is a no-op on a
 			// merged-away profile.
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), dup.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), dup.ID) })
 
-			Expect(client.Profile().Merge(ctx, keep.Id, dup.Id)).To(Succeed())
+			Expect(client.Profile().Merge(ctx, keep.ID, dup.ID)).To(Succeed())
 		})
 	})
 
@@ -161,11 +161,11 @@ var _ = Describe("Profile API", func() {
 				Public:  true,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), created.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), created.ID) })
 
-			Expect(client.Profile().WipeEventDates(ctx, created.Id, []string{"birth"})).To(Succeed())
+			Expect(client.Profile().WipeEventDates(ctx, created.ID, []string{"birth"})).To(Succeed())
 
-			got, err := client.Profile().Get(ctx, created.Id)
+			got, err := client.Profile().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
 			if got.Birth != nil && got.Birth.Date != nil {
 				Expect(got.Birth.Date.Year).To(BeNil())

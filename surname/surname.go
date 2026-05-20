@@ -7,8 +7,8 @@ package surname
 // Surname is Geni's Surname resource. Used as the parent for
 // surname-scoped collections (followers, profiles).
 type Surname struct {
-	// Id is the surname's identifier.
-	Id string `json:"id,omitempty"`
+	// ID is the surname's identifier.
+	ID string `json:"id,omitempty"`
 	// Description is the surname's free-text description.
 	Description string `json:"description,omitempty"`
 	// SluggedName is the surname rendered as a URL-safe slug (e.g.

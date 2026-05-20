@@ -47,7 +47,7 @@ func TestGet_Request(t *testing.T) {
 	u, err := c.Get(context.Background(), "union-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(u.Id).To(Equal("union-9"))
+	Expect(u.ID).To(Equal("union-9"))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-9"))
 }
 
@@ -67,7 +67,7 @@ func TestGetBulk_SingleIdFallback(t *testing.T) {
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-9"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("union-9"))
+		Expect(res.Results[0].ID).To(Equal("union-9"))
 	})
 
 	t.Run("two-id call still hits the bulk endpoint", func(t *testing.T) {
@@ -102,7 +102,7 @@ func TestAddPartner_Request(t *testing.T) {
 		partner, err := c.AddPartner(context.Background(), "union-9")
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(partner.Id).To(Equal("profile-200"))
+		Expect(partner.ID).To(Equal("profile-200"))
 		Expect(partner.FirstName).ToNot(BeNil())
 		Expect(*partner.FirstName).To(Equal("NewPartner"))
 	})
@@ -157,7 +157,7 @@ func TestAddChild_Request(t *testing.T) {
 		child, err := c.AddChild(context.Background(), "union-9", profile.WithModifier("foster"))
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(child.Id).To(Equal("profile-201"))
+		Expect(child.ID).To(Equal("profile-201"))
 		Expect(child.FirstName).ToNot(BeNil())
 		Expect(*child.FirstName).To(Equal("NewChild"))
 	})

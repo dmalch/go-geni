@@ -28,7 +28,7 @@ func TestGetProfiles_BulkThreeIds(t *testing.T) {
 	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("profile-1,profile-2,profile-3"))
 	Expect(res.Results).To(HaveLen(3))
 
-	ids := []string{res.Results[0].Id, res.Results[1].Id, res.Results[2].Id}
+	ids := []string{res.Results[0].ID, res.Results[1].ID, res.Results[2].ID}
 	Expect(ids).To(ConsistOf("profile-1", "profile-2", "profile-3"))
 }
 

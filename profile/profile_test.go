@@ -49,7 +49,7 @@ func TestCreate_Request(t *testing.T) {
 	})
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(p.Id).To(Equal("profile-9"))
+	Expect(p.ID).To(Equal("profile-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile/add"))
 	got, _ := io.ReadAll(ft.lastRequest.Body)
@@ -64,7 +64,7 @@ func TestGet_Request(t *testing.T) {
 		p, err := c.Get(context.Background(), "profile-1")
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(p.Id).To(Equal("profile-1"))
+		Expect(p.ID).To(Equal("profile-1"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1"))
 		Expect(ft.lastRequest.URL.Query().Has("fields")).To(BeTrue())

@@ -43,7 +43,7 @@ func (c *Client) Get(ctx context.Context, unionId string) (*Union, error) {
 			return env, nil
 		},
 		ListResults: func(env BulkResponse) []Union { return env.Results },
-		IDOfResult:  func(u Union) string { return u.Id },
+		IDOfResult:  func(u Union) string { return u.ID },
 	}
 
 	body, err := c.transport.Do(ctx, req, coalescer)

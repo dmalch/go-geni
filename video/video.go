@@ -20,8 +20,8 @@ type Request struct {
 // Video is Geni's Video resource — a single uploaded video (or a
 // link to an externally-hosted video) with metadata and tagging.
 type Video struct {
-	// Id is the video's identifier.
-	Id string `json:"id,omitempty"`
+	// ID is the video's identifier.
+	ID string `json:"id,omitempty"`
 	// Guid is the video's legacy global identifier.
 	Guid string `json:"guid,omitempty"`
 	// Title is the video's title.

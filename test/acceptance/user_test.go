@@ -28,7 +28,7 @@ var _ = Describe("User API", func() {
 
 			// Log everything the real API surfaces so deviations from
 			// the documented fields are visible in test output.
-			AddReportEntry("user.Id", user.Id)
+			AddReportEntry("user.ID", user.ID)
 			AddReportEntry("user.Guid", user.Guid)
 			AddReportEntry("user.Name", user.Name)
 			AddReportEntry("user.AccountType", user.AccountType)
@@ -52,9 +52,9 @@ var _ = Describe("User API", func() {
 
 			Expect(second.Name).To(Equal(first.Name))
 			Expect(second.AccountType).To(Equal(first.AccountType))
-			// If one call surfaces an Id, the next must surface the
+			// If one call surfaces an ID, the next must surface the
 			// same one (or both must omit it).
-			Expect(second.Id).To(Equal(first.Id))
+			Expect(second.ID).To(Equal(first.ID))
 			Expect(second.Guid).To(Equal(first.Guid))
 		})
 	})

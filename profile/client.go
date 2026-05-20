@@ -92,7 +92,7 @@ func (c *Client) Get(ctx context.Context, profileId string) (*Profile, error) {
 			return env, nil
 		},
 		ListResults: func(env BulkResponse) []Profile { return env.Results },
-		IDOfResult:  func(p Profile) string { return p.Id },
+		IDOfResult:  func(p Profile) string { return p.ID },
 	}
 
 	body, err := c.transport.Do(ctx, req, coalescer)

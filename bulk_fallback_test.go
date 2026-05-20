@@ -26,7 +26,7 @@ func TestGetProfiles_SingleIdFallback(t *testing.T) {
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("profile-1"))
+		Expect(res.Results[0].ID).To(Equal("profile-1"))
 	})
 
 	t.Run("2 ids → /api/profile?ids=…", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestGetDocuments_SingleIdFallback(t *testing.T) {
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document-1"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("document-1"))
+		Expect(res.Results[0].ID).To(Equal("document-1"))
 	})
 
 	t.Run("2 ids → /api/document?ids=…", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestGetPhotos_SingleIdFallback(t *testing.T) {
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("photo-1"))
+		Expect(res.Results[0].ID).To(Equal("photo-1"))
 	})
 
 	t.Run("2 ids → /api/photo?ids=…", func(t *testing.T) {

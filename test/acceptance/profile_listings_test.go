@@ -71,21 +71,21 @@ var _ = Describe("Profile media listings", func() {
 			profile := createFixtureProfile(ctx, client, "ProfileDocs")
 			text := "profile-listing fixture"
 
-			doc, err := client.Document().AddToProfile(ctx, profile.Id, &document.Request{
+			doc, err := client.Document().AddToProfile(ctx, profile.ID, &document.Request{
 				Title: fmt.Sprintf("AccProfileDocsDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.Id) })
+			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.ID) })
 
 			Eventually(func(g Gomega) {
-				listed, err := client.Document().ForProfile(ctx, profile.Id, 0)
+				listed, err := client.Document().ForProfile(ctx, profile.ID, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				ids := make([]string, 0, len(listed.Results))
 				for _, d := range listed.Results {
-					ids = append(ids, d.Id)
+					ids = append(ids, d.ID)
 				}
-				g.Expect(ids).To(ContainElement(doc.Id))
+				g.Expect(ids).To(ContainElement(doc.ID))
 			}).
 				WithTimeout(profileListingPropagationTimeout).
 				WithPolling(profileListingPropagationPoll).
@@ -109,21 +109,21 @@ var _ = Describe("Profile media listings", func() {
 			Expect(err).ToNot(HaveOccurred())
 			b64 := base64.StdEncoding.EncodeToString(raw)
 
-			photo, err := client.Photo().AddToProfile(ctx, profile.Id, &photo.Request{
+			photo, err := client.Photo().AddToProfile(ctx, profile.ID, &photo.Request{
 				Title: fmt.Sprintf("AccProfilePhotosPhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.ID) })
 
 			Eventually(func(g Gomega) {
-				listed, err := client.Photo().ForProfile(ctx, profile.Id, 0)
+				listed, err := client.Photo().ForProfile(ctx, profile.ID, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				ids := make([]string, 0, len(listed.Results))
 				for _, p := range listed.Results {
-					ids = append(ids, p.Id)
+					ids = append(ids, p.ID)
 				}
-				g.Expect(ids).To(ContainElement(photo.Id))
+				g.Expect(ids).To(ContainElement(photo.ID))
 			}).
 				WithTimeout(profileListingPropagationTimeout).
 				WithPolling(profileListingPropagationPoll).

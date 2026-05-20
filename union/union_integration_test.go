@@ -91,7 +91,7 @@ var _ = Describe("Union add-* endpoints", func() {
 			partner, err := client.AddPartner(ctx, "union-9")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(partner.Id).To(Equal("profile-200"))
+			Expect(partner.ID).To(Equal("profile-200"))
 			Expect(partner.FirstName).ToNot(BeNil())
 			Expect(*partner.FirstName).To(Equal("New"))
 		})
@@ -105,7 +105,7 @@ var _ = Describe("Union add-* endpoints", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
-			Expect(child.Id).To(Equal("profile-201"))
+			Expect(child.ID).To(Equal("profile-201"))
 			Expect(child.FirstName).ToNot(BeNil())
 			Expect(*child.FirstName).To(Equal("New"))
 		})

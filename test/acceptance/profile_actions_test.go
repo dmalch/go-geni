@@ -49,13 +49,13 @@ var _ = Describe("Profile actions API", func() {
 		It("round-trips follow then unfollow", func() {
 			target := createFixtureProfile(ctx, client, "FollowTarget")
 
-			followed, err := client.Profile().Follow(ctx, target.Id)
+			followed, err := client.Profile().Follow(ctx, target.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(followed.Id).To(Equal(target.Id))
+			Expect(followed.ID).To(Equal(target.ID))
 
-			unfollowed, err := client.Profile().Unfollow(ctx, target.Id)
+			unfollowed, err := client.Profile().Unfollow(ctx, target.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(unfollowed.Id).To(Equal(target.Id))
+			Expect(unfollowed.ID).To(Equal(target.ID))
 		})
 	})
 
@@ -64,13 +64,13 @@ var _ = Describe("Profile actions API", func() {
 			a := createFixtureProfile(ctx, client, "CompareA")
 			b := createFixtureProfile(ctx, client, "CompareB")
 
-			res, err := client.Tree().Compare(ctx, a.Id, b.Id)
+			res, err := client.Tree().Compare(ctx, a.ID, b.ID)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
 			Expect(res.Results[0].Focus).ToNot(BeNil())
-			Expect(res.Results[0].Focus.Id).To(Equal(a.Id))
-			Expect(res.Results[1].Focus.Id).To(Equal(b.Id))
+			Expect(res.Results[0].Focus.ID).To(Equal(a.ID))
+			Expect(res.Results[1].Focus.ID).To(Equal(b.ID))
 		})
 	})
 
@@ -80,7 +80,7 @@ var _ = Describe("Profile actions API", func() {
 
 			first := "ParentOf"
 			last := "Acceptance"
-			parent, err := client.Profile().AddParent(ctx, child.Id, &profile.Request{
+			parent, err := client.Profile().AddParent(ctx, child.ID, &profile.Request{
 				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &first, LastName: &last},
 				},
@@ -88,8 +88,8 @@ var _ = Describe("Profile actions API", func() {
 				Public:  true,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(parent.Id).To(HavePrefix("profile-"))
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), parent.Id) })
+			Expect(parent.ID).To(HavePrefix("profile-"))
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), parent.ID) })
 
 			Expect(parent.FirstName).ToNot(BeNil())
 			Expect(*parent.FirstName).To(Equal("ParentOf"))
@@ -102,7 +102,7 @@ var _ = Describe("Profile actions API", func() {
 
 			afterFirst := "BasicsAfter"
 			afterLast := "Acceptance"
-			updated, err := client.Profile().UpdateBasics(ctx, created.Id, &profile.Request{
+			updated, err := client.Profile().UpdateBasics(ctx, created.ID, &profile.Request{
 				Names: map[string]profile.NameElement{
 					"en-US": {FirstName: &afterFirst, LastName: &afterLast},
 				},
@@ -120,13 +120,13 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddDocOwner")
 
 			text := "attached via add-document"
-			doc, err := client.Document().AddToProfile(ctx, profile.Id, &document.Request{
+			doc, err := client.Document().AddToProfile(ctx, profile.ID, &document.Request{
 				Title: fmt.Sprintf("AccAddProfileDoc-%d", time.Now().UnixNano()),
 				Text:  &text,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(doc.Id).To(HavePrefix("document-"))
-			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.Id) })
+			Expect(doc.ID).To(HavePrefix("document-"))
+			DeferCleanup(func() { _ = client.Document().Delete(context.Background(), doc.ID) })
 		})
 	})
 
@@ -135,13 +135,13 @@ var _ = Describe("Profile actions API", func() {
 			profile := createFixtureProfile(ctx, client, "AddPhotoOwner")
 
 			b64 := tinyPngBase64()
-			photo, err := client.Photo().AddToProfile(ctx, profile.Id, &photo.Request{
+			photo, err := client.Photo().AddToProfile(ctx, profile.ID, &photo.Request{
 				Title: fmt.Sprintf("AccAddProfilePhoto-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(photo.Id).To(HavePrefix("photo-"))
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.Id) })
+			Expect(photo.ID).To(HavePrefix("photo-"))
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), photo.ID) })
 		})
 	})
 
@@ -154,13 +154,13 @@ var _ = Describe("Profile actions API", func() {
 
 			profile := createFixtureProfile(ctx, client, "AddVideoOwner")
 			b64 := "" // placeholder
-			video, err := client.Video().AddToProfile(ctx, profile.Id, &video.Request{
+			video, err := client.Video().AddToProfile(ctx, profile.ID, &video.Request{
 				Title: fmt.Sprintf("AccAddProfileVideo-%d", time.Now().UnixNano()),
 				File:  &b64,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(video.Id).To(HavePrefix("video-"))
-			DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.Id) })
+			Expect(video.ID).To(HavePrefix("video-"))
+			DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.ID) })
 		})
 	})
 
@@ -181,13 +181,13 @@ var _ = Describe("Profile actions API", func() {
 				fmt.Sprintf("AccMugshotSource-%d", time.Now().UnixNano()),
 				"mugshot.png", &buf)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), source.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), source.ID) })
 
-			mug, err := client.Photo().AddMugshotToProfile(ctx, profile.Id, &photo.MugshotRequest{
-				PhotoId: ptr(source.Id),
+			mug, err := client.Photo().AddMugshotToProfile(ctx, profile.ID, &photo.MugshotRequest{
+				PhotoId: ptr(source.ID),
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(mug.Id).To(HavePrefix("photo-"))
+			Expect(mug.ID).To(HavePrefix("photo-"))
 			// Mugshot may be the same source photo or a new
 			// derived one — either is fine; we just want a
 			// non-empty id back.

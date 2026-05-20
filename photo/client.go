@@ -156,7 +156,7 @@ func (c *Client) Get(ctx context.Context, photoId string) (*Photo, error) {
 			return env, nil
 		},
 		ListResults: func(env BulkResponse) []Photo { return env.Results },
-		IDOfResult:  func(p Photo) string { return p.Id },
+		IDOfResult:  func(p Photo) string { return p.ID },
 	}
 
 	body, err := c.transport.Do(ctx, req, coalescer)

@@ -220,7 +220,7 @@ var _ = Describe("Photo Create end-to-end", func() {
 			WithAlbum("album-7"))
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(p.Id).To(Equal("photo-42"))
+		Expect(p.ID).To(Equal("photo-42"))
 		Expect(p.Title).To(Equal("Family portrait"))
 		Expect(p.AlbumId).To(Equal("album-7"))
 		Expect(p.Sizes).To(HaveKeyWithValue("small", "https://photos.geni.test/photo-42/small.jpg"))
@@ -269,7 +269,7 @@ var _ = Describe("Photo profile-scoped endpoints", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(1))
-			Expect(res.Results[0].Id).To(Equal("photo-100"))
+			Expect(res.Results[0].ID).To(Equal("photo-100"))
 			Expect(res.Results[0].Sizes).To(HaveKeyWithValue("small", "https://x/small.jpg"))
 		})
 	})
@@ -284,7 +284,7 @@ var _ = Describe("Photo profile-scoped endpoints", func() {
 			p, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Snapshot", File: &b64})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(p.Id).To(Equal("photo-9"))
+			Expect(p.ID).To(Equal("photo-9"))
 			Expect(recorded.Header.Get("Content-Type")).To(HavePrefix("application/json"))
 		})
 	})

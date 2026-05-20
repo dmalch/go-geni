@@ -4,8 +4,8 @@ package revision
 
 // Revision is Geni's Revision resource.
 type Revision struct {
-	// Id is the revision's identifier.
-	Id string `json:"id,omitempty"`
+	// ID is the revision's identifier.
+	ID string `json:"id,omitempty"`
 	// Guid is the revision's globally unique identifier.
 	Guid string `json:"guid,omitempty"`
 	// Action describes what the revision did.

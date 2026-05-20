@@ -45,9 +45,9 @@ var _ = Describe("SearchProfiles", func() {
 			g.Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(res.Results))
 			for _, p := range res.Results {
-				ids = append(ids, p.Id)
+				ids = append(ids, p.ID)
 			}
-			g.Expect(ids).To(ContainElement(created.Id))
+			g.Expect(ids).To(ContainElement(created.ID))
 		}).
 			WithTimeout(60 * time.Second).
 			WithPolling(3 * time.Second).

@@ -1,5 +1,14 @@
 ## 0.18.0 (Unreleased)
 
+- **BREAKING:** `Id` → `ID` across the public API. Every wire type's
+  `Id` field is now `ID` (`profile.Profile.ID`, `union.Union.ID`,
+  `document.Document.ID`, `photo.Photo.ID`, `video.Video.ID`,
+  `project.Project.ID`, `surname.Surname.ID`, `revision.Revision.ID`,
+  `user.User.ID`, `comment.Comment.ID`, `photoalbum.PhotoAlbum.ID`,
+  `tree.PathRelation.ID`). The JSON wire tag stays `id` — only the Go
+  field identifier changed. `Guid`, `Url`, `Html`, `Json` keep their
+  mixed-case spelling deliberately; this rename covered `Id` only.
+
 - **Internal restructuring — first PRs of the pre-1.0 reshape.**
   HTTP plumbing (auth, rate limiting, retry, error sentinels, bulk
   coalescing, the `escapeStringToUTF` helper) moves out of the root

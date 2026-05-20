@@ -110,7 +110,7 @@ const (
 
 // PathRelation is one hop along a path-to result.
 type PathRelation struct {
-	Id       string `json:"id,omitempty"`
+	ID       string `json:"id,omitempty"`
 	Relation string `json:"relation,omitempty"`
 	NextId   string `json:"next_id,omitempty"`
 }

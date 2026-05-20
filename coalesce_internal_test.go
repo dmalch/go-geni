@@ -40,7 +40,7 @@ func newCoalescer() *transport.BulkCoalescer[profile.Profile, profile.BulkRespon
 			return e, err
 		},
 		ListResults: func(env profile.BulkResponse) []profile.Profile { return env.Results },
-		IDOfResult:  func(p profile.Profile) string { return p.Id },
+		IDOfResult:  func(p profile.Profile) string { return p.ID },
 	}
 }
 
@@ -189,7 +189,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		// profile.
 		var ownProfile profile.Profile
 		Expect(json.Unmarshal(out, &ownProfile)).To(Succeed())
-		Expect(ownProfile.Id).To(Equal("profile-1"))
+		Expect(ownProfile.ID).To(Equal("profile-1"))
 
 		// Siblings: urlMap entries swapped from CancelFunc to
 		// []byte, and the prior CancelFuncs were called.
@@ -203,7 +203,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 			Expect(ok).To(BeTrue(), "expected %s to be []byte, got %T", sibId, v)
 			var got profile.Profile
 			Expect(json.Unmarshal(raw, &got)).To(Succeed())
-			Expect(got.Id).To(Equal(sibId))
+			Expect(got.ID).To(Equal(sibId))
 		}
 	})
 
