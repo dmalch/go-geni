@@ -1,4 +1,4 @@
-## 1.2.0 (Unreleased)
+## 1.2.0
 
 - New `geni profile open <id-or-guid>` CLI command — opens the
   profile's Geni web page in the default browser. Accepts either a
