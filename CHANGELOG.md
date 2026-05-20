@@ -1,3 +1,10 @@
+## 1.2.0 (Unreleased)
+
+- New `geni profile open <id-or-guid>` CLI command — opens the
+  profile's Geni web page in the default browser. Accepts either a
+  `profile-<n>` id or a bare guid. The URL is built directly from the
+  argument, so it needs no API call or login.
+
 ## 1.1.0
 
 - New `geni` command-line tool at `cmd/geni` — a CLI façade over the

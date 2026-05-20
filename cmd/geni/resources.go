@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"strings"
 
 	geni "github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/tree"
+	"github.com/skratchdot/open-golang/open"
 )
 
 // resourceGet builds a leaf handler for a "get <id>" command: it reads
@@ -51,6 +53,29 @@ func runProfileSearch(ctx context.Context, g *globalOpts, args []string) error {
 		return err
 	}
 	return render(g.stdout, resp)
+}
+
+// profileWebURL builds the browser URL for a profile id or guid. A
+// "profile-<n>" id uses Geni's /profile-<n> permalink; a bare guid
+// uses /people/id/<guid>. Both redirect to the canonical profile page.
+func profileWebURL(sandbox bool, idOrGuid string) string {
+	base := geni.BaseURL(sandbox)
+	if strings.HasPrefix(idOrGuid, "profile-") {
+		return base + idOrGuid
+	}
+	return base + "people/id/" + idOrGuid
+}
+
+// runProfileOpen handles "geni profile open <id-or-guid>" — it opens
+// the profile's Geni web page in the default browser. The URL is built
+// from the argument, so no API call or login is needed.
+func runProfileOpen(_ context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("expected exactly one profile id or guid argument")
+	}
+	url := profileWebURL(g.sandbox, args[0])
+	_, _ = fmt.Fprintf(g.stderr, "opening %s\n", url)
+	return open.Start(url)
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".
