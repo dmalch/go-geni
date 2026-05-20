@@ -305,3 +305,36 @@ func TestWipeEventDates_Request(t *testing.T) {
 		Expect(ft.lastRequest).To(BeNil())
 	})
 }
+
+func TestGetBulk_ThreeIds(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"results":[
+		{"id":"profile-1","first_name":"A"},
+		{"id":"profile-2","first_name":"B"},
+		{"id":"profile-3","first_name":"C"}
+	]}`)
+
+	res, err := c.GetBulk(context.Background(), []string{"profile-1", "profile-2", "profile-3"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile"))
+	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("profile-1,profile-2,profile-3"))
+	Expect(res.Results).To(HaveLen(3))
+	ids := []string{res.Results[0].ID, res.Results[1].ID, res.Results[2].ID}
+	Expect(ids).To(ConsistOf("profile-1", "profile-2", "profile-3"))
+}
+
+func TestGetBulk_ErrorMapping(t *testing.T) {
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetBulk(context.Background(), []string{"profile-1", "profile-2"})
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+		_, err := c.GetBulk(context.Background(), []string{"profile-1", "profile-2"})
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}

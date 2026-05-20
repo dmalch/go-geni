@@ -404,3 +404,31 @@ func TestAddMugshotToProfile_Request(t *testing.T) {
 		Expect(string(got)).ToNot(ContainSubstring(`"file"`))
 	})
 }
+
+func TestGetBulk_SingleIdFallback(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"photo-1","title":"X"}`)
+
+	res, err := c.GetBulk(context.Background(), []string{"photo-1"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-1"))
+	Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
+	Expect(res.Results).To(HaveLen(1))
+	Expect(res.Results[0].ID).To(Equal("photo-1"))
+}
+
+func TestGetBulk_ErrorMapping(t *testing.T) {
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetBulk(context.Background(), []string{"photo-1", "photo-2"})
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+		_, err := c.GetBulk(context.Background(), []string{"photo-1", "photo-2"})
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}

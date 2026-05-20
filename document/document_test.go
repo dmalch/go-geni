@@ -260,3 +260,59 @@ func TestAddToProfile_Request(t *testing.T) {
 	got, _ := io.ReadAll(ft.lastRequest.Body)
 	Expect(string(got)).To(ContainSubstring(`"text":"Lorem ipsum"`))
 }
+
+func TestGetBulk_SingleIdFallback(t *testing.T) {
+	t.Run("1 id → /api/<id>", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"document-1","title":"X"}`)
+
+		res, err := c.GetBulk(context.Background(), []string{"document-1"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document-1"))
+		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
+		Expect(res.Results).To(HaveLen(1))
+		Expect(res.Results[0].ID).To(Equal("document-1"))
+	})
+
+	t.Run("2 ids → /api/document?ids=…", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"results":[{"id":"document-1"},{"id":"document-2"}]}`)
+
+		_, err := c.GetBulk(context.Background(), []string{"document-1", "document-2"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/document"))
+		Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("document-1,document-2"))
+	})
+}
+
+func TestGetBulk_ThreeIds(t *testing.T) {
+	RegisterTestingT(t)
+	c, _ := newFakeClient(http.StatusOK, `{"results":[
+		{"id":"document-1","title":"A"},
+		{"id":"document-2","title":"B"},
+		{"id":"document-3","title":"C"}
+	]}`)
+
+	res, err := c.GetBulk(context.Background(), []string{"document-1", "document-2", "document-3"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res.Results).To(HaveLen(3))
+	Expect(res.Results[2].Title).To(Equal("C"))
+}
+
+func TestGetBulk_ErrorMapping(t *testing.T) {
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetBulk(context.Background(), []string{"document-1", "document-2"})
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+		_, err := c.GetBulk(context.Background(), []string{"document-1", "document-2"})
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}

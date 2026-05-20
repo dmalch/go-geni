@@ -1,5 +1,15 @@
 ## 0.18.0 (Unreleased)
 
+- Test reorganisation (no API change). The root package's
+  cross-resource bulk-read tests (`bulk_test.go`,
+  `bulk_fallback_test.go`) — each really a single-resource test
+  stranded in root after the reshape — fold into the respective
+  resource sub-packages, giving every resource a complete in-package
+  `GetBulk` suite (single-id fallback + multi-id decode + 404/403
+  mapping). The `BulkCoalescer` direct-unit test moves into the
+  `transport` package where the type lives. Root now contains only
+  the façade (`http_client.go`) plus the genuinely cross-resource
+  coalescing integration test (`coalesce_test.go`).
 - **BREAKING:** `Id` → `ID` across the public API. Every wire type's
   `Id` field is now `ID` (`profile.Profile.ID`, `union.Union.ID`,
   `document.Document.ID`, `photo.Photo.ID`, `video.Video.ID`,
