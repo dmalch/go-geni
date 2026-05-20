@@ -42,7 +42,7 @@ func main() {
         true, // true = sandbox, false = production
     )
 
-    profile, err := client.GetProfile(context.Background(), "profile-1")
+    profile, err := client.Profile().Get(context.Background(), "profile-1")
     if err != nil {
         log.Fatal(err)
     }
