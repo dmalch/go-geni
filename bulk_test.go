@@ -55,7 +55,7 @@ func TestGetUnions_BulkThreeIds(t *testing.T) {
 		{"id":"union-3","status":"ex_spouse"}
 	]}`)
 
-	res, err := c.GetUnions(context.Background(), []string{"union-1", "union-2", "union-3"})
+	res, err := c.Union().GetBulk(context.Background(), []string{"union-1", "union-2", "union-3"})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union"))
@@ -68,13 +68,13 @@ func TestGetUnions_BulkErrorMapping(t *testing.T) {
 	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
-		_, err := c.GetUnions(context.Background(), []string{"union-1", "union-2"})
+		_, err := c.Union().GetBulk(context.Background(), []string{"union-1", "union-2"})
 		Expect(err).To(MatchError(ErrResourceNotFound))
 	})
 	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
-		_, err := c.GetUnions(context.Background(), []string{"union-1", "union-2"})
+		_, err := c.Union().GetBulk(context.Background(), []string{"union-1", "union-2"})
 		Expect(err).To(MatchError(ErrAccessDenied))
 	})
 }

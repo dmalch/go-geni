@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/dmalch/go-geni/profile"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
 )
@@ -36,7 +37,7 @@ func TestAddChild_SendsRelationshipModifier(t *testing.T) {
 		RegisterTestingT(t)
 		c, ct := newCapturingClient()
 
-		_, err := c.AddChild(context.Background(), "profile-1", WithModifier("foster"))
+		_, err := c.AddChild(context.Background(), "profile-1", profile.WithModifier("foster"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ct.lastRequest).ToNot(BeNil())
@@ -47,7 +48,7 @@ func TestAddChild_SendsRelationshipModifier(t *testing.T) {
 		RegisterTestingT(t)
 		c, ct := newCapturingClient()
 
-		_, err := c.AddChild(context.Background(), "profile-1", WithModifier("adopt"))
+		_, err := c.AddChild(context.Background(), "profile-1", profile.WithModifier("adopt"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ct.lastRequest.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
@@ -67,7 +68,7 @@ func TestAddChild_SendsRelationshipModifier(t *testing.T) {
 		RegisterTestingT(t)
 		c, ct := newCapturingClient()
 
-		_, err := c.AddChild(context.Background(), "union-42", WithModifier("foster"))
+		_, err := c.AddChild(context.Background(), "union-42", profile.WithModifier("foster"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ct.lastRequest.URL.Path).To(HaveSuffix("/api/union-42/add-child"))
@@ -79,7 +80,7 @@ func TestAddSibling_SendsRelationshipModifier(t *testing.T) {
 		RegisterTestingT(t)
 		c, ct := newCapturingClient()
 
-		_, err := c.AddSibling(context.Background(), "profile-1", WithModifier("foster"))
+		_, err := c.AddSibling(context.Background(), "profile-1", profile.WithModifier("foster"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ct.lastRequest.URL.Query().Get("relationship_modifier")).To(Equal("foster"))

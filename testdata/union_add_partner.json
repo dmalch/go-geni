@@ -1,9 +1,0 @@
-{
-  "id": "profile-200",
-  "guid": "g-newpartner",
-  "first_name": "New",
-  "last_name": "Partner",
-  "gender": "female",
-  "is_alive": true,
-  "public": true
-}

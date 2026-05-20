@@ -183,6 +183,20 @@
 - **BREAKING:** `AddDocumentToProject` moves to the document resource
   to break a circular import between document/ and project/:
   - `client.Project().AddDocument(ctx, docId, projectId)` → `client.Document().AddToProject(ctx, docId, projectId)`
+- **BREAKING:** Union resource methods (5 of them) lift into
+  `github.com/dmalch/go-geni/union` (types lifted in PR 7). Root
+  gains `Union() *union.Client`. The Union coalescer call site
+  moves with it.
+  - `client.GetUnion(ctx, id)`              → `client.Union().Get(ctx, id)`
+  - `client.GetUnions(ctx, ids)`            → `client.Union().GetBulk(ctx, ids)`
+  - `client.UpdateUnion(ctx, id, req)`      → `client.Union().Update(ctx, id, req)`
+  - `client.AddPartnerToUnion(ctx, id)`     → `client.Union().AddPartner(ctx, id)`
+  - `client.AddChildToUnion(ctx, id, ...)`  → `client.Union().AddChild(ctx, id, ...)`
+- **BREAKING:** The `AddOption` type and `WithModifier` constructor
+  (shared by profile relationship-adds and union adds) move from
+  the root package into `profile`:
+  - `geni.AddOption`         → `profile.AddOption`
+  - `geni.WithModifier(m)`   → `profile.WithModifier(m)`
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

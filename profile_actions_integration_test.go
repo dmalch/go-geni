@@ -121,12 +121,12 @@ var _ = Describe("Profile actions endpoints", func() {
 			Expect(string(body)).To(ContainSubstring(`"last_name":"Smith"`))
 		})
 
-		It("forwards WithModifier('adopt') as a query param", func() {
+		It("forwards profile.WithModifier('adopt') as a query param", func() {
 			serve(http.StatusOK,
 				[]byte(`{"id":"profile-parent"}`),
 				http.MethodPost, "/api/profile-1/add-parent")
 
-			_, err := client.AddParent(ctx, "profile-1", &profile.Request{}, WithModifier("adopt"))
+			_, err := client.AddParent(ctx, "profile-1", &profile.Request{}, profile.WithModifier("adopt"))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))

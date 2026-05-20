@@ -174,7 +174,7 @@ func TestCoalesce_GetProfile(t *testing.T) {
 
 func TestCoalesce_GetUnion(t *testing.T) {
 	runCoalesceTest(t, "union", func(c *Client, ctx context.Context, id string) error {
-		_, err := c.GetUnion(ctx, id)
+		_, err := c.Union().Get(ctx, id)
 		return err
 	})
 }
@@ -221,7 +221,7 @@ func TestCoalesce_DifferentResourcesDoNotMerge(t *testing.T) {
 	}()
 	go func() {
 		defer wg.Done()
-		_, _ = c.GetUnion(context.Background(), "union-1")
+		_, _ = c.Union().Get(context.Background(), "union-1")
 	}()
 	wg.Wait()
 
