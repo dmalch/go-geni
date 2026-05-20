@@ -4,8 +4,8 @@ go 1.26
 
 require (
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/onsi/ginkgo/v2 v2.28.3
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/gomega v1.41.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/time v0.15.0
