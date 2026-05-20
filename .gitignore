@@ -8,9 +8,10 @@
 *.so
 *.dylib
 
-# Example binaries dropped in the repo root when built via
-# `go build ./examples/<name>` (one per subdir under examples/).
+# Command and example binaries dropped in the repo root when built via
+# `go build ./cmd/<name>` or `go build ./examples/<name>`.
 # Root-anchored to avoid matching same-named files elsewhere.
+/geni
 /getprofile
 /listmanaged
 /refreshtoken

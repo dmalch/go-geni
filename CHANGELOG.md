@@ -1,5 +1,12 @@
 ## 1.1.0 (Unreleased)
 
+- New `geni` command-line tool at `cmd/geni` — a CLI façade over the
+  library. `geni login` runs the browser OAuth handshake and caches
+  the token; resource-nested read commands (`geni profile get <id>`,
+  `geni profile search <name>`, `geni union get <id>`, `geni tree
+  family <id>`, `geni tree ancestors <id>`, plus `whoami` and `stats`)
+  print JSON to stdout. Install with
+  `go install github.com/dmalch/go-geni/cmd/geni@latest`.
 - New `user.Client.Add` — implements Geni's `/user/add` endpoint, the
   last unimplemented resource endpoint. It creates a new Geni account
   and returns that account's fresh OAuth access token, which Geni
