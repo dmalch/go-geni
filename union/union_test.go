@@ -171,3 +171,35 @@ func TestAddChild_Request(t *testing.T) {
 		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 }
+
+func TestGetBulk_ThreeIds(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"results":[
+		{"id":"union-1","status":"spouse"},
+		{"id":"union-2","status":"spouse"},
+		{"id":"union-3","status":"ex_spouse"}
+	]}`)
+
+	res, err := c.GetBulk(context.Background(), []string{"union-1", "union-2", "union-3"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union"))
+	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("union-1,union-2,union-3"))
+	Expect(res.Results).To(HaveLen(3))
+	Expect(res.Results[2].Status).To(Equal("ex_spouse"))
+}
+
+func TestGetBulk_ErrorMapping(t *testing.T) {
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetBulk(context.Background(), []string{"union-1", "union-2"})
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+		_, err := c.GetBulk(context.Background(), []string{"union-1", "union-2"})
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}

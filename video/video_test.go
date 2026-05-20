@@ -291,3 +291,34 @@ func TestAddToProfile_Request(t *testing.T) {
 	got, _ := io.ReadAll(ft.lastRequest.Body)
 	Expect(string(got)).To(ContainSubstring(`"title":"Reel"`))
 }
+
+func TestGetBulk_ThreeIds(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"results":[
+		{"id":"video-1","title":"A"},
+		{"id":"video-2","title":"B"},
+		{"id":"video-3","title":"C"}
+	]}`)
+
+	res, err := c.GetBulk(context.Background(), []string{"video-1", "video-2", "video-3"})
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video"))
+	Expect(ft.lastRequest.URL.Query().Get("ids")).To(Equal("video-1,video-2,video-3"))
+	Expect(res.Results).To(HaveLen(3))
+}
+
+func TestGetBulk_ErrorMapping(t *testing.T) {
+	t.Run("404 → ErrResourceNotFound", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusNotFound, ``)
+		_, err := c.GetBulk(context.Background(), []string{"video-1", "video-2"})
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
+	})
+	t.Run("403 → ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, _ := newFakeClient(http.StatusForbidden, ``)
+		_, err := c.GetBulk(context.Background(), []string{"video-1", "video-2"})
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
+	})
+}

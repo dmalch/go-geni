@@ -1,4 +1,4 @@
-package geni
+package transport
 
 import (
 	"context"
@@ -8,39 +8,45 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-
-	"github.com/dmalch/go-geni/profile"
-	"github.com/dmalch/go-geni/transport"
 )
 
-// Direct unit tests for transport.BulkCoalescer's two methods. The
-// coalesce_test.go file in this package proves the *integrated*
-// concurrency behaviour by spawning real goroutines through
-// doRequest; these tests poke PrepareBulkRequest and
-// ParseBulkResponse directly with a synthetic urlMap so the
-// coalescing logic is verifiable without goroutine timing.
+// Direct unit tests for BulkCoalescer's two methods. The root-package
+// coalesce_test.go proves the *integrated* concurrency behaviour by
+// spawning real goroutines through Client.Do; these tests poke
+// PrepareBulkRequest and ParseBulkResponse directly with a synthetic
+// urlMap so the coalescing logic is verifiable without goroutine
+// timing.
+//
+// coalItem / coalEnvelope are minimal stand-ins for a resource type
+// and its bulk envelope — the coalescer only needs an id accessor and
+// a results slice, so the test stays self-contained rather than
+// importing a real resource package.
 
-// All tests below run against "profile-1" as the calling request's
-// id — the actual id is irrelevant to what's being verified (the
-// urlMap routing logic). Hardcoding it keeps the helper signature
-// minimal and the test bodies free of magic strings.
-const coalescerTestCurrentId = "profile-1"
+type coalItem struct {
+	ID string `json:"id"`
+}
 
-// newCoalescer reproduces the same instantiation GetProfile makes.
-// Keeping it private and inline mirrors how each Get* singular sets
-// up its own coalescer; if those ever diverge, the per-resource
-// tests in bulk_test.go will catch it.
-func newCoalescer() *transport.BulkCoalescer[profile.Profile, profile.BulkResponse] {
-	return &transport.BulkCoalescer[profile.Profile, profile.BulkResponse]{
-		CurrentID: coalescerTestCurrentId,
+type coalEnvelope struct {
+	Results []coalItem `json:"results"`
+}
+
+// coalescerTestCurrentID is the calling request's id for every test
+// below — the actual value is irrelevant to what's verified (the
+// urlMap routing logic); hardcoding keeps the test bodies free of
+// magic strings.
+const coalescerTestCurrentID = "profile-1"
+
+func newCoalescer() *BulkCoalescer[coalItem, coalEnvelope] {
+	return &BulkCoalescer[coalItem, coalEnvelope]{
+		CurrentID: coalescerTestCurrentID,
 		IDPrefix:  "profile",
-		DecodeBulk: func(body []byte) (profile.BulkResponse, error) {
-			var e profile.BulkResponse
+		DecodeBulk: func(body []byte) (coalEnvelope, error) {
+			var e coalEnvelope
 			err := json.Unmarshal(body, &e)
 			return e, err
 		},
-		ListResults: func(env profile.BulkResponse) []profile.Profile { return env.Results },
-		IDOfResult:  func(p profile.Profile) string { return p.ID },
+		ListResults: func(env coalEnvelope) []coalItem { return env.Results },
+		IDOfResult:  func(p coalItem) string { return p.ID },
 	}
 }
 
@@ -90,7 +96,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		Expect(gotIds).To(ContainSubstring("profile-3"))
 	})
 
-	t.Run("currentId is never duplicated in ids=", func(t *testing.T) {
+	t.Run("currentID is never duplicated in ids=", func(t *testing.T) {
 		// Regression on the explicit duplicate-id fix: the
 		// current request's own urlMap entry must not get
 		// appended a second time.
@@ -103,15 +109,13 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 		newCoalescer().PrepareBulkRequest(req, urlMap)
 
 		gotIds := req.URL.Query().Get("ids")
-		// Count occurrences of "profile-1" — should appear exactly
-		// once, even though urlMap has it under its own key.
 		count := 0
 		for _, id := range splitCSV(gotIds) {
 			if id == "profile-1" {
 				count++
 			}
 		}
-		Expect(count).To(Equal(1), "currentId appeared %d times in ids=, want 1; got %q", count, gotIds)
+		Expect(count).To(Equal(1), "currentID appeared %d times in ids=, want 1; got %q", count, gotIds)
 	})
 
 	t.Run("other resource families are not pulled in", func(t *testing.T) {
@@ -127,7 +131,6 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 
 		newCoalescer().PrepareBulkRequest(req, urlMap)
 
-		// Singleton → no ids= param.
 		Expect(req.URL.Query().Has("ids")).To(BeFalse())
 	})
 
@@ -143,8 +146,7 @@ func TestCoalescer_PrepareBulkRequest(t *testing.T) {
 
 		newCoalescer().PrepareBulkRequest(req, urlMap)
 
-		gotIds := req.URL.Query().Get("ids")
-		ids := splitCSV(gotIds)
+		ids := splitCSV(req.URL.Query().Get("ids"))
 		Expect(ids).To(ConsistOf("profile-1", "profile-3"),
 			"profile-2 already had a cached response; coalescer should have excluded it")
 	})
@@ -155,7 +157,7 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		RegisterTestingT(t)
 		urlMap := &sync.Map{}
 		req := mustRequest(t, "https://example.com/api/profile-1")
-		body := []byte(`{"id":"profile-1","first_name":"A"}`)
+		body := []byte(`{"id":"profile-1"}`)
 
 		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
@@ -163,12 +165,10 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		Expect(out).To(Equal(body))
 	})
 
-	t.Run("bulk body fanout: own id returned, siblings stored in urlMap, their cancels triggered", func(t *testing.T) {
+	t.Run("bulk body fanout: own id returned, siblings stored, their cancels triggered", func(t *testing.T) {
 		RegisterTestingT(t)
 		urlMap := &sync.Map{}
 
-		// Track the sibling cancellations so the test can assert
-		// they fired.
 		sib2Ctx, sib2Cancel := context.WithCancel(context.Background())
 		sib3Ctx, sib3Cancel := context.WithCancel(context.Background())
 		urlMap.Store("profile-2", sib2Cancel)
@@ -176,49 +176,40 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 
 		req := mustRequest(t, "https://example.com/api/profile-1?ids=profile-1,profile-2,profile-3")
 		body := []byte(`{"results":[
-			{"id":"profile-1","first_name":"A"},
-			{"id":"profile-2","first_name":"B"},
-			{"id":"profile-3","first_name":"C"}
+			{"id":"profile-1"},{"id":"profile-2"},{"id":"profile-3"}
 		]}`)
 
 		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
 		Expect(err).ToNot(HaveOccurred())
 
-		// Own id: returned as bytes that decode into the right
-		// profile.
-		var ownProfile profile.Profile
-		Expect(json.Unmarshal(out, &ownProfile)).To(Succeed())
-		Expect(ownProfile.ID).To(Equal("profile-1"))
+		var own coalItem
+		Expect(json.Unmarshal(out, &own)).To(Succeed())
+		Expect(own.ID).To(Equal("profile-1"))
 
-		// Siblings: urlMap entries swapped from CancelFunc to
-		// []byte, and the prior CancelFuncs were called.
 		Expect(sib2Ctx.Err()).To(Equal(context.Canceled))
 		Expect(sib3Ctx.Err()).To(Equal(context.Canceled))
 
-		for _, sibId := range []string{"profile-2", "profile-3"} {
-			v, ok := urlMap.Load(sibId)
-			Expect(ok).To(BeTrue(), "expected %s in urlMap", sibId)
+		for _, sibID := range []string{"profile-2", "profile-3"} {
+			v, ok := urlMap.Load(sibID)
+			Expect(ok).To(BeTrue(), "expected %s in urlMap", sibID)
 			raw, ok := v.([]byte)
-			Expect(ok).To(BeTrue(), "expected %s to be []byte, got %T", sibId, v)
-			var got profile.Profile
+			Expect(ok).To(BeTrue(), "expected %s to be []byte, got %T", sibID, v)
+			var got coalItem
 			Expect(json.Unmarshal(raw, &got)).To(Succeed())
-			Expect(got.ID).To(Equal(sibId))
+			Expect(got.ID).To(Equal(sibID))
 		}
 	})
 
 	t.Run("bulk body without our own id returns nil bytes", func(t *testing.T) {
 		// Edge case: Geni omits our requested id from the bulk
 		// response (e.g. it's been merged away). The coalescer
-		// fans out whatever IS there; our own slot is nil so
-		// the caller gets nil bytes back — doRequest's existing
-		// behaviour ends up unmarshaling nil into a zero-value
-		// struct. The test pins what the coalescer does, not
-		// what the caller does with it.
+		// fans out whatever IS there; our own slot is nil so the
+		// caller gets nil bytes back.
 		RegisterTestingT(t)
 		urlMap := &sync.Map{}
 		req := mustRequest(t, "https://example.com/api/profile-1?ids=profile-1,profile-2")
-		body := []byte(`{"results":[{"id":"profile-2","first_name":"B"}]}`)
+		body := []byte(`{"results":[{"id":"profile-2"}]}`)
 
 		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
 
@@ -230,9 +221,8 @@ func TestCoalescer_ParseBulkResponse(t *testing.T) {
 		RegisterTestingT(t)
 		urlMap := &sync.Map{}
 		req := mustRequest(t, "https://example.com/api/profile-1?ids=profile-1,profile-2")
-		body := []byte(`not json`)
 
-		out, err := newCoalescer().ParseBulkResponse(req, body, urlMap)
+		out, err := newCoalescer().ParseBulkResponse(req, []byte(`not json`), urlMap)
 
 		Expect(err).To(HaveOccurred())
 		Expect(out).To(BeNil())
