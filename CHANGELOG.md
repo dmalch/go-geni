@@ -197,6 +197,23 @@
   the root package into `profile`:
   - `geni.AddOption`         → `profile.AddOption`
   - `geni.WithModifier(m)`   → `profile.WithModifier(m)`
+- **BREAKING:** Tree traversal (the family-graph endpoints) lifts
+  into a new `github.com/dmalch/go-geni/tree` package — types,
+  methods, and options. Root gains `Tree() *tree.Client`.
+  - `client.GetImmediateFamily(ctx, id)`    → `client.Tree().ImmediateFamily(ctx, id)`
+  - `client.GetAncestors(ctx, id, ...)`     → `client.Tree().Ancestors(ctx, id, ...)`
+  - `client.GetPathTo(ctx, from, to, ...)`  → `client.Tree().PathTo(ctx, from, to, ...)`
+  - `*geni.FamilyResponse` → `*tree.FamilyResponse`; `geni.FamilyNodes`
+    → `tree.FamilyNodes`; `*geni.PathToResponse` → `*tree.PathToResponse`;
+    `geni.PathRelation` → `tree.PathRelation`
+  - `geni.PathType` / `PathStatus` (and their constants) → `tree.PathType`
+    / `tree.PathStatus`
+  - `geni.TreeOption` → `tree.Option`
+  - `geni.WithGenerations` / `WithPathType` / `WithRefresh` /
+    `WithSearch` / `WithSkipEmail` / `WithSkipNotify` → the same names
+    under `tree`
+  `Client.CompareProfiles` still lives on root (Profile resource) but
+  its `ProfileComparison.Results` field is now `[]tree.FamilyResponse`.
 - `bulkCoalescer[Item, Envelope]` renamed to
   `transport.BulkCoalescer[Item, Envelope]` with exported fields
   (`CurrentID`, `IDPrefix`, `DecodeBulk`, `ListResults`,

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/tree"
 )
 
 // These specs probe the Geni sandbox to localise the 403 behaviour
@@ -32,7 +33,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 	// ancestors. Document it here so deviations are visible.
 	It("freshly-created profile → ancestors → 403 (baseline)", func() {
 		root := createFixtureProfile(ctx, client, "DrillFresh")
-		_, err := client.GetAncestors(ctx, root.Id, geni.WithGenerations(2))
+		_, err := client.Tree().Ancestors(ctx, root.Id, tree.WithGenerations(2))
 		AddReportEntry("fresh-profile-ancestors-err", fmt.Sprintf("%v", err))
 		Expect(errors.Is(err, geni.ErrAccessDenied)).To(BeTrue(),
 			"if this stops being 403, the access rule has changed; got %v", err)
@@ -43,7 +44,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 	// "isolated profile is unreadable".
 	It("freshly-created profile → immediate-family → ok (control)", func() {
 		root := createFixtureProfile(ctx, client, "DrillFreshControl")
-		fam, err := client.GetImmediateFamily(ctx, root.Id)
+		fam, err := client.Tree().ImmediateFamily(ctx, root.Id)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(fam.Focus).ToNot(BeNil())
 		Expect(fam.Focus.Id).To(Equal(root.Id))
@@ -55,7 +56,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 	// valid path param here. Recorded so a future docs/sandbox
 	// change is easy to spot.
 	It("alias `me` → ancestors → 500 (not a valid path)", func() {
-		_, err := client.GetAncestors(ctx, "me", geni.WithGenerations(2))
+		_, err := client.Tree().Ancestors(ctx, "me", tree.WithGenerations(2))
 		AddReportEntry("me-ancestors-err", fmt.Sprintf("%v", err))
 		Expect(err).To(HaveOccurred(), "if `me` ever starts resolving, update this spec")
 	})
@@ -80,7 +81,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 		Expect(target).ToNot(BeNil(), "no live managed profile to probe")
 		AddReportEntry("managed-target-id", target.Id)
 
-		fam, err := client.GetAncestors(ctx, target.Id, geni.WithGenerations(2))
+		fam, err := client.Tree().Ancestors(ctx, target.Id, tree.WithGenerations(2))
 		AddReportEntry("managed-ancestors-err", fmt.Sprintf("%v", err))
 		if errors.Is(err, geni.ErrAccessDenied) {
 			Skip("ancestors on a managed profile was also denied — Geni's rule is stricter than 'managed' or the scope is wrong")
@@ -106,7 +107,7 @@ var _ = Describe("Drill: GetAncestors access rules", Label("drill"), func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
-		fam, err := client.GetAncestors(ctx, child.Id, geni.WithGenerations(3))
+		fam, err := client.Tree().Ancestors(ctx, child.Id, tree.WithGenerations(3))
 		AddReportEntry("chain-child-ancestors-err", fmt.Sprintf("%v", err))
 		if errors.Is(err, geni.ErrAccessDenied) {
 			Skip("ancestors on a hand-built created chain was also denied")

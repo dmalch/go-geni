@@ -1,4 +1,4 @@
-package geni
+package tree
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
+
+	"github.com/dmalch/go-geni/transport"
 )
 
 type fakeTransport struct {
@@ -33,19 +35,19 @@ func (t *fakeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func newFakeClient(status int, body string) (*Client, *fakeTransport) {
 	ft := &fakeTransport{status: status, body: body}
-	c := NewClient(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
-	c.transport.SetHTTPClient(&http.Client{Transport: ft})
-	return c, ft
+	t := transport.New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	t.SetHTTPClient(&http.Client{Transport: ft})
+	return NewClient(t), ft
 }
 
-// --- GetImmediateFamily -----------------------------------------------------
+// --- ImmediateFamily --------------------------------------------------------
 
-func TestGetImmediateFamily_Request(t *testing.T) {
+func TestImmediateFamily_Request(t *testing.T) {
 	t.Run("targets /api/<id>/immediate-family", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
-		_, err := c.GetImmediateFamily(context.Background(), "profile-1")
+		_, err := c.ImmediateFamily(context.Background(), "profile-1")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -57,7 +59,7 @@ func TestGetImmediateFamily_Request(t *testing.T) {
 		body := `{"focus":{"id":"profile-1","first_name":"A"},"nodes":{"profile-1":{"id":"profile-1","first_name":"A"},"union-9":{"id":"union-9"}}}`
 		c, _ := newFakeClient(http.StatusOK, body)
 
-		res, err := c.GetImmediateFamily(context.Background(), "profile-1")
+		res, err := c.ImmediateFamily(context.Background(), "profile-1")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Focus).ToNot(BeNil())
@@ -70,18 +72,18 @@ func TestGetImmediateFamily_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusNotFound, ``)
 
-		_, err := c.GetImmediateFamily(context.Background(), "profile-1")
+		_, err := c.ImmediateFamily(context.Background(), "profile-1")
 
-		Expect(err).To(MatchError(ErrResourceNotFound))
+		Expect(err).To(MatchError(transport.ErrResourceNotFound))
 	})
 
 	t.Run("403 maps to ErrAccessDenied", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, _ := newFakeClient(http.StatusForbidden, ``)
 
-		_, err := c.GetImmediateFamily(context.Background(), "profile-1")
+		_, err := c.ImmediateFamily(context.Background(), "profile-1")
 
-		Expect(err).To(MatchError(ErrAccessDenied))
+		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
 }
 
@@ -138,14 +140,14 @@ func TestFamilyNodes_Accessors(t *testing.T) {
 	})
 }
 
-// --- GetAncestors -----------------------------------------------------------
+// --- Ancestors --------------------------------------------------------------
 
-func TestGetAncestors_Request(t *testing.T) {
+func TestAncestors_Request(t *testing.T) {
 	t.Run("targets /api/<id>/ancestors and omits generations by default", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
-		_, err := c.GetAncestors(context.Background(), "profile-1")
+		_, err := c.Ancestors(context.Background(), "profile-1")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -157,7 +159,7 @@ func TestGetAncestors_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
-		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(10))
+		_, err := c.Ancestors(context.Background(), "profile-1", WithGenerations(10))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("generations")).To(Equal("10"))
@@ -167,7 +169,7 @@ func TestGetAncestors_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
-		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(25))
+		_, err := c.Ancestors(context.Background(), "profile-1", WithGenerations(25))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Get("generations")).To(Equal("20"))
@@ -177,21 +179,21 @@ func TestGetAncestors_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"focus":{"id":"profile-1"},"nodes":{}}`)
 
-		_, err := c.GetAncestors(context.Background(), "profile-1", WithGenerations(0))
+		_, err := c.Ancestors(context.Background(), "profile-1", WithGenerations(0))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.URL.Query().Has("generations")).To(BeFalse())
 	})
 }
 
-// --- GetPathTo --------------------------------------------------------------
+// --- PathTo -----------------------------------------------------------------
 
-func TestGetPathTo_Request(t *testing.T) {
+func TestPathTo_Request(t *testing.T) {
 	t.Run("targets /api/<from>/path-to/<to>", func(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"status":"done"}`)
 
-		_, err := c.GetPathTo(context.Background(), "profile-1", "profile-2")
+		_, err := c.PathTo(context.Background(), "profile-1", "profile-2")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
@@ -202,7 +204,7 @@ func TestGetPathTo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"status":"done"}`)
 
-		_, err := c.GetPathTo(context.Background(), "profile-1", "profile-2",
+		_, err := c.PathTo(context.Background(), "profile-1", "profile-2",
 			WithPathType(PathTypeBlood))
 
 		Expect(err).ToNot(HaveOccurred())
@@ -213,7 +215,7 @@ func TestGetPathTo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"status":"done"}`)
 
-		_, err := c.GetPathTo(context.Background(), "profile-1", "profile-2",
+		_, err := c.PathTo(context.Background(), "profile-1", "profile-2",
 			WithRefresh(true), WithSkipEmail(true), WithSkipNotify(true))
 
 		Expect(err).ToNot(HaveOccurred())
@@ -228,7 +230,7 @@ func TestGetPathTo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"status":"done"}`)
 
-		_, err := c.GetPathTo(context.Background(), "profile-1", "profile-2",
+		_, err := c.PathTo(context.Background(), "profile-1", "profile-2",
 			WithSearch(false))
 
 		Expect(err).ToNot(HaveOccurred())
@@ -239,7 +241,7 @@ func TestGetPathTo_Request(t *testing.T) {
 		RegisterTestingT(t)
 		c, ft := newFakeClient(http.StatusOK, `{"status":"done"}`)
 
-		_, err := c.GetPathTo(context.Background(), "profile-1", "profile-2",
+		_, err := c.PathTo(context.Background(), "profile-1", "profile-2",
 			WithRefresh(false), WithSearch(true),
 			WithSkipEmail(false), WithSkipNotify(false))
 
@@ -252,7 +254,7 @@ func TestGetPathTo_Request(t *testing.T) {
 	})
 }
 
-func TestGetPathTo_DecodesStatus(t *testing.T) {
+func TestPathTo_DecodesStatus(t *testing.T) {
 	cases := map[string]PathStatus{
 		`{"status":"pending"}`:    PathStatusPending,
 		`{"status":"done"}`:       PathStatusDone,
@@ -264,7 +266,7 @@ func TestGetPathTo_DecodesStatus(t *testing.T) {
 			RegisterTestingT(t)
 			c, _ := newFakeClient(http.StatusOK, body)
 
-			res, err := c.GetPathTo(context.Background(), "profile-1", "profile-2")
+			res, err := c.PathTo(context.Background(), "profile-1", "profile-2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Status).To(Equal(want))

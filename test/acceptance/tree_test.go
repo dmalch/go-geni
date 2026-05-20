@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/tree"
 )
 
 var _ = Describe("Tree traversal API", func() {
@@ -36,7 +37,7 @@ var _ = Describe("Tree traversal API", func() {
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
 			Eventually(func(g Gomega) {
-				family, err := client.GetImmediateFamily(ctx, focus.Id)
+				family, err := client.Tree().ImmediateFamily(ctx, focus.Id)
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(family.Focus).ToNot(BeNil())
 				g.Expect(family.Focus.Id).To(Equal(focus.Id))
@@ -59,7 +60,7 @@ var _ = Describe("Tree traversal API", func() {
 		It("echoes the focus profile id when authorized", func() {
 			root := createFixtureProfile(ctx, client, "AncestorRoot")
 
-			ancestors, err := client.GetAncestors(ctx, root.Id, geni.WithGenerations(2))
+			ancestors, err := client.Tree().Ancestors(ctx, root.Id, tree.WithGenerations(2))
 			if errors.Is(err, geni.ErrAccessDenied) {
 				Skip("sandbox returned 403 on ancestors for a fresh isolated profile (Geni-side restriction, not a client bug)")
 			}
@@ -86,20 +87,20 @@ var _ = Describe("Tree traversal API", func() {
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _ = client.DeleteProfile(context.Background(), child.Id) })
 
-			var lastStatus geni.PathStatus
+			var lastStatus tree.PathStatus
 			Eventually(func(g Gomega) {
-				res, err := client.GetPathTo(ctx, parent.Id, child.Id,
-					geni.WithSkipEmail(true),
-					geni.WithSkipNotify(true),
+				res, err := client.Tree().PathTo(ctx, parent.Id, child.Id,
+					tree.WithSkipEmail(true),
+					tree.WithSkipNotify(true),
 				)
 				g.Expect(err).ToNot(HaveOccurred())
 				lastStatus = res.Status
-				g.Expect(res.Status).ToNot(Equal(geni.PathStatusPending),
+				g.Expect(res.Status).ToNot(Equal(tree.PathStatusPending),
 					"status is still pending; keep polling")
 				g.Expect(res.Status).To(BeElementOf(
-					geni.PathStatusDone,
-					geni.PathStatusOverloaded,
-					geni.PathStatusNotFound,
+					tree.PathStatusDone,
+					tree.PathStatusOverloaded,
+					tree.PathStatusNotFound,
 				))
 			}).
 				WithTimeout(30*time.Second).
