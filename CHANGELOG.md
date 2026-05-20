@@ -1,4 +1,4 @@
-## 1.1.0 (Unreleased)
+## 1.1.0
 
 - New `geni` command-line tool at `cmd/geni` — a CLI façade over the
   library. `geni login` runs the browser OAuth handshake and caches
