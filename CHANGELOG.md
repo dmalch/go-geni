@@ -1,5 +1,13 @@
 ## 0.18.0 (Unreleased)
 
+- Dependency diet (no API change). The `auth` package's OAuth
+  callback server is rewritten on the standard library's `net/http`
+  instead of `labstack/echo/v4`. This drops `echo` and its six
+  exclusive transitive dependencies (`labstack/gommon`,
+  `valyala/fasttemplate`, `valyala/bytebufferpool`,
+  `mattn/go-colorable`, `mattn/go-isatty`, `golang.org/x/crypto`)
+  from the module graph. `auth.NewAuthTokenSource` and its public
+  behaviour are unchanged.
 - Test reorganisation (no API change). The root package's
   cross-resource bulk-read tests (`bulk_test.go`,
   `bulk_fallback_test.go`) — each really a single-resource test

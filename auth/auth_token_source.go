@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/oauth2"
 )
@@ -47,14 +46,13 @@ func (a *authTokenSource) Token() (*oauth2.Token, error) {
 		shutdownCh:    make(chan error),
 	}
 
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = true
-	e.GET("/callback", callbackHandler.handle)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/callback", callbackHandler.handle)
+	server := &http.Server{Addr: ":8080", Handler: mux}
 	go func() {
-		err := e.Start(":8080")
+		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			callbackHandler.shutdownCh <- fmt.Errorf("failed to start Echo server: %w", err)
+			callbackHandler.shutdownCh <- fmt.Errorf("failed to start callback server: %w", err)
 		}
 	}()
 
@@ -77,7 +75,7 @@ func (a *authTokenSource) Token() (*oauth2.Token, error) {
 			return nil, err
 		}
 
-		err = e.Shutdown(context.Background())
+		err = server.Shutdown(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("failed to shutdown the server: %w", err)
 		}
@@ -110,21 +108,22 @@ type callback struct {
 	shutdownCh    chan error
 }
 
-func (handler *callback) handle(c echo.Context) error {
-	if state := c.QueryParam("state"); state != handler.expectedState {
-		_, _ = fmt.Fprintln(c.Response().Writer, "OAuth2 state mismatch. Possible CSRF attack. Please try again.")
+func (handler *callback) handle(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	if state := query.Get("state"); state != handler.expectedState {
+		_, _ = fmt.Fprintln(w, "OAuth2 state mismatch. Possible CSRF attack. Please try again.")
 		handler.shutdownCh <- errors.New("OAuth2 state parameter mismatch")
-		return nil
+		return
 	}
 
-	accessToken := c.QueryParam("access_token")
+	accessToken := query.Get("access_token")
 	if accessToken != "" {
 		handler.accessToken = accessToken
-		handler.expiresIn = c.QueryParam("expires_in")
-		_, _ = fmt.Fprintln(c.Response().Writer, "Login was successful. You can close the browser and return to the command line.")
+		handler.expiresIn = query.Get("expires_in")
+		_, _ = fmt.Fprintln(w, "Login was successful. You can close the browser and return to the command line.")
 	} else {
-		_, _ = fmt.Fprintln(c.Response().Writer, "Login was not successful. You can close the browser and try again.")
+		_, _ = fmt.Fprintln(w, "Login was not successful. You can close the browser and try again.")
 	}
 	handler.shutdownCh <- nil
-	return nil
 }
