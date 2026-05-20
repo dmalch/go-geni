@@ -1,3 +1,18 @@
+## 1.1.0 (Unreleased)
+
+- New `user.Client.Add` — implements Geni's `/user/add` endpoint, the
+  last unimplemented resource endpoint. It creates a new Geni account
+  and returns that account's fresh OAuth access token, which Geni
+  delivers in the `X-API-OAuth-access_token` response header. New
+  types: `user.AddRequest` (email / first_name / last_name / gender,
+  all required by Geni) and `user.AddResult` (the created `*User`
+  plus its `AccessToken`).
+- New `transport.DoWithResponse` method and `transport.Response`
+  type — a variant of `transport.Client.Do` that returns the response
+  headers alongside the body, for endpoints whose contract carries
+  data in a header. `Do`'s signature and behaviour are unchanged; it
+  now delegates to the same shared core.
+
 ## 1.0.0
 
 First stable release. The pre-1.0 reshape is complete: HTTP plumbing

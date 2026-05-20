@@ -220,4 +220,30 @@ var _ = Describe("User endpoints", func() {
 			Expect(string(reqBody)).To(ContainSubstring(`"data":"{\"theme\":\"light\"}"`))
 		})
 	})
+
+	Describe("Add", func() {
+		It("POSTs /api/user/add and surfaces the token from the response header", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				recorded = r.Clone(r.Context())
+				reqBody, _ = io.ReadAll(r.Body)
+				Expect(r.Method).To(Equal(http.MethodPost))
+				Expect(r.URL.Path).To(Equal("/api/user/add"))
+				w.Header().Set("X-API-OAuth-access_token", "tok-new-user")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"name":"Jane Roe","account_type":"basic"}`))
+			}))
+			client = newClientFor(server)
+
+			res, err := client.Add(ctx, &AddRequest{
+				Email: "jane@example.com", FirstName: "Jane", LastName: "Roe", Gender: "f",
+			})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.User.Name).To(Equal("Jane Roe"))
+			Expect(res.User.AccountType).To(Equal("basic"))
+			Expect(res.AccessToken).To(Equal("tok-new-user"))
+			Expect(string(reqBody)).To(ContainSubstring(`"email":"jane@example.com"`))
+			Expect(string(reqBody)).To(ContainSubstring(`"gender":"f"`))
+		})
+	})
 })

@@ -1,11 +1,73 @@
 package transport
 
 import (
+	"context"
+	"io"
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
 )
+
+// headerEchoTransport is a fake http.RoundTripper that returns a
+// fixed status, body, and headers — used to drive DoWithResponse
+// without a live server.
+type headerEchoTransport struct {
+	status int
+	body   string
+	header http.Header
+}
+
+func (t *headerEchoTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	h := t.header
+	if h == nil {
+		h = make(http.Header)
+	}
+	return &http.Response{
+		StatusCode: t.status,
+		Body:       io.NopCloser(strings.NewReader(t.body)),
+		Header:     h,
+	}, nil
+}
+
+func newClientWith(rt http.RoundTripper) *Client {
+	c := New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+	c.SetHTTPClient(&http.Client{Transport: rt})
+	return c
+}
+
+func TestDoWithResponse(t *testing.T) {
+	t.Run("returns the body and the response headers", func(t *testing.T) {
+		RegisterTestingT(t)
+		header := http.Header{}
+		header.Set("X-API-OAuth-access_token", "new-token")
+		c := newClientWith(&headerEchoTransport{
+			status: http.StatusOK,
+			body:   `{"ok":true}`,
+			header: header,
+		})
+
+		req, _ := http.NewRequest(http.MethodPost, "https://www.geni.com/api/user/add", nil)
+		resp, err := c.DoWithResponse(context.Background(), req)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(resp.Body)).To(Equal(`{"ok":true}`))
+		Expect(resp.Header.Get("X-API-OAuth-access_token")).To(Equal("new-token"))
+	})
+
+	t.Run("maps a 403 to ErrAccessDenied", func(t *testing.T) {
+		RegisterTestingT(t)
+		c := newClientWith(&headerEchoTransport{status: http.StatusForbidden})
+
+		req, _ := http.NewRequest(http.MethodPost, "https://www.geni.com/api/user/add", nil)
+		_, err := c.DoWithResponse(context.Background(), req)
+
+		Expect(err).To(MatchError(ErrAccessDenied))
+	})
+}
 
 func TestRedactURL(t *testing.T) {
 	t.Run("Redacts access_token from URL", func(t *testing.T) {

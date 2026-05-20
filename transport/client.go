@@ -78,6 +78,17 @@ func (c *Client) SetLimiter(l *rate.Limiter) { c.limiter = l }
 // pre-consume tokens to force concurrent calls to queue together.
 func (c *Client) Limiter() *rate.Limiter { return c.limiter }
 
+// Response is the result of a request issued through DoWithResponse:
+// the decoded body together with the HTTP response headers. Most
+// callers only need the body and use Do; DoWithResponse exists for
+// the rare endpoint whose contract carries data in a header — e.g.
+// /user/add returns the new account's OAuth token in the
+// X-API-OAuth-access_token header.
+type Response struct {
+	Body   []byte
+	Header http.Header
+}
+
 // Do sends req and returns the response body. It handles auth header
 // / query-param injection, rate-limit pacing (with dynamic re-tune),
 // retry on transient errors / 429 / 401, and error sentinel
@@ -87,12 +98,29 @@ func (c *Client) Limiter() *rate.Limiter { return c.limiter }
 // same resource type collapse into a single bulk request — see
 // BulkCoalescer.
 func (c *Client) Do(ctx context.Context, req *http.Request, coalescer Coalescer) ([]byte, error) {
+	resp, err := c.do(ctx, req, coalescer)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+// DoWithResponse behaves like Do — same auth injection, rate-limit
+// pacing, retry, and error-sentinel translation — but returns the
+// full Response, headers included, and does not support bulk-read
+// coalescing. Use it for endpoints whose contract puts data in a
+// response header.
+func (c *Client) DoWithResponse(ctx context.Context, req *http.Request) (*Response, error) {
+	return c.do(ctx, req, nil)
+}
+
+func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer) (*Response, error) {
 	if err := c.addStandardHeadersAndQueryParams(req); err != nil {
 		return nil, err
 	}
 
 	return retry.DoWithData(
-		func() ([]byte, error) {
+		func() (*Response, error) {
 			limiterCtx, limiterCtxCancelFunc := context.WithCancel(ctx)
 			defer limiterCtxCancelFunc()
 
@@ -111,7 +139,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, coalescer Coalescer)
 				if cachedRes, ok := c.urlMap.LoadAndDelete(coalescer.RequestKey()); ok && cachedRes != nil {
 					if res, ok := cachedRes.([]byte); ok {
 						slog.Debug("Using cached response")
-						return res, nil
+						return &Response{Body: res}, nil
 					}
 				}
 				coalescer.PrepareBulkRequest(req, c.urlMap)
@@ -158,9 +186,13 @@ func (c *Client) Do(ctx context.Context, req *http.Request, coalescer Coalescer)
 			}
 
 			if coalescer != nil {
-				return coalescer.ParseBulkResponse(req, body, c.urlMap)
+				parsed, err := coalescer.ParseBulkResponse(req, body, c.urlMap)
+				if err != nil {
+					return nil, err
+				}
+				return &Response{Body: parsed, Header: res.Header}, nil
 			}
-			return body, nil
+			return &Response{Body: body, Header: res.Header}, nil
 		},
 		retry.RetryIf(func(err error) bool {
 			var er errRetry
