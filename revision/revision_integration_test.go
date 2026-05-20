@@ -81,7 +81,7 @@ var _ = Describe("Revision endpoints", func() {
 			r, err := client.Get(ctx, "revision-101")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(r.Id).To(Equal("revision-101"))
+			Expect(r.ID).To(Equal("revision-101"))
 			Expect(r.Action).To(Equal("update"))
 			Expect(r.Story).To(ContainSubstring("<p>"))
 		})

@@ -24,8 +24,8 @@ type Request struct {
 // Photo is Geni's Photo resource — a single uploaded image with
 // metadata and tagging.
 type Photo struct {
-	// Id is the photo's identifier.
-	Id string `json:"id,omitempty"`
+	// ID is the photo's identifier.
+	ID string `json:"id,omitempty"`
 	// Guid is the photo's legacy global identifier.
 	Guid string `json:"guid,omitempty"`
 	// AlbumId is the id of the album containing the photo.

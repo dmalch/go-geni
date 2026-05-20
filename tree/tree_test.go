@@ -63,7 +63,7 @@ func TestImmediateFamily_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Focus).ToNot(BeNil())
-		Expect(res.Focus.Id).To(Equal("profile-1"))
+		Expect(res.Focus.ID).To(Equal("profile-1"))
 		Expect(res.Nodes).To(HaveKey("profile-1"))
 		Expect(res.Nodes).To(HaveKey("union-9"))
 	})
@@ -104,7 +104,7 @@ func TestFamilyNodes_Accessors(t *testing.T) {
 		RegisterTestingT(t)
 		p, err := res.Nodes.Profile("profile-2")
 		Expect(err).ToNot(HaveOccurred())
-		Expect(p.Id).To(Equal("profile-2"))
+		Expect(p.ID).To(Equal("profile-2"))
 		Expect(p.FirstName).ToNot(BeNil())
 		Expect(*p.FirstName).To(Equal("B"))
 	})
@@ -113,7 +113,7 @@ func TestFamilyNodes_Accessors(t *testing.T) {
 		RegisterTestingT(t)
 		u, err := res.Nodes.Union("union-9")
 		Expect(err).ToNot(HaveOccurred())
-		Expect(u.Id).To(Equal("union-9"))
+		Expect(u.ID).To(Equal("union-9"))
 		Expect(u.Partners).To(ConsistOf("profile-1", "profile-2"))
 	})
 
@@ -289,6 +289,6 @@ func TestCompare_Request(t *testing.T) {
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/compare/profile-2"))
 	Expect(res.Results).To(HaveLen(2))
 	Expect(res.Results[0].Focus).ToNot(BeNil())
-	Expect(res.Results[0].Focus.Id).To(Equal("profile-1"))
-	Expect(res.Results[1].Focus.Id).To(Equal("profile-2"))
+	Expect(res.Results[0].Focus.ID).To(Equal("profile-1"))
+	Expect(res.Results[1].Focus.ID).To(Equal("profile-2"))
 }

@@ -16,8 +16,8 @@ type BulkResponse struct {
 // Project is Geni's Project resource — a collaborative grouping
 // (e.g. "Ancestors of …", "World War II Veterans").
 type Project struct {
-	// Id is the project's id.
-	Id string `json:"id,omitempty"`
+	// ID is the project's id.
+	ID string `json:"id,omitempty"`
 	// Name is the project's name.
 	Name string `json:"name,omitempty"`
 	// Description is the project's description.

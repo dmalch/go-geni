@@ -52,7 +52,7 @@ func TestCreate_Request(t *testing.T) {
 		})
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(album.Id).To(Equal("album-9"))
+		Expect(album.ID).To(Equal("album-9"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo_album/add"))
 		got, _ := io.ReadAll(ft.lastRequest.Body)
@@ -87,7 +87,7 @@ func TestGet_Request(t *testing.T) {
 		album, err := c.Get(context.Background(), "album-1")
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(album.Id).To(Equal("album-1"))
+		Expect(album.ID).To(Equal("album-1"))
 		Expect(album.Name).To(Equal("Family Reunions"))
 		Expect(album.PhotosCount).To(Equal(42))
 		Expect(album.CoverPhoto).To(HaveKeyWithValue("small", "https://photos.geni.test/cover/small.jpg"))

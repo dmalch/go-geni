@@ -87,7 +87,7 @@ func TestCreate_Request(t *testing.T) {
 		)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(v.Id).To(Equal("video-1"))
+		Expect(v.ID).To(Equal("video-1"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video/add"))
 
@@ -150,7 +150,7 @@ func TestGet_Request(t *testing.T) {
 	v, err := c.Get(context.Background(), "video-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(v.Id).To(Equal("video-9"))
+	Expect(v.ID).To(Equal("video-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-9"))
 }
@@ -166,7 +166,7 @@ func TestGetBulk_SingleIdFallback(t *testing.T) {
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/video-9"))
 		Expect(ft.lastRequest.URL.Query().Has("ids")).To(BeFalse())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("video-9"))
+		Expect(res.Results[0].ID).To(Equal("video-9"))
 	})
 
 	t.Run("2 ids → /api/video?ids=…", func(t *testing.T) {
@@ -285,7 +285,7 @@ func TestAddToProfile_Request(t *testing.T) {
 	v, err := c.AddToProfile(context.Background(), "profile-1", &Request{Title: "Reel"})
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(v.Id).To(Equal("video-9"))
+	Expect(v.ID).To(Equal("video-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-video"))
 	got, _ := io.ReadAll(ft.lastRequest.Body)

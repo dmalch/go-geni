@@ -21,7 +21,7 @@ func createFixtureDocument(ctx context.Context, client *geni.Client, title, body
 	})
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
-		_ = client.Document().Delete(context.Background(), created.Id)
+		_ = client.Document().Delete(context.Background(), created.ID)
 	})
 	return created
 }
@@ -40,23 +40,23 @@ var _ = Describe("Document API", func() {
 	Describe("Lifecycle", func() {
 		It("creates a text document and reads it back", func() {
 			created := createFixtureDocument(ctx, client, "AccCreateDoc", "hello acceptance")
-			Expect(created.Id).ToNot(BeEmpty())
+			Expect(created.ID).ToNot(BeEmpty())
 
-			got, err := client.Document().Get(ctx, created.Id)
+			got, err := client.Document().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Id).To(Equal(created.Id))
+			Expect(got.ID).To(Equal(created.ID))
 			Expect(got.Title).To(Equal("AccCreateDoc"))
 		})
 
 		It("updates a document title", func() {
 			created := createFixtureDocument(ctx, client, "AccUpdateBefore", "initial")
 
-			updated, err := client.Document().Update(ctx, created.Id, &document.Request{
+			updated, err := client.Document().Update(ctx, created.ID, &document.Request{
 				Title: "AccUpdateAfter",
 			})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.Id).To(Equal(created.Id))
+			Expect(updated.ID).To(Equal(created.ID))
 			Expect(updated.Title).To(Equal("AccUpdateAfter"))
 		})
 
@@ -71,7 +71,7 @@ var _ = Describe("Document API", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(client.Document().Delete(ctx, created.Id)).To(Succeed())
+			Expect(client.Document().Delete(ctx, created.ID)).To(Succeed())
 		})
 	})
 
@@ -84,27 +84,27 @@ var _ = Describe("Document API", func() {
 			profile := createFixtureProfile(ctx, client, "DocTag")
 			doc := createFixtureDocument(ctx, client, "AccTagDoc", "tagged content")
 
-			_, err := client.Document().Tag(ctx, doc.Id, profile.Id)
+			_, err := client.Document().Tag(ctx, doc.ID, profile.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			tags, err := client.Document().Tags(ctx, doc.Id, 0)
+			tags, err := client.Document().Tags(ctx, doc.ID, 0)
 			Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(tags.Results))
 			for _, p := range tags.Results {
-				ids = append(ids, p.Id)
+				ids = append(ids, p.ID)
 			}
-			Expect(ids).To(ContainElement(profile.Id))
+			Expect(ids).To(ContainElement(profile.ID))
 
-			_, err = client.Document().Untag(ctx, doc.Id, profile.Id)
+			_, err = client.Document().Untag(ctx, doc.ID, profile.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			tagsAfter, err := client.Document().Tags(ctx, doc.Id, 0)
+			tagsAfter, err := client.Document().Tags(ctx, doc.ID, 0)
 			Expect(err).ToNot(HaveOccurred())
 			idsAfter := make([]string, 0, len(tagsAfter.Results))
 			for _, p := range tagsAfter.Results {
-				idsAfter = append(idsAfter, p.Id)
+				idsAfter = append(idsAfter, p.ID)
 			}
-			Expect(idsAfter).ToNot(ContainElement(profile.Id))
+			Expect(idsAfter).ToNot(ContainElement(profile.ID))
 		})
 	})
 
@@ -119,13 +119,13 @@ var _ = Describe("Document API", func() {
 			b := createFixtureDocument(ctx, client, "AccBulkB", "b")
 
 			Eventually(func(g Gomega) {
-				res, err := client.Document().GetBulk(ctx, []string{a.Id, b.Id})
+				res, err := client.Document().GetBulk(ctx, []string{a.ID, b.ID})
 				g.Expect(err).ToNot(HaveOccurred())
 				gotIds := make([]string, 0, len(res.Results))
 				for _, d := range res.Results {
-					gotIds = append(gotIds, d.Id)
+					gotIds = append(gotIds, d.ID)
 				}
-				g.Expect(gotIds).To(ContainElements(a.Id, b.Id))
+				g.Expect(gotIds).To(ContainElements(a.ID, b.ID))
 			}).
 				WithTimeout(30 * time.Second).
 				WithPolling(2 * time.Second).
@@ -157,11 +157,11 @@ var _ = Describe("Document API", func() {
 			doc := createFixtureDocument(ctx, client, "AccCommentDoc", "to-be-commented")
 			body := "first comment"
 
-			_, err := client.Document().AddComment(ctx, doc.Id, body, "title-1")
+			_, err := client.Document().AddComment(ctx, doc.ID, body, "title-1")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				listed, err := client.Document().Comments(ctx, doc.Id, 0)
+				listed, err := client.Document().Comments(ctx, doc.ID, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				texts := make([]string, 0, len(listed.Results))
 				for _, c := range listed.Results {
@@ -183,7 +183,7 @@ var _ = Describe("Document API", func() {
 		It("returns the document's project list (possibly empty)", func() {
 			doc := createFixtureDocument(ctx, client, "AccProjectsDoc", "project-listing")
 
-			res, err := client.Document().Projects(ctx, doc.Id, 0)
+			res, err := client.Document().Projects(ctx, doc.ID, 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())

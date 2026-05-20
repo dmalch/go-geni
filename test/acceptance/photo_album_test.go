@@ -41,7 +41,7 @@ var _ = Describe("Photo Album API", func() {
 	Describe("CreatePhotoAlbum", func() {
 		It("creates a new album and returns its id", func() {
 			album := createFixtureAlbum()
-			Expect(album.Id).To(HavePrefix("album-"))
+			Expect(album.ID).To(HavePrefix("album-"))
 			Expect(album.Name).To(HavePrefix("AccAlbum-"))
 		})
 	})
@@ -50,9 +50,9 @@ var _ = Describe("Photo Album API", func() {
 		It("reads a freshly-created album back", func() {
 			created := createFixtureAlbum()
 
-			got, err := client.PhotoAlbum().Get(ctx, created.Id)
+			got, err := client.PhotoAlbum().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Id).To(Equal(created.Id))
+			Expect(got.ID).To(Equal(created.ID))
 			Expect(got.Name).To(Equal(created.Name))
 		})
 	})
@@ -62,14 +62,14 @@ var _ = Describe("Photo Album API", func() {
 			created := createFixtureAlbum()
 			newName := fmt.Sprintf("AccAlbumRenamed-%d", time.Now().UnixNano())
 
-			updated, err := client.PhotoAlbum().Update(ctx, created.Id, &photoalbum.Request{
+			updated, err := client.PhotoAlbum().Update(ctx, created.ID, &photoalbum.Request{
 				Name: newName,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.Id).To(Equal(created.Id))
+			Expect(updated.ID).To(Equal(created.ID))
 			Expect(updated.Name).To(Equal(newName))
 
-			got, err := client.PhotoAlbum().Get(ctx, created.Id)
+			got, err := client.PhotoAlbum().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Name).To(Equal(newName))
 		})
@@ -85,7 +85,7 @@ var _ = Describe("Photo Album API", func() {
 		It("returns a non-nil envelope for a fresh album", func() {
 			created := createFixtureAlbum()
 
-			res, err := client.PhotoAlbum().Photos(ctx, created.Id, 0)
+			res, err := client.PhotoAlbum().Photos(ctx, created.ID, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})

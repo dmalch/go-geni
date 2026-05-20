@@ -108,7 +108,7 @@ var _ = Describe("Document comments + projects + tags endpoints", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
 			Expect(res.Results).To(HaveLen(2))
-			Expect(res.Results[0].Id).To(Equal("comment-1"))
+			Expect(res.Results[0].ID).To(Equal("comment-1"))
 			Expect(res.Results[0].Title).To(Equal("Author note"))
 			Expect(res.NextPage).To(ContainSubstring("page=2"))
 		})
@@ -134,7 +134,7 @@ var _ = Describe("Document comments + projects + tags endpoints", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Results).To(HaveLen(2))
-			Expect(res.Results[0].Id).To(Equal("project-100"))
+			Expect(res.Results[0].ID).To(Equal("project-100"))
 			Expect(res.Results[0].Name).To(Equal("Family Roots"))
 		})
 	})
@@ -208,7 +208,7 @@ var _ = Describe("Document profile-scoped endpoints", func() {
 			doc, err := client.AddToProfile(ctx, "profile-1", &Request{Title: "Letter", Text: &text})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(doc.Id).To(Equal("document-9"))
+			Expect(doc.ID).To(Equal("document-9"))
 		})
 	})
 })

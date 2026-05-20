@@ -82,7 +82,7 @@ var _ = Describe("Profile endpoints", func() {
 			})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(p.Id).To(Equal("profile-9"))
+			Expect(p.ID).To(Equal("profile-9"))
 			Expect(string(reqBody)).To(ContainSubstring(`"first_name":"Alice"`))
 		})
 
@@ -120,7 +120,7 @@ var _ = Describe("Profile endpoints", func() {
 			p, err := client.Follow(ctx, "profile-1")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(p.Id).To(Equal("profile-1"))
+			Expect(p.ID).To(Equal("profile-1"))
 		})
 
 		It("Unfollow targets /unfollow", func() {
@@ -144,7 +144,7 @@ var _ = Describe("Profile endpoints", func() {
 			}, WithModifier("adopt"))
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(parent.Id).To(Equal("profile-parent"))
+			Expect(parent.ID).To(Equal("profile-parent"))
 			Expect(recorded.URL.Query().Get("relationship_modifier")).To(Equal("adopt"))
 			Expect(string(reqBody)).To(ContainSubstring(`"first_name":"Mom"`))
 		})

@@ -87,7 +87,7 @@ var _ = Describe("Photo album endpoints", func() {
 			})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(album.Id).To(Equal("album-9"))
+			Expect(album.ID).To(Equal("album-9"))
 			Expect(album.CoverPhoto).To(HaveKeyWithValue("small", "https://photos.geni.test/cover/small.jpg"))
 			Expect(string(reqBody)).To(ContainSubstring(`"name":"Vacation 1972"`))
 			Expect(string(reqBody)).To(ContainSubstring(`"description":"Family trip"`))
@@ -111,7 +111,7 @@ var _ = Describe("Photo album endpoints", func() {
 			album, err := client.Get(ctx, "album-1")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(album.Id).To(Equal("album-1"))
+			Expect(album.ID).To(Equal("album-1"))
 			Expect(album.PhotosCount).To(Equal(12))
 			Expect(album.CoverPhoto).To(HaveLen(2))
 		})

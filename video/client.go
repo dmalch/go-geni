@@ -147,7 +147,7 @@ func (c *Client) Get(ctx context.Context, videoId string) (*Video, error) {
 			return env, nil
 		},
 		ListResults: func(env BulkResponse) []Video { return env.Results },
-		IDOfResult:  func(v Video) string { return v.Id },
+		IDOfResult:  func(v Video) string { return v.ID },
 	}
 
 	body, err := c.transport.Do(ctx, req, coalescer)

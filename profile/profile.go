@@ -80,8 +80,8 @@ type BulkResponse struct {
 // Profile is Geni's Profile resource — a single person in the family
 // tree. Returned by every profile-fetching endpoint.
 type Profile struct {
-	// Id is the profile's node id
-	Id string `json:"id,omitempty"`
+	// ID is the profile's node id
+	ID string `json:"id,omitempty"`
 	// Guid is the profile's globally unique identifier
 	Guid string `json:"guid,omitempty"`
 	// FirstName is the profile's first name

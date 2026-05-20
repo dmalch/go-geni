@@ -37,7 +37,7 @@ func main() {
 		log.Fatalf("GetProfile(%q): %v", profileID, err)
 	}
 
-	fmt.Printf("id:    %s\n", profile.Id)
+	fmt.Printf("id:    %s\n", profile.ID)
 	fmt.Printf("guid:  %s\n", profile.Guid)
 	fmt.Printf("name:  %s %s\n", derefString(profile.FirstName), derefString(profile.LastName))
 	fmt.Printf("alive: %t\n", profile.IsAlive)

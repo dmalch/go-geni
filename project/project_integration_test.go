@@ -97,7 +97,7 @@ var _ = Describe("Project sub-listings", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(recorded.URL.Query().Get("page")).To(Equal("1"))
 			Expect(res.Results).To(HaveLen(2))
-			Expect(res.Results[0].Id).To(Equal("profile-501"))
+			Expect(res.Results[0].ID).To(Equal("profile-501"))
 			Expect(res.TotalCount).To(Equal(2))
 			Expect(res.NextPage).To(ContainSubstring("page=2"))
 		})

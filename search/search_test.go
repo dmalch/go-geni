@@ -127,8 +127,8 @@ func TestProfiles_DecodesResults(t *testing.T) {
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.Results).To(HaveLen(2))
-	Expect(res.Results[0].Id).To(Equal("profile-1"))
-	Expect(res.Results[1].Id).To(Equal("profile-2"))
+	Expect(res.Results[0].ID).To(Equal("profile-1"))
+	Expect(res.Results[1].ID).To(Equal("profile-2"))
 	Expect(res.Page).To(Equal(1))
 	Expect(res.NextPage).To(Equal("https://www.geni.com/api/profile/search?names=Doe&page=2"))
 }

@@ -35,7 +35,7 @@ var _ = Describe("Project API", func() {
 		It("returns the configured project", func() {
 			project, err := client.Project().Get(ctx, projectId)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(project.Id).To(Equal(projectId))
+			Expect(project.ID).To(Equal(projectId))
 		})
 	})
 
@@ -43,7 +43,7 @@ var _ = Describe("Project API", func() {
 		It("adds a freshly-created profile to the project", func() {
 			profile := createFixtureProfile(ctx, client, "ProjectMember")
 
-			res, err := client.Project().AddProfile(ctx, profile.Id, projectId)
+			res, err := client.Project().AddProfile(ctx, profile.ID, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})
@@ -53,7 +53,7 @@ var _ = Describe("Project API", func() {
 		It("adds a freshly-created document to the project", func() {
 			doc := createFixtureDocument(ctx, client, "AccProjectDoc", "project content")
 
-			res, err := client.Document().AddToProject(ctx, doc.Id, projectId)
+			res, err := client.Document().AddToProject(ctx, doc.ID, projectId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeNil())
 		})

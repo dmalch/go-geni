@@ -48,7 +48,7 @@ func TestGet_Request(t *testing.T) {
 		u, err := c.Get(context.Background())
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(u.Id).To(Equal("user-42"))
+		Expect(u.ID).To(Equal("user-42"))
 		Expect(u.Name).To(Equal("Test"))
 		Expect(u.AccountType).To(Equal("basic"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))

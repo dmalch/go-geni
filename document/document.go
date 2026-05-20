@@ -43,8 +43,8 @@ type BulkResponse struct {
 // Document is Geni's Document resource — uploaded files, text records,
 // or external source URLs attached to profiles.
 type Document struct {
-	// Id is the document's id
-	Id string `json:"id,omitempty"`
+	// ID is the document's id
+	ID string `json:"id,omitempty"`
 	// Title is the document's title
 	Title string `json:"title,omitempty"`
 	// Description is the document's description

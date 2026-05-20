@@ -78,7 +78,7 @@ func TestComments_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
-		Expect(res.Results[0].Id).To(Equal("c-1"))
+		Expect(res.Results[0].ID).To(Equal("c-1"))
 		Expect(res.Results[0].Comment).To(Equal("hi"))
 		Expect(res.Results[1].Title).To(Equal("greeting"))
 		Expect(res.Page).To(Equal(1))
@@ -202,7 +202,7 @@ func TestProjects_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
-		Expect(res.Results[0].Id).To(Equal("project-1"))
+		Expect(res.Results[0].ID).To(Equal("project-1"))
 		Expect(res.Results[0].Name).To(Equal("Family Roots"))
 		Expect(res.NextPage).To(ContainSubstring("page=2"))
 	})
@@ -230,7 +230,7 @@ func TestForProfile_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("document-1"))
+		Expect(res.Results[0].ID).To(Equal("document-1"))
 		Expect(res.TotalCount).To(Equal(17))
 		Expect(res.NextPage).To(ContainSubstring("page=2"))
 	})
@@ -254,7 +254,7 @@ func TestAddToProfile_Request(t *testing.T) {
 	})
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(d.Id).To(Equal("document-9"))
+	Expect(d.ID).To(Equal("document-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-document"))
 	got, _ := io.ReadAll(ft.lastRequest.Body)

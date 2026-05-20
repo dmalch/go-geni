@@ -22,8 +22,8 @@ type BulkResponse struct {
 // Union is Geni's Union resource — a relationship grouping that ties
 // partners and children together.
 type Union struct {
-	// Id is the union's id.
-	Id string `json:"id,omitempty"`
+	// ID is the union's id.
+	ID string `json:"id,omitempty"`
 	// AdoptedChildren is a subset of the children array, indicating which children are adopted
 	AdoptedChildren []string `json:"adopted_children,omitempty"`
 	// Children is an array of children in the union (urls or ids, if requested)

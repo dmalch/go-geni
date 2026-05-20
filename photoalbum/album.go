@@ -8,7 +8,7 @@ package photoalbum
 // photos. Returned by GetMyAlbums, CreatePhotoAlbum, GetPhotoAlbum,
 // and UpdatePhotoAlbum.
 type PhotoAlbum struct {
-	Id          string `json:"id,omitempty"`
+	ID          string `json:"id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	Url         string `json:"url,omitempty"`

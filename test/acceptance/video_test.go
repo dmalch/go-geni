@@ -37,14 +37,14 @@ var _ = Describe("Video API", func() {
 		if err != nil {
 			Skip(fmt.Sprintf("sandbox rejected CreateVideo with placeholder payload: %v (need a real video fixture)", err))
 		}
-		DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.Id) })
+		DeferCleanup(func() { _ = client.Video().Delete(context.Background(), video.ID) })
 		return video
 	}
 
 	Describe("CreateVideo", func() {
 		It("creates a video record and returns its id", func() {
 			video := createOrSkip()
-			Expect(video.Id).To(HavePrefix("video-"))
+			Expect(video.ID).To(HavePrefix("video-"))
 			Expect(video.Title).To(HavePrefix("AccCreateVideo-"))
 		})
 	})
@@ -53,9 +53,9 @@ var _ = Describe("Video API", func() {
 		It("reads back a freshly-created video", func() {
 			created := createOrSkip()
 
-			got, err := client.Video().Get(ctx, created.Id)
+			got, err := client.Video().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Id).To(Equal(created.Id))
+			Expect(got.ID).To(Equal(created.ID))
 		})
 	})
 
@@ -64,13 +64,13 @@ var _ = Describe("Video API", func() {
 			created := createOrSkip()
 			newTitle := "AccUpdateVideoAfter"
 
-			updated, err := client.Video().Update(ctx, created.Id, &video.Request{
+			updated, err := client.Video().Update(ctx, created.ID, &video.Request{
 				Title: newTitle,
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Title).To(Equal(newTitle))
 
-			got, err := client.Video().Get(ctx, created.Id)
+			got, err := client.Video().Get(ctx, created.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Title).To(Equal(newTitle))
 		})
@@ -84,27 +84,27 @@ var _ = Describe("Video API", func() {
 			video := createOrSkip()
 			profile := createFixtureProfile(ctx, client, "VideoTaggee")
 
-			_, err := client.Video().Tag(ctx, video.Id, profile.Id)
+			_, err := client.Video().Tag(ctx, video.ID, profile.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			tags, err := client.Video().Tags(ctx, video.Id, 0)
+			tags, err := client.Video().Tags(ctx, video.ID, 0)
 			Expect(err).ToNot(HaveOccurred())
 			ids := make([]string, 0, len(tags.Results))
 			for _, p := range tags.Results {
-				ids = append(ids, p.Id)
+				ids = append(ids, p.ID)
 			}
-			Expect(ids).To(ContainElement(profile.Id))
+			Expect(ids).To(ContainElement(profile.ID))
 
-			_, err = client.Video().Untag(ctx, video.Id, profile.Id)
+			_, err = client.Video().Untag(ctx, video.ID, profile.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			tagsAfter, err := client.Video().Tags(ctx, video.Id, 0)
+			tagsAfter, err := client.Video().Tags(ctx, video.ID, 0)
 			Expect(err).ToNot(HaveOccurred())
 			idsAfter := make([]string, 0, len(tagsAfter.Results))
 			for _, p := range tagsAfter.Results {
-				idsAfter = append(idsAfter, p.Id)
+				idsAfter = append(idsAfter, p.ID)
 			}
-			Expect(idsAfter).ToNot(ContainElement(profile.Id))
+			Expect(idsAfter).ToNot(ContainElement(profile.ID))
 		})
 	})
 
@@ -121,11 +121,11 @@ var _ = Describe("Video API", func() {
 			video := createOrSkip()
 			body := "first video comment"
 
-			_, err := client.Video().AddComment(ctx, video.Id, body, "")
+			_, err := client.Video().AddComment(ctx, video.ID, body, "")
 			Expect(err).ToNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {
-				listed, err := client.Video().Comments(ctx, video.Id, 0)
+				listed, err := client.Video().Comments(ctx, video.ID, 0)
 				g.Expect(err).ToNot(HaveOccurred())
 				texts := make([]string, 0, len(listed.Results))
 				for _, c := range listed.Results {

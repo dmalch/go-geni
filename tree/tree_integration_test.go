@@ -112,7 +112,7 @@ var _ = Describe("Tree endpoints", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Focus).ToNot(BeNil())
-			Expect(res.Focus.Id).To(Equal("profile-1"))
+			Expect(res.Focus.ID).To(Equal("profile-1"))
 			Expect(res.Nodes.ProfileIds()).To(ContainElements("profile-1", "profile-2", "profile-3"))
 			Expect(res.Nodes.UnionIds()).To(ConsistOf("union-9"))
 
@@ -231,7 +231,7 @@ var _ = Describe("Tree Compare", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(cmp.Results).To(HaveLen(2))
-		Expect(cmp.Results[0].Focus.Id).To(Equal("profile-1"))
+		Expect(cmp.Results[0].Focus.ID).To(Equal("profile-1"))
 		Expect(cmp.Results[1].Nodes).To(HaveKey("profile-2"))
 	})
 })

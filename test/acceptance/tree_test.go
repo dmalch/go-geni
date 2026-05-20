@@ -32,16 +32,16 @@ var _ = Describe("Tree traversal API", func() {
 		It("eventually lists a child added to the focus profile", func() {
 			focus := createFixtureProfile(ctx, client, "FocusFamily")
 
-			child, err := client.Profile().AddChild(ctx, focus.Id)
+			child, err := client.Profile().AddChild(ctx, focus.ID)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.ID) })
 
 			Eventually(func(g Gomega) {
-				family, err := client.Tree().ImmediateFamily(ctx, focus.Id)
+				family, err := client.Tree().ImmediateFamily(ctx, focus.ID)
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(family.Focus).ToNot(BeNil())
-				g.Expect(family.Focus.Id).To(Equal(focus.Id))
-				g.Expect(family.Nodes.ProfileIds()).To(ContainElement(child.Id))
+				g.Expect(family.Focus.ID).To(Equal(focus.ID))
+				g.Expect(family.Nodes.ProfileIds()).To(ContainElement(child.ID))
 			}).
 				WithTimeout(30 * time.Second).
 				WithPolling(2 * time.Second).
@@ -60,14 +60,14 @@ var _ = Describe("Tree traversal API", func() {
 		It("echoes the focus profile id when authorized", func() {
 			root := createFixtureProfile(ctx, client, "AncestorRoot")
 
-			ancestors, err := client.Tree().Ancestors(ctx, root.Id, tree.WithGenerations(2))
+			ancestors, err := client.Tree().Ancestors(ctx, root.ID, tree.WithGenerations(2))
 			if errors.Is(err, geni.ErrAccessDenied) {
 				Skip("sandbox returned 403 on ancestors for a fresh isolated profile (Geni-side restriction, not a client bug)")
 			}
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ancestors.Focus).ToNot(BeNil())
-			Expect(ancestors.Focus.Id).To(Equal(root.Id))
+			Expect(ancestors.Focus.ID).To(Equal(root.ID))
 		})
 	})
 
@@ -83,13 +83,13 @@ var _ = Describe("Tree traversal API", func() {
 		It("settles on a terminal PathStatus for a parent→child path", func() {
 			parent := createFixtureProfile(ctx, client, "PathToParent")
 
-			child, err := client.Profile().AddChild(ctx, parent.Id)
+			child, err := client.Profile().AddChild(ctx, parent.ID)
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.Id) })
+			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), child.ID) })
 
 			var lastStatus tree.PathStatus
 			Eventually(func(g Gomega) {
-				res, err := client.Tree().PathTo(ctx, parent.Id, child.Id,
+				res, err := client.Tree().PathTo(ctx, parent.ID, child.ID,
 					tree.WithSkipEmail(true),
 					tree.WithSkipNotify(true),
 				)

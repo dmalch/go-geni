@@ -10,13 +10,13 @@ import "encoding/json"
 // a single account may manage many profiles.
 //
 // The public docs list only `name` and `account_type` on this object,
-// and the sandbox returns exactly those two — Id and Guid below are
+// and the sandbox returns exactly those two — ID and Guid below are
 // captured defensively in case production differs, but you should
 // not depend on them being populated. The JSON decoder is permissive
 // (extra fields are silently ignored).
 type User struct {
-	// Id is the user's identifier.
-	Id string `json:"id,omitempty"`
+	// ID is the user's identifier.
+	ID string `json:"id,omitempty"`
 	// Guid is the user's globally unique identifier.
 	Guid string `json:"guid,omitempty"`
 	// Name is the user's display name.

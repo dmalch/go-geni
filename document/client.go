@@ -76,7 +76,7 @@ func (c *Client) Get(ctx context.Context, documentId string) (*Document, error) 
 			return env, nil
 		},
 		ListResults: func(env BulkResponse) []Document { return env.Results },
-		IDOfResult:  func(d Document) string { return d.Id },
+		IDOfResult:  func(d Document) string { return d.ID },
 	}
 
 	body, err := c.transport.Do(ctx, req, coalescer)

@@ -88,7 +88,7 @@ func TestCreate_Request(t *testing.T) {
 		)
 
 		Expect(err).ToNot(HaveOccurred())
-		Expect(p.Id).To(Equal("photo-1"))
+		Expect(p.ID).To(Equal("photo-1"))
 		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo/add"))
 
@@ -162,7 +162,7 @@ func TestGet_Request(t *testing.T) {
 	p, err := c.Get(context.Background(), "photo-9")
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(p.Id).To(Equal("photo-9"))
+	Expect(p.ID).To(Equal("photo-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodGet))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/photo-9"))
 }
@@ -265,7 +265,7 @@ func TestTags_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(2))
-		Expect(res.Results[0].Id).To(Equal("profile-1"))
+		Expect(res.Results[0].ID).To(Equal("profile-1"))
 	})
 }
 
@@ -352,7 +352,7 @@ func TestForProfile_Request(t *testing.T) {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.Results).To(HaveLen(1))
-		Expect(res.Results[0].Id).To(Equal("photo-9"))
+		Expect(res.Results[0].ID).To(Equal("photo-9"))
 		Expect(res.NextPage).To(ContainSubstring("page=2"))
 	})
 }
@@ -368,7 +368,7 @@ func TestAddToProfile_Request(t *testing.T) {
 	})
 
 	Expect(err).ToNot(HaveOccurred())
-	Expect(res.Id).To(Equal("photo-9"))
+	Expect(res.ID).To(Equal("photo-9"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/add-photo"))
 	got, _ := io.ReadAll(ft.lastRequest.Body)

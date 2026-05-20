@@ -97,7 +97,7 @@ func createFixtureProfile(ctx context.Context, client *geni.Client, firstName st
 	})
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
-		_ = client.Profile().Delete(context.Background(), created.Id)
+		_ = client.Profile().Delete(context.Background(), created.ID)
 	})
 	return created
 }

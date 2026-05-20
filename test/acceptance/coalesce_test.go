@@ -93,14 +93,14 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 			a := createFixtureProfile(ctx, client, tag+"A")
 			b := createFixtureProfile(ctx, client, tag+"B")
 			c := createFixtureProfile(ctx, client, tag+"C")
-			ids := []string{a.Id, b.Id, c.Id}
+			ids := []string{a.ID, b.ID, c.ID}
 
 			results, errs := runConcurrent(ids, func(id string) (string, error) {
 				p, err := client.Profile().Get(ctx, id)
 				if err != nil {
 					return "", err
 				}
-				return p.Id, nil
+				return p.ID, nil
 			})
 
 			Expect(errs).To(Equal(0))
@@ -125,7 +125,7 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 				if err != nil {
 					return "", err
 				}
-				return u.Id, nil
+				return u.ID, nil
 			})
 
 			Expect(errs).To(Equal(0))
@@ -144,14 +144,14 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 			a := createFixtureDocument(ctx, client, tag+"A", "a")
 			b := createFixtureDocument(ctx, client, tag+"B", "b")
 			c := createFixtureDocument(ctx, client, tag+"C", "c")
-			ids := []string{a.Id, b.Id, c.Id}
+			ids := []string{a.ID, b.ID, c.ID}
 
 			results, errs := runConcurrent(ids, func(id string) (string, error) {
 				d, err := client.Document().Get(ctx, id)
 				if err != nil {
 					return "", err
 				}
-				return d.Id, nil
+				return d.ID, nil
 			})
 
 			Expect(errs).To(Equal(0))
@@ -169,21 +169,21 @@ var _ = Describe("Bulk-read coalescing (live sandbox)", func() {
 			tag := fmt.Sprintf("CoalescePhoto%d", time.Now().UnixNano())
 			a, err := client.Photo().Create(ctx, tag+"A", "a.png", coalesceTinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), a.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), a.ID) })
 			b, err := client.Photo().Create(ctx, tag+"B", "b.png", coalesceTinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), b.Id) })
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), b.ID) })
 			cPhoto, err := client.Photo().Create(ctx, tag+"C", "c.png", coalesceTinyPng())
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), cPhoto.Id) })
-			ids := []string{a.Id, b.Id, cPhoto.Id}
+			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), cPhoto.ID) })
+			ids := []string{a.ID, b.ID, cPhoto.ID}
 
 			results, errs := runConcurrent(ids, func(id string) (string, error) {
 				p, err := client.Photo().Get(ctx, id)
 				if err != nil {
 					return "", err
 				}
-				return p.Id, nil
+				return p.ID, nil
 			})
 
 			Expect(errs).To(Equal(0))
