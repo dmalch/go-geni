@@ -1,0 +1,183 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"log/slog"
+	"os"
+	"sort"
+
+	geni "github.com/dmalch/go-geni"
+)
+
+// commandTree returns the CLI command tree. Top-level entries are
+// either flat commands (run set) or resource groups (sub set). It is a
+// function rather than a package variable to avoid an initialization
+// cycle: runHelp -> printUsage -> the tree.
+func commandTree() map[string]*command {
+	return map[string]*command{
+		"login":  {summary: "authenticate and cache an OAuth token", run: runLogin},
+		"logout": {summary: "delete the cached OAuth token", run: runLogout},
+		"whoami": {summary: "show the authenticated user", run: runWhoami},
+		"stats":  {summary: "show platform-wide statistics", run: runStats},
+		"help":   {summary: "show this usage text", run: runHelp},
+
+		"profile": {summary: "profile resource", sub: map[string]*command{
+			"get": {summary: "fetch a profile by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Profile().Get(ctx, id)
+				})},
+			"search": {summary: "search profiles by name", run: runProfileSearch},
+		}},
+		"union": {summary: "union resource", sub: map[string]*command{
+			"get": {summary: "fetch a union by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Union().Get(ctx, id)
+				})},
+		}},
+		"document": {summary: "document resource", sub: map[string]*command{
+			"get": {summary: "fetch a document by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Document().Get(ctx, id)
+				})},
+		}},
+		"photo": {summary: "photo resource", sub: map[string]*command{
+			"get": {summary: "fetch a photo by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Photo().Get(ctx, id)
+				})},
+		}},
+		"video": {summary: "video resource", sub: map[string]*command{
+			"get": {summary: "fetch a video by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Video().Get(ctx, id)
+				})},
+		}},
+		"photoalbum": {summary: "photo album resource", sub: map[string]*command{
+			"get": {summary: "fetch a photo album by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.PhotoAlbum().Get(ctx, id)
+				})},
+		}},
+		"project": {summary: "project resource", sub: map[string]*command{
+			"get": {summary: "fetch a project by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Project().Get(ctx, id)
+				})},
+		}},
+		"surname": {summary: "surname resource", sub: map[string]*command{
+			"get": {summary: "fetch a surname by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Surname().Get(ctx, id)
+				})},
+		}},
+		"revision": {summary: "revision resource", sub: map[string]*command{
+			"get": {summary: "fetch a revision by id", run: resourceGet(
+				func(c *geni.Client, ctx context.Context, id string) (any, error) {
+					return c.Revision().Get(ctx, id)
+				})},
+		}},
+		"tree": {summary: "family-graph queries", sub: map[string]*command{
+			"family":    {summary: "immediate family of a profile", run: runTreeFamily},
+			"ancestors": {summary: "ancestors of a profile", run: runTreeAncestors},
+		}},
+	}
+}
+
+// printUsage writes the command list to w.
+func printUsage(w io.Writer) {
+	_, _ = fmt.Fprint(w, "geni — command-line client for the Geni.com API\n\n"+
+		"Usage:\n  geni [-sandbox] <command> [<subcommand>] [flags] [args]\n\nCommands:\n")
+
+	tree := commandTree()
+	names := make([]string, 0, len(tree))
+	for n := range tree {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		c := tree[n]
+		if c.sub == nil {
+			_, _ = fmt.Fprintf(w, "  %-26s %s\n", n, c.summary)
+			continue
+		}
+		verbs := make([]string, 0, len(c.sub))
+		for v := range c.sub {
+			verbs = append(verbs, v)
+		}
+		sort.Strings(verbs)
+		for _, v := range verbs {
+			_, _ = fmt.Fprintf(w, "  %-26s %s\n", n+" "+v, c.sub[v].summary)
+		}
+	}
+
+	_, _ = fmt.Fprint(w, "\nGlobal flags:\n"+
+		"  -sandbox    use sandbox.geni.com instead of production\n\n"+
+		"Run \"geni login\" once to authenticate; the token is cached under ~/.genealogy.\n")
+}
+
+// runLogin performs the interactive OAuth handshake and caches the
+// resulting token.
+func runLogin(_ context.Context, g *globalOpts, _ []string) error {
+	if os.Getenv("GENI_ACCESS_TOKEN") != "" {
+		return errors.New("GENI_ACCESS_TOKEN is set; unset it to use cached browser auth")
+	}
+	ts, err := authChain(g.sandbox)
+	if err != nil {
+		return err
+	}
+	if _, err := ts.Token(); err != nil {
+		return err
+	}
+	slog.Info("login successful", "sandbox", g.sandbox)
+	return nil
+}
+
+// runLogout deletes the cached token file. It is a no-op when the file
+// is already absent.
+func runLogout(_ context.Context, g *globalOpts, _ []string) error {
+	path, err := tokenCacheFilePath(g.sandbox)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	slog.Info("logged out", "cache", path)
+	return nil
+}
+
+// runWhoami prints the account that owns the active token.
+func runWhoami(ctx context.Context, g *globalOpts, _ []string) error {
+	c, err := newClient(g)
+	if err != nil {
+		return err
+	}
+	u, err := c.User().Get(ctx)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, u)
+}
+
+// runStats prints Geni's platform-wide statistics.
+func runStats(ctx context.Context, g *globalOpts, _ []string) error {
+	c, err := newClient(g)
+	if err != nil {
+		return err
+	}
+	s, err := c.Stats().Get(ctx)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, s)
+}
+
+// runHelp prints the usage text to stdout.
+func runHelp(_ context.Context, g *globalOpts, _ []string) error {
+	printUsage(g.stdout)
+	return nil
+}

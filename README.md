@@ -61,6 +61,27 @@ func derefString(p *string) string {
 A runnable version of this example lives in
 [`examples/getprofile/`](examples/getprofile).
 
+## Command-line tool
+
+`cmd/geni` is a CLI façade over the library — handy for OAuth login and
+quick read queries without writing Go:
+
+```bash
+go install github.com/dmalch/go-geni/cmd/geni@latest
+
+geni login                            # browser OAuth; caches the token
+geni whoami                           # the authenticated account
+geni profile get <id>                 # fetch a profile
+geni profile search <name...>         # search profiles by name
+geni union get <id>                   # fetch a union
+geni tree ancestors <id> -generations 3
+geni stats
+geni help                             # full command list
+```
+
+Add `-sandbox` before the command to target `sandbox.geni.com`. Results
+are printed as JSON on stdout, so `geni profile get <id> | jq` works.
+
 ## OAuth
 
 The `auth` subpackage offers a browser-based OAuth implicit-flow helper and a
