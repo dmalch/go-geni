@@ -11,15 +11,16 @@ import (
 	"github.com/dmalch/go-geni/document"
 	"github.com/dmalch/go-geni/photo"
 	"github.com/dmalch/go-geni/profile"
+	"github.com/dmalch/go-geni/tree"
 	"github.com/dmalch/go-geni/video"
 )
 
 // ProfileComparison is the response shape of [Client.CompareProfiles].
 // Geni returns immediate-family graphs for both profiles in one call;
-// each Results entry mirrors what GetImmediateFamily would return for
-// one of the two profiles, in the order requested.
+// each Results entry mirrors what Client.Tree().ImmediateFamily would
+// return for one of the two profiles, in the order requested.
 type ProfileComparison struct {
-	Results []FamilyResponse `json:"results,omitempty"`
+	Results []tree.FamilyResponse `json:"results,omitempty"`
 }
 
 // MugshotRequest is the JSON-encoded body for [Client.AddProfileMugshot].

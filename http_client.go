@@ -15,6 +15,7 @@ import (
 	"github.com/dmalch/go-geni/stats"
 	"github.com/dmalch/go-geni/surname"
 	"github.com/dmalch/go-geni/transport"
+	"github.com/dmalch/go-geni/tree"
 	"github.com/dmalch/go-geni/union"
 	"github.com/dmalch/go-geni/user"
 	"github.com/dmalch/go-geni/video"
@@ -49,6 +50,7 @@ type Client struct {
 	video         *video.Client
 	document      *document.Client
 	union         *union.Client
+	tree          *tree.Client
 }
 
 // NewClient constructs a Client. useSandboxEnv selects between
@@ -69,6 +71,7 @@ func NewClient(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 		video:         video.NewClient(t),
 		document:      document.NewClient(t),
 		union:         union.NewClient(t),
+		tree:          tree.NewClient(t),
 	}
 }
 
@@ -128,6 +131,10 @@ func (c *Client) Document() *document.Client { return c.document }
 // Replaces Client.GetUnion, GetUnions, UpdateUnion,
 // AddPartnerToUnion, AddChildToUnion.
 func (c *Client) Union() *union.Client { return c.union }
+
+// Tree returns the client for Geni's family-graph endpoints.
+// Replaces Client.GetImmediateFamily, GetAncestors, GetPathTo.
+func (c *Client) Tree() *tree.Client { return c.tree }
 
 // BaseURL returns the prod or sandbox HTTP host (with trailing slash).
 func BaseURL(useSandboxEnv bool) string {
