@@ -31,6 +31,7 @@ func commandTree() map[string]*command {
 					return c.Profile().Get(ctx, id)
 				})},
 			"search": {summary: "search profiles by name", run: runProfileSearch},
+			"open":   {summary: "open a profile's web page in the browser", run: runProfileOpen},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
 			"get": {summary: "fetch a union by id", run: resourceGet(

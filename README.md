@@ -73,6 +73,7 @@ geni login                            # browser OAuth; caches the token
 geni whoami                           # the authenticated account
 geni profile get <id>                 # fetch a profile
 geni profile search <name...>         # search profiles by name
+geni profile open <id|guid>           # open the profile's web page
 geni union get <id>                   # fetch a union
 geni tree ancestors <id> -generations 3
 geni stats
