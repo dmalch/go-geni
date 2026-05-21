@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	geni "github.com/dmalch/go-geni"
 	. "github.com/onsi/gomega"
 )
 
@@ -30,6 +31,43 @@ func TestRunProfileOpen_ArgValidation(t *testing.T) {
 	t.Run("more than one id is an error", func(t *testing.T) {
 		RegisterTestingT(t)
 		Expect(runProfileOpen(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
+	})
+}
+
+func TestSplitIDs(t *testing.T) {
+	RegisterTestingT(t)
+
+	// Space-separated args.
+	Expect(splitIDs([]string{"profile-1", "profile-2", "profile-3"})).
+		To(Equal([]string{"profile-1", "profile-2", "profile-3"}))
+
+	// A single comma-separated arg.
+	Expect(splitIDs([]string{"profile-1,profile-2,profile-3"})).
+		To(Equal([]string{"profile-1", "profile-2", "profile-3"}))
+
+	// Mixed, with surrounding blanks and an empty segment.
+	Expect(splitIDs([]string{"profile-1, profile-2", "", "profile-3,"})).
+		To(Equal([]string{"profile-1", "profile-2", "profile-3"}))
+
+	// No usable ids.
+	Expect(splitIDs(nil)).To(BeEmpty())
+	Expect(splitIDs([]string{"", " ", ","})).To(BeEmpty())
+}
+
+func TestRunGetBulk_ArgValidation(t *testing.T) {
+	g := &globalOpts{}
+	handler := resourceGetBulk(func(*geni.Client, context.Context, []string) (any, error) {
+		return nil, nil
+	})
+
+	t.Run("no ids is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(handler(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("only blank ids is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(handler(context.Background(), g, []string{",", " "})).To(HaveOccurred())
 	})
 }
 

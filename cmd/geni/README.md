@@ -49,17 +49,23 @@ Run `geni help` for the full list.
 | `geni stats` | Show platform-wide statistics |
 | `geni help` | Show usage |
 | `geni profile get <id>` | Fetch a profile by id |
+| `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
 | `geni union get <id>` | Fetch a union |
+| `geni union get-bulk <id...>` | Fetch multiple unions by id |
 | `geni document get <id>` | Fetch a document |
+| `geni document get-bulk <id...>` | Fetch multiple documents by id |
 | `geni document open <id\|guid>` | Open the document's web page in the browser |
 | `geni photo get <id>` | Fetch a photo |
+| `geni photo get-bulk <id...>` | Fetch multiple photos by id |
 | `geni video get <id>` | Fetch a video |
+| `geni video get-bulk <id...>` | Fetch multiple videos by id |
 | `geni photoalbum get <id>` | Fetch a photo album |
 | `geni project get <id>` | Fetch a project |
 | `geni surname get <id>` | Fetch a surname |
 | `geni revision get <id>` | Fetch a revision |
+| `geni revision get-bulk <id...>` | Fetch multiple revisions by id |
 | `geni tree family <id>` | Immediate family of a profile |
 | `geni tree ancestors <id>` | Ancestors of a profile (`-generations N`) |
 
@@ -89,6 +95,10 @@ Exit codes: `0` success, `1` command error, `2` usage error.
 geni profile get profile-6000000012102785219
 geni profile search -page 2 "John Smith"
 geni tree ancestors -generations 4 profile-122248213
+
+# Bulk fetch — ids space- or comma-separated, prints {"results":[…]}
+geni profile get-bulk profile-1 profile-2 profile-3
+geni document get-bulk document-1,document-2 | jq '.results[].title'
 
 # Sandbox
 geni -sandbox whoami

@@ -32,6 +32,42 @@ func resourceGet(get func(c *geni.Client, ctx context.Context, id string) (any, 
 	}
 }
 
+// splitIDs flattens the args of a get-bulk command into an id list.
+// Each arg may itself be comma-separated, so ids can be passed either
+// space-separated, comma-separated, or a mix; blanks are dropped.
+func splitIDs(args []string) []string {
+	var ids []string
+	for _, a := range args {
+		for _, part := range strings.Split(a, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				ids = append(ids, part)
+			}
+		}
+	}
+	return ids
+}
+
+// resourceGetBulk builds a leaf handler for a "get-bulk <id...>"
+// command: it parses the id list, constructs a client, calls the
+// resource's bulk endpoint, and renders the results envelope.
+func resourceGetBulk(getBulk func(c *geni.Client, ctx context.Context, ids []string) (any, error)) func(context.Context, *globalOpts, []string) error {
+	return func(ctx context.Context, g *globalOpts, args []string) error {
+		ids := splitIDs(args)
+		if len(ids) == 0 {
+			return errors.New("expected one or more ids (space- or comma-separated)")
+		}
+		c, err := newClient(g)
+		if err != nil {
+			return err
+		}
+		v, err := getBulk(c, ctx, ids)
+		if err != nil {
+			return err
+		}
+		return render(g.stdout, v)
+	}
+}
+
 // runProfileSearch handles "geni profile search [-page N] <name...>".
 func runProfileSearch(ctx context.Context, g *globalOpts, args []string) error {
 	fs := flag.NewFlagSet("geni profile search", flag.ContinueOnError)
