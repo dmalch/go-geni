@@ -30,6 +30,10 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Profile().Get(ctx, id)
 				})},
+			"get-bulk": {summary: "fetch multiple profiles by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Profile().GetBulk(ctx, ids)
+				})},
 			"search": {summary: "search profiles by name", run: runProfileSearch},
 			"open":   {summary: "open a profile's web page in the browser", run: runProfileOpen},
 		}},
@@ -38,11 +42,19 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Union().Get(ctx, id)
 				})},
+			"get-bulk": {summary: "fetch multiple unions by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Union().GetBulk(ctx, ids)
+				})},
 		}},
 		"document": {summary: "document resource", sub: map[string]*command{
 			"get": {summary: "fetch a document by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Document().Get(ctx, id)
+				})},
+			"get-bulk": {summary: "fetch multiple documents by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Document().GetBulk(ctx, ids)
 				})},
 			"open": {summary: "open a document's web page in the browser", run: runDocumentOpen},
 		}},
@@ -51,11 +63,19 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Photo().Get(ctx, id)
 				})},
+			"get-bulk": {summary: "fetch multiple photos by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Photo().GetBulk(ctx, ids)
+				})},
 		}},
 		"video": {summary: "video resource", sub: map[string]*command{
 			"get": {summary: "fetch a video by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Video().Get(ctx, id)
+				})},
+			"get-bulk": {summary: "fetch multiple videos by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Video().GetBulk(ctx, ids)
 				})},
 		}},
 		"photoalbum": {summary: "photo album resource", sub: map[string]*command{
@@ -80,6 +100,10 @@ func commandTree() map[string]*command {
 			"get": {summary: "fetch a revision by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Revision().Get(ctx, id)
+				})},
+			"get-bulk": {summary: "fetch multiple revisions by id", run: resourceGetBulk(
+				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
+					return c.Revision().GetBulk(ctx, ids)
 				})},
 		}},
 		"tree": {summary: "family-graph queries", sub: map[string]*command{

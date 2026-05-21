@@ -1,3 +1,12 @@
+## 1.4.0 (Unreleased)
+
+- New `geni <resource> get-bulk <id...>` CLI command for the
+  bulk-fetch resources — `profile`, `union`, `document`, `photo`,
+  `video`, `revision`. It fetches multiple resources in one call via
+  Geni's bulk `ids=` API and prints the `{"results":[…]}` envelope as
+  JSON. Ids may be passed space-separated, comma-separated, or a mix
+  (`geni profile get-bulk profile-1 profile-2,profile-3`).
+
 ## 1.3.0
 
 - New `geni document open <id-or-guid>` CLI command — opens the
