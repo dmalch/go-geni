@@ -64,24 +64,17 @@ A runnable version of this example lives in
 ## Command-line tool
 
 `cmd/geni` is a CLI façade over the library — handy for OAuth login and
-quick read queries without writing Go:
+quick read queries (`geni profile get`, `geni profile search`, `geni whoami`,
+…) without writing Go:
 
 ```bash
 go install github.com/dmalch/go-geni/cmd/geni@latest
-
-geni login                            # browser OAuth; caches the token
-geni whoami                           # the authenticated account
-geni profile get <id>                 # fetch a profile
-geni profile search <name...>         # search profiles by name
-geni profile open <id|guid>           # open the profile's web page
-geni union get <id>                   # fetch a union
-geni tree ancestors <id> -generations 3
-geni stats
-geni help                             # full command list
+geni login
+geni profile get <id>
 ```
 
-Add `-sandbox` before the command to target `sandbox.geni.com`. Results
-are printed as JSON on stdout, so `geni profile get <id> | jq` works.
+See [`cmd/geni/README.md`](cmd/geni/README.md) for the full command list,
+auth, flags, and examples.
 
 ## OAuth
 
