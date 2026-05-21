@@ -1,4 +1,4 @@
-## 1.3.0 (Unreleased)
+## 1.3.0
 
 - New `geni document open <id-or-guid>` CLI command — opens the
   document's Geni web page (`/documents/view?doc_id=<guid>`) in the
