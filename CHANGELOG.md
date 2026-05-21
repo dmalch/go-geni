@@ -1,4 +1,4 @@
-## 1.4.0 (Unreleased)
+## 1.4.0
 
 - New `geni <resource> get-bulk <id...>` CLI command for the
   bulk-fetch resources — `profile`, `union`, `document`, `photo`,
