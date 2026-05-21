@@ -32,3 +32,23 @@ func TestRunProfileOpen_ArgValidation(t *testing.T) {
 		Expect(runProfileOpen(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
 	})
 }
+
+func TestDocumentWebURL(t *testing.T) {
+	RegisterTestingT(t)
+	Expect(documentWebURL(false, "6000000221744227924")).To(Equal("https://www.geni.com/documents/view?doc_id=6000000221744227924"))
+	Expect(documentWebURL(true, "6000000221744227924")).To(Equal("https://sandbox.geni.com/documents/view?doc_id=6000000221744227924"))
+}
+
+func TestRunDocumentOpen_ArgValidation(t *testing.T) {
+	g := &globalOpts{}
+
+	t.Run("no id is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentOpen(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("more than one id is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentOpen(context.Background(), g, []string{"document-1", "document-2"})).To(HaveOccurred())
+	})
+}

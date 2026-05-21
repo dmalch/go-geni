@@ -1,3 +1,14 @@
+## 1.3.0 (Unreleased)
+
+- New `geni document open <id-or-guid>` CLI command — opens the
+  document's Geni web page (`/documents/view?doc_id=<guid>`) in the
+  default browser. A bare guid is used directly; a `document-<n>` id
+  is resolved to its guid via the API first, since documents have no
+  id-based web permalink.
+- `document.Document` gains a `Guid` field. Geni's API already
+  returned `guid` for documents; it was previously dropped on
+  decode.
+
 ## 1.2.0
 
 - New `geni profile open <id-or-guid>` CLI command — opens the

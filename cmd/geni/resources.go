@@ -78,6 +78,43 @@ func runProfileOpen(_ context.Context, g *globalOpts, args []string) error {
 	return open.Start(url)
 }
 
+// documentWebURL builds the browser URL for a document guid. Unlike
+// profiles, a document has no id-based permalink — its web page is
+// reached only via the /documents/view?doc_id=<guid> route.
+func documentWebURL(sandbox bool, guid string) string {
+	return geni.BaseURL(sandbox) + "documents/view?doc_id=" + guid
+}
+
+// runDocumentOpen handles "geni document open <id-or-guid>" — it opens
+// the document's Geni web page in the default browser. A bare guid is
+// used directly; a "document-<n>" id is first resolved to its guid via
+// the API (the document web page is keyed by guid, not id).
+func runDocumentOpen(ctx context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("expected exactly one document id or guid argument")
+	}
+
+	guid := args[0]
+	if strings.HasPrefix(guid, "document-") {
+		c, err := newClient(g)
+		if err != nil {
+			return err
+		}
+		doc, err := c.Document().Get(ctx, guid)
+		if err != nil {
+			return err
+		}
+		if doc.Guid == "" {
+			return errors.New("document has no guid")
+		}
+		guid = doc.Guid
+	}
+
+	url := documentWebURL(g.sandbox, guid)
+	_, _ = fmt.Fprintf(g.stderr, "opening %s\n", url)
+	return open.Start(url)
+}
+
 // runTreeFamily handles "geni tree family <profile-id>".
 func runTreeFamily(ctx context.Context, g *globalOpts, args []string) error {
 	if len(args) != 1 {

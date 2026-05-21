@@ -53,6 +53,7 @@ Run `geni help` for the full list.
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
 | `geni union get <id>` | Fetch a union |
 | `geni document get <id>` | Fetch a document |
+| `geni document open <id\|guid>` | Open the document's web page in the browser |
 | `geni photo get <id>` | Fetch a photo |
 | `geni video get <id>` | Fetch a video |
 | `geni photoalbum get <id>` | Fetch a photo album |
