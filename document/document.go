@@ -45,6 +45,8 @@ type BulkResponse struct {
 type Document struct {
 	// ID is the document's id
 	ID string `json:"id,omitempty"`
+	// Guid is the document's globally unique identifier
+	Guid string `json:"guid,omitempty"`
 	// Title is the document's title
 	Title string `json:"title,omitempty"`
 	// Description is the document's description

@@ -44,6 +44,7 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Document().Get(ctx, id)
 				})},
+			"open": {summary: "open a document's web page in the browser", run: runDocumentOpen},
 		}},
 		"photo": {summary: "photo resource", sub: map[string]*command{
 			"get": {summary: "fetch a photo by id", run: resourceGet(
