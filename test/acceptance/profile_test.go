@@ -56,7 +56,7 @@ var _ = Describe("Profile API", func() {
 			// observe the post-delete state inside the spec.
 			created, err := client.Profile().Create(ctx, &profile.Request{
 				Names: map[string]profile.NameElement{
-					"en-US": {FirstName: strPtr("DeleteMe"), LastName: strPtr("Acceptance")},
+					"en-US": {FirstName: new("DeleteMe"), LastName: new("Acceptance")},
 				},
 				IsAlive: false,
 				Public:  true,
@@ -132,7 +132,7 @@ var _ = Describe("Profile API", func() {
 			keep := createFixtureProfile(ctx, client, "MergeKeep")
 			dup, err := client.Profile().Create(ctx, &profile.Request{
 				Names: map[string]profile.NameElement{
-					"en-US": {FirstName: strPtr("MergeDup"), LastName: strPtr("Acceptance")},
+					"en-US": {FirstName: new("MergeDup"), LastName: new("Acceptance")},
 				},
 				IsAlive: false,
 				Public:  true,
@@ -156,7 +156,7 @@ var _ = Describe("Profile API", func() {
 			year := int32(1900)
 			created, err := client.Profile().Create(ctx, &profile.Request{
 				Names: map[string]profile.NameElement{
-					"en-US": {FirstName: strPtr("WipeDates"), LastName: strPtr("Acceptance")},
+					"en-US": {FirstName: new("WipeDates"), LastName: new("Acceptance")},
 				},
 				Birth:   &profile.EventElement{Date: &profile.DateElement{Year: &year}},
 				IsAlive: false,

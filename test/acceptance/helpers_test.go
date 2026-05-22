@@ -76,8 +76,6 @@ func newTestClient() *geni.Client {
 	return geni.NewClient(tokenSource(), true)
 }
 
-func strPtr(s string) *string { return &s }
-
 // createFixtureProfile creates a deceased, public profile in the sandbox
 // and registers a DeferCleanup hook that deletes it after the current
 // spec finishes. Profiles are kept non-living and public to minimize
@@ -88,8 +86,8 @@ func createFixtureProfile(ctx context.Context, client *geni.Client, firstName st
 	created, err := client.Profile().Create(ctx, &profile.Request{
 		Names: map[string]profile.NameElement{
 			"en-US": {
-				FirstName: strPtr(firstName),
-				LastName:  strPtr("Acceptance"),
+				FirstName: new(firstName),
+				LastName:  new("Acceptance"),
 			},
 		},
 		IsAlive: false,

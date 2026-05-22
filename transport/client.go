@@ -212,16 +212,14 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 // retry-go RetryIf hook picks them up. All other transport errors
 // propagate unchanged.
 func translateTransportError(err error) error {
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
 		slog.Error("DNS lookup failed", "error", err)
 		if dnsErr.IsNotFound {
 			return newErrRetry(500, 1)
 		}
 	}
 
-	var netOpErr *net.OpError
-	if errors.As(err, &netOpErr) {
+	if netOpErr, ok := errors.AsType[*net.OpError](err); ok {
 		lowerErr := strings.ToLower(netOpErr.Error())
 		if strings.Contains(lowerErr, "broken pipe") {
 			slog.Error("Broken pipe error", "error", err)

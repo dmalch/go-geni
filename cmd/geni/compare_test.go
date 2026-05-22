@@ -8,13 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func strp(s string) *string { return &s }
-func i32p(n int32) *int32   { return &n }
-
 func TestDerefString(t *testing.T) {
 	RegisterTestingT(t)
 	Expect(derefString(nil)).To(Equal(""))
-	Expect(derefString(strp("hi"))).To(Equal("hi"))
+	Expect(derefString(new("hi"))).To(Equal("hi"))
 }
 
 func TestZeroPad(t *testing.T) {
@@ -27,21 +24,21 @@ func TestDateString(t *testing.T) {
 	RegisterTestingT(t)
 	Expect(dateString(nil)).To(Equal(""))
 	Expect(dateString(&profile.DateElement{})).To(Equal(""), "no year → empty")
-	Expect(dateString(&profile.DateElement{Year: i32p(1850)})).To(Equal("1850"))
-	Expect(dateString(&profile.DateElement{Year: i32p(1850), Month: i32p(3)})).To(Equal("1850-03"))
-	Expect(dateString(&profile.DateElement{Year: i32p(1850), Month: i32p(3), Day: i32p(7)})).To(Equal("1850-03-07"))
+	Expect(dateString(&profile.DateElement{Year: new(int32(1850))})).To(Equal("1850"))
+	Expect(dateString(&profile.DateElement{Year: new(int32(1850)), Month: new(int32(3))})).To(Equal("1850-03"))
+	Expect(dateString(&profile.DateElement{Year: new(int32(1850)), Month: new(int32(3)), Day: new(int32(7))})).To(Equal("1850-03-07"))
 	// A day without a month is ignored — no "YYYY--DD".
-	Expect(dateString(&profile.DateElement{Year: i32p(1850), Day: i32p(7)})).To(Equal("1850"))
+	Expect(dateString(&profile.DateElement{Year: new(int32(1850)), Day: new(int32(7))})).To(Equal("1850"))
 }
 
 func TestPlaceString(t *testing.T) {
 	RegisterTestingT(t)
 	Expect(placeString(nil)).To(Equal(""))
 	Expect(placeString(&profile.LocationElement{})).To(Equal(""))
-	Expect(placeString(&profile.LocationElement{City: strp("Moscow"), Country: strp("Russia")})).
+	Expect(placeString(&profile.LocationElement{City: new("Moscow"), Country: new("Russia")})).
 		To(Equal("Moscow, Russia"))
 	Expect(placeString(&profile.LocationElement{
-		City: strp("Moscow"), County: strp("C"), State: strp("S"), Country: strp("Russia"),
+		City: new("Moscow"), County: new("C"), State: new("S"), Country: new("Russia"),
 	})).To(Equal("Moscow, C, S, Russia"))
 }
 
@@ -57,9 +54,9 @@ func TestCompareProfiles(t *testing.T) {
 		RegisterTestingT(t)
 		p := &profile.Profile{
 			ID:        "profile-1",
-			FirstName: strp("John"),
-			LastName:  strp("Smith"),
-			Birth:     &profile.EventElement{Date: &profile.DateElement{Year: i32p(1850)}},
+			FirstName: new("John"),
+			LastName:  new("Smith"),
+			Birth:     &profile.EventElement{Date: &profile.DateElement{Year: new(int32(1850))}},
 		}
 		cmp := compareProfiles(p, p)
 
@@ -75,12 +72,12 @@ func TestCompareProfiles(t *testing.T) {
 	t.Run("differing fields are flagged", func(t *testing.T) {
 		RegisterTestingT(t)
 		a := &profile.Profile{
-			ID: "profile-1", FirstName: strp("John"), LastName: strp("Smith"),
-			Birth: &profile.EventElement{Date: &profile.DateElement{Year: i32p(1850)}},
+			ID: "profile-1", FirstName: new("John"), LastName: new("Smith"),
+			Birth: &profile.EventElement{Date: &profile.DateElement{Year: new(int32(1850))}},
 		}
 		b := &profile.Profile{
-			ID: "profile-2", FirstName: strp("John"), LastName: strp("Smyth"),
-			Birth: &profile.EventElement{Date: &profile.DateElement{Year: i32p(1850), Month: i32p(3)}},
+			ID: "profile-2", FirstName: new("John"), LastName: new("Smyth"),
+			Birth: &profile.EventElement{Date: &profile.DateElement{Year: new(int32(1850)), Month: new(int32(3))}},
 		}
 		cmp := compareProfiles(a, b)
 

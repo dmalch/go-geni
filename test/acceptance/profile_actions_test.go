@@ -32,8 +32,6 @@ func tinyPngBase64() string {
 	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
-func ptr[T any](v T) *T { return &v }
-
 var _ = Describe("Profile actions API", func() {
 	var (
 		ctx    context.Context
@@ -184,7 +182,7 @@ var _ = Describe("Profile actions API", func() {
 			DeferCleanup(func() { _ = client.Photo().Delete(context.Background(), source.ID) })
 
 			mug, err := client.Photo().AddMugshotToProfile(ctx, profile.ID, &photo.MugshotRequest{
-				PhotoId: ptr(source.ID),
+				PhotoId: new(source.ID),
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mug.ID).To(HavePrefix("photo-"))
