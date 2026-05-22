@@ -1,4 +1,4 @@
-## 1.6.0 (Unreleased)
+## 1.6.0
 
 - New `geni profile compare <id1> <id2>` CLI command — fetches both
   profiles and prints a field-by-field diff (names, birth/death date
