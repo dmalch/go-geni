@@ -311,26 +311,27 @@ func (c *Client) followAction(ctx context.Context, profileId, action string) (*P
 // Merge merges profile2Id into profile1Id. When the caller has edit
 // permission on both, the merge happens immediately; otherwise Geni
 // records a request-merge (surfaced on Profile.MergePending /
-// MergeNote).
-func (c *Client) Merge(ctx context.Context, profile1Id, profile2Id string) error {
+// MergeNote). The returned [transport.Result] carries Geni's raw
+// response envelope (e.g. {"result":"OK"}).
+func (c *Client) Merge(ctx context.Context, profile1Id, profile2Id string) (*transport.Result, error) {
 	url := c.transport.BaseURL() + "api/" + profile1Id + "/merge/" + profile2Id
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
-		return err
+		return nil, err
 	}
 
 	body, err := c.transport.Do(ctx, req, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var result transport.Result
 	if err := json.Unmarshal(body, &result); err != nil {
 		slog.Error("Error unmarshaling response", "error", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return &result, nil
 }
 
 // WipeEventDates issues a targeted PATCH against /api/<resourceId>/update

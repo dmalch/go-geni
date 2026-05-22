@@ -36,6 +36,7 @@ func commandTree() map[string]*command {
 				})},
 			"search": {summary: "search profiles by name", run: runProfileSearch},
 			"open":   {summary: "open a profile's web page in the browser", run: runProfileOpen},
+			"merge":  {summary: "merge one profile into another (destructive)", run: runProfileMerge},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
 			"get": {summary: "fetch a union by id", run: resourceGet(

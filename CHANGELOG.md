@@ -1,3 +1,17 @@
+## 1.5.0 (Unreleased)
+
+- **BREAKING:** `profile.Client.Merge` now returns
+  `(*transport.Result, error)` instead of just `error`. The method
+  previously decoded Geni's `{"result":…}` response envelope and threw
+  it away; it is now returned so callers can see the merge outcome.
+  Downstream callers must update from `err := …Merge(…)` to
+  `res, err := …Merge(…)`.
+- New `geni profile merge [-yes] <keep-id> <duplicate-id>` CLI command
+  — merges the duplicate profile into the keep profile. As the first
+  mutating CLI command, it is protected: it requires an interactive
+  `y/N` confirmation, skippable with `-yes` for scripted use. Empty or
+  negative input aborts without calling the API.
+
 ## 1.4.0
 
 - New `geni <resource> get-bulk <id...>` CLI command for the

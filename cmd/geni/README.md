@@ -52,6 +52,7 @@ Run `geni help` for the full list.
 | `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
+| `geni profile merge [-yes] <keep-id> <dup-id>` | Merge one profile into another (destructive; prompts for confirmation) |
 | `geni union get <id>` | Fetch a union |
 | `geni union get-bulk <id...>` | Fetch multiple unions by id |
 | `geni document get <id>` | Fetch a document |
@@ -68,6 +69,10 @@ Run `geni help` for the full list.
 | `geni revision get-bulk <id...>` | Fetch multiple revisions by id |
 | `geni tree family <id>` | Immediate family of a profile |
 | `geni tree ancestors <id>` | Ancestors of a profile (`-generations N`) |
+
+Every command is read-only except **`geni profile merge`**, which mutates
+data. It prompts for a `y/N` confirmation before merging; pass `-yes` to skip
+the prompt in scripts.
 
 ## Flags
 

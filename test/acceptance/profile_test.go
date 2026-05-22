@@ -142,7 +142,9 @@ var _ = Describe("Profile API", func() {
 			// merged-away profile.
 			DeferCleanup(func() { _ = client.Profile().Delete(context.Background(), dup.ID) })
 
-			Expect(client.Profile().Merge(ctx, keep.ID, dup.ID)).To(Succeed())
+			res, mergeErr := client.Profile().Merge(ctx, keep.ID, dup.ID)
+			Expect(mergeErr).ToNot(HaveOccurred())
+			Expect(res).ToNot(BeNil())
 		})
 	})
 

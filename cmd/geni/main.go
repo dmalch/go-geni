@@ -17,9 +17,10 @@ import (
 	"os"
 )
 
-// globalOpts holds the flags and writers shared by every command.
+// globalOpts holds the flags and I/O streams shared by every command.
 type globalOpts struct {
 	sandbox bool
+	stdin   io.Reader
 	stdout  io.Writer
 	stderr  io.Writer
 }
@@ -33,13 +34,13 @@ type command struct {
 }
 
 func main() {
-	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(context.Background(), os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
 // run parses args, dispatches to a command, and returns a process
 // exit code: 0 success, 1 command error, 2 usage error.
-func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	g := &globalOpts{stdout: stdout, stderr: stderr}
+func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	g := &globalOpts{stdin: stdin, stdout: stdout, stderr: stderr}
 
 	fs := flag.NewFlagSet("geni", flag.ContinueOnError)
 	fs.SetOutput(stderr)
