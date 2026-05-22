@@ -17,7 +17,7 @@ func createFixtureDocument(ctx context.Context, client *geni.Client, title, body
 	GinkgoHelper()
 	created, err := client.Document().Create(ctx, &document.Request{
 		Title: title,
-		Text:  strPtr(body),
+		Text:  new(body),
 	})
 	Expect(err).ToNot(HaveOccurred())
 	DeferCleanup(func() {
@@ -67,7 +67,7 @@ var _ = Describe("Document API", func() {
 			// assert the delete call itself returns no error.
 			created, err := client.Document().Create(ctx, &document.Request{
 				Title: "AccDeleteMe",
-				Text:  strPtr("to-be-deleted"),
+				Text:  new("to-be-deleted"),
 			})
 			Expect(err).ToNot(HaveOccurred())
 

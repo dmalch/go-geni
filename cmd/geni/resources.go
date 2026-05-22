@@ -40,7 +40,7 @@ func resourceGet(get func(c *geni.Client, ctx context.Context, id string) (any, 
 func splitIDs(args []string) []string {
 	var ids []string
 	for _, a := range args {
-		for _, part := range strings.Split(a, ",") {
+		for part := range strings.SplitSeq(a, ",") {
 			if part = strings.TrimSpace(part); part != "" {
 				ids = append(ids, part)
 			}

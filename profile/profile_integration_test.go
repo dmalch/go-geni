@@ -34,8 +34,6 @@ func newClientFor(server *httptest.Server) *Client {
 	return NewClient(t)
 }
 
-func ptrTo[T any](v T) *T { return &v }
-
 var _ = Describe("Profile endpoints", func() {
 	var (
 		ctx      context.Context
@@ -77,7 +75,7 @@ var _ = Describe("Profile endpoints", func() {
 				http.MethodPost, "/api/profile/add")
 
 			p, err := client.Create(ctx, &Request{
-				Names:  map[string]NameElement{"en-US": {FirstName: ptrTo("Alice")}},
+				Names:  map[string]NameElement{"en-US": {FirstName: new("Alice")}},
 				Public: true,
 			})
 
@@ -103,7 +101,7 @@ var _ = Describe("Profile endpoints", func() {
 				http.MethodPost, "/api/profile-1/update")
 
 			p, err := client.Update(ctx, "profile-1", &Request{
-				Names: map[string]NameElement{"en-US": {FirstName: ptrTo("After")}},
+				Names: map[string]NameElement{"en-US": {FirstName: new("After")}},
 			})
 
 			Expect(err).ToNot(HaveOccurred())
@@ -140,7 +138,7 @@ var _ = Describe("Profile endpoints", func() {
 				http.MethodPost, "/api/profile-1/add-parent")
 
 			parent, err := client.AddParent(ctx, "profile-1", &Request{
-				Names: map[string]NameElement{"en-US": {FirstName: ptrTo("Mom")}},
+				Names: map[string]NameElement{"en-US": {FirstName: new("Mom")}},
 			}, WithModifier("adopt"))
 
 			Expect(err).ToNot(HaveOccurred())
@@ -166,7 +164,7 @@ var _ = Describe("Profile endpoints", func() {
 				http.MethodPost, "/api/profile-1/update-basics")
 
 			updated, err := client.UpdateBasics(ctx, "profile-1", &Request{
-				Names: map[string]NameElement{"en-US": {FirstName: ptrTo("After")}},
+				Names: map[string]NameElement{"en-US": {FirstName: new("After")}},
 			})
 
 			Expect(err).ToNot(HaveOccurred())
