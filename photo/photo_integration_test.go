@@ -3,6 +3,7 @@ package photo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -186,7 +187,7 @@ var _ = Describe("Photo Create end-to-end", func() {
 			mr := multipart.NewReader(r.Body, params["boundary"])
 			for {
 				part, err := mr.NextPart()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
 				Expect(err).ToNot(HaveOccurred())

@@ -150,9 +150,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 			if err != nil {
 				return nil, translateTransportError(err)
 			}
-			defer func(Body io.ReadCloser) {
-				_ = Body.Close()
-			}(res.Body)
+			defer func() { _ = res.Body.Close() }()
 
 			body, err := io.ReadAll(res.Body)
 			if err != nil {

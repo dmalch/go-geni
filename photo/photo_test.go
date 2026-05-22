@@ -3,6 +3,7 @@ package photo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -59,7 +60,7 @@ func readMultipart(t *testing.T, req *http.Request) (fields map[string]string, f
 	fields = map[string]string{}
 	for {
 		part, err := mr.NextPart()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		Expect(err).ToNot(HaveOccurred())
