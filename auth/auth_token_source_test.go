@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,7 +23,7 @@ func TestCallbackHandle(t *testing.T) {
 		q.Set("state", "valid-state")
 		q.Set("access_token", "my-token")
 		q.Set("expires_in", "3600")
-		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
 
 		handler.handle(rec, req)
@@ -45,7 +46,7 @@ func TestCallbackHandle(t *testing.T) {
 		q := make(url.Values)
 		q.Set("state", "wrong-state")
 		q.Set("access_token", "my-token")
-		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
 
 		handler.handle(rec, req)
@@ -65,7 +66,7 @@ func TestCallbackHandle(t *testing.T) {
 			shutdownCh:    make(chan error, 1),
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/callback?access_token=my-token", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/callback?access_token=my-token", nil)
 		rec := httptest.NewRecorder()
 
 		handler.handle(rec, req)
@@ -85,7 +86,7 @@ func TestCallbackHandle(t *testing.T) {
 
 		q := make(url.Values)
 		q.Set("state", "valid-state")
-		req := httptest.NewRequest(http.MethodGet, "/callback?"+q.Encode(), nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/callback?"+q.Encode(), nil)
 		rec := httptest.NewRecorder()
 
 		handler.handle(rec, req)

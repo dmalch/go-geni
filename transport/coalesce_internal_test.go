@@ -52,7 +52,7 @@ func newCoalescer() *BulkCoalescer[coalItem, coalEnvelope] {
 
 func mustRequest(t *testing.T, url string) *http.Request {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("http.NewRequest: %v", err)
 	}

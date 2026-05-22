@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"testing"
@@ -11,7 +12,7 @@ import (
 func TestAddFields(t *testing.T) {
 	t.Run("requests project_ids so bulk reads populate Profile.Projects", func(t *testing.T) {
 		RegisterTestingT(t)
-		req, err := http.NewRequest(http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
 		Expect(err).ToNot(HaveOccurred())
 
 		AddFields(req)

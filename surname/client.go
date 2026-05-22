@@ -24,7 +24,7 @@ func NewClient(t *transport.Client) *Client {
 // Get fetches a single surname by id.
 func (c *Client) Get(ctx context.Context, surnameId string) (*Surname, error) {
 	url := c.transport.BaseURL() + "api/" + surnameId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -59,7 +59,7 @@ func (c *Client) Profiles(ctx context.Context, surnameId string, page int) (*pro
 
 func (c *Client) profileListing(ctx context.Context, surnameId, sublist string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + surnameId + "/" + sublist
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

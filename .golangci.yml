@@ -15,6 +15,7 @@ linters:
     - misspell
     - nilerr
     - nilnil
+    - noctx
     - predeclared
     - staticcheck
     - unconvert

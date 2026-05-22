@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 func TestWithModifier(t *testing.T) {
 	t.Run("Sets relationship_modifier when value is non-empty", func(t *testing.T) {
 		RegisterTestingT(t)
-		req, _ := http.NewRequest(http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
 
 		WithModifier("foster")(req)
 
@@ -19,7 +20,7 @@ func TestWithModifier(t *testing.T) {
 
 	t.Run("Accepts adopt as a valid modifier", func(t *testing.T) {
 		RegisterTestingT(t)
-		req, _ := http.NewRequest(http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
 
 		WithModifier("adopt")(req)
 
@@ -28,7 +29,7 @@ func TestWithModifier(t *testing.T) {
 
 	t.Run("Omits the query param when value is empty", func(t *testing.T) {
 		RegisterTestingT(t)
-		req, _ := http.NewRequest(http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com/api/profile-1/add-child", nil)
 
 		WithModifier("")(req)
 
@@ -37,7 +38,7 @@ func TestWithModifier(t *testing.T) {
 
 	t.Run("Preserves any pre-existing query params", func(t *testing.T) {
 		RegisterTestingT(t)
-		req, _ := http.NewRequest(http.MethodPost, "https://example.com/api/profile-1/add-child?fields=id", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.com/api/profile-1/add-child?fields=id", nil)
 
 		WithModifier("foster")(req)
 

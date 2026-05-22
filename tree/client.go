@@ -48,7 +48,7 @@ func (c *Client) Ancestors(ctx context.Context, profileId string, opts ...Option
 
 func (c *Client) getFamily(ctx context.Context, path string, opts ...Option) (*FamilyResponse, error) {
 	url := c.transport.BaseURL() + path
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -79,7 +79,7 @@ func (c *Client) getFamily(ctx context.Context, path string, opts ...Option) (*F
 // [WithSkipNotify].
 func (c *Client) PathTo(ctx context.Context, fromId, toId string, opts ...Option) (*PathToResponse, error) {
 	url := c.transport.BaseURL() + "api/" + fromId + "/path-to/" + toId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -107,7 +107,7 @@ func (c *Client) PathTo(ctx context.Context, fromId, toId string, opts ...Option
 // profile, in the order they were requested.
 func (c *Client) Compare(ctx context.Context, profile1Id, profile2Id string) (*Comparison, error) {
 	url := c.transport.BaseURL() + "api/" + profile1Id + "/compare/" + profile2Id
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

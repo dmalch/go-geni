@@ -23,7 +23,7 @@ func NewClient(t *transport.Client) *Client {
 // Get fetches a single revision by id.
 func (c *Client) Get(ctx context.Context, revisionId string) (*Revision, error) {
 	url := c.transport.BaseURL() + "api/" + revisionId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -56,7 +56,7 @@ func (c *Client) GetBulk(ctx context.Context, revisionIds []string) (*BulkRespon
 	}
 
 	url := c.transport.BaseURL() + "api/revision"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

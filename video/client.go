@@ -106,7 +106,7 @@ func (c *Client) Create(ctx context.Context, title, fileName string, file io.Rea
 	}
 
 	url := c.transport.BaseURL() + "api/video/add"
-	req, err := http.NewRequest(http.MethodPost, url, &body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -130,7 +130,7 @@ func (c *Client) Create(ctx context.Context, title, fileName string, file io.Rea
 // into one bulk request via transport.BulkCoalescer.
 func (c *Client) Get(ctx context.Context, videoId string) (*Video, error) {
 	url := c.transport.BaseURL() + "api/" + videoId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -176,7 +176,7 @@ func (c *Client) GetBulk(ctx context.Context, videoIds []string) (*BulkResponse,
 	}
 
 	url := c.transport.BaseURL() + "api/video"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -211,7 +211,7 @@ func (c *Client) Update(ctx context.Context, videoId string, request *Request) (
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + videoId + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -233,7 +233,7 @@ func (c *Client) Update(ctx context.Context, videoId string, request *Request) (
 // Delete deletes a video by id.
 func (c *Client) Delete(ctx context.Context, videoId string) error {
 	url := c.transport.BaseURL() + "api/" + videoId + "/delete"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return err
@@ -264,7 +264,7 @@ func (c *Client) AddToProfile(ctx context.Context, profileId string, request *Re
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/add-video"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -295,7 +295,7 @@ func (c *Client) Untag(ctx context.Context, videoId, profileId string) (*Video, 
 
 func (c *Client) tagAction(ctx context.Context, videoId, profileId, action string) (*Video, error) {
 	url := c.transport.BaseURL() + "api/" + videoId + "/" + action + "/" + profileId
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -318,7 +318,7 @@ func (c *Client) tagAction(ctx context.Context, videoId, profileId, action strin
 // Mirrors photo.Client.Tags.
 func (c *Client) Tags(ctx context.Context, videoId string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + videoId + "/tags"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -351,7 +351,7 @@ func (c *Client) Tags(ctx context.Context, videoId string, page int) (*profile.B
 // Mirrors photo.Client.Comments.
 func (c *Client) Comments(ctx context.Context, videoId string, page int) (*comment.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + videoId + "/comments"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -380,7 +380,7 @@ func (c *Client) Comments(ctx context.Context, videoId string, page int) (*comme
 // photo.Client.AddComment.
 func (c *Client) AddComment(ctx context.Context, videoId, text, title string) (*comment.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + videoId + "/comment"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

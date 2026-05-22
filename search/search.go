@@ -35,7 +35,7 @@ func NewClient(t *transport.Client) *Client {
 // navigate forward/backward.
 func (c *Client) Profiles(ctx context.Context, names string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/profile/search"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

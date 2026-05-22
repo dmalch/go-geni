@@ -34,7 +34,7 @@ func NewClient(t *transport.Client) *Client {
 // who's calling.
 func (c *Client) Get(ctx context.Context) (*User, error) {
 	url := c.transport.BaseURL() + "api/user"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -74,7 +74,7 @@ func (c *Client) Add(ctx context.Context, req *AddRequest) (*AddResult, error) {
 	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
 
 	url := c.transport.BaseURL() + "api/user/add"
-	httpReq, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -254,7 +254,7 @@ func (c *Client) Labels(ctx context.Context, page int) (*LabelsResponse, error) 
 // like to get metadata for".
 func (c *Client) Metadata(ctx context.Context, userIds ...string) (*Metadata, error) {
 	url := c.transport.BaseURL() + "api/user/metadata"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -297,7 +297,7 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/user/update-metadata"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -321,7 +321,7 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 // (followed-profiles, max-family).
 func (c *Client) profileListing(ctx context.Context, sublist string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/user/" + sublist
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -356,7 +356,7 @@ func (c *Client) profileListing(ctx context.Context, sublist string, page int) (
 // non-Profile envelopes (document/project/surname/photo/video/
 // photoalbum/Labels bulk responses).
 func (c *Client) getPaginated(ctx context.Context, url string, page int) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

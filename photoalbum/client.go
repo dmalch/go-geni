@@ -44,7 +44,7 @@ func (c *Client) Create(ctx context.Context, request *Request) (*PhotoAlbum, err
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/photo_album/add"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -66,7 +66,7 @@ func (c *Client) Create(ctx context.Context, request *Request) (*PhotoAlbum, err
 // Get fetches a single photo album by id.
 func (c *Client) Get(ctx context.Context, albumId string) (*PhotoAlbum, error) {
 	url := c.transport.BaseURL() + "api/" + albumPath(albumId)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -90,7 +90,7 @@ func (c *Client) Get(ctx context.Context, albumId string) (*PhotoAlbum, error) {
 // Max 50 per page.
 func (c *Client) Photos(ctx context.Context, albumId string, page int) (*photo.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + albumPath(albumId) + "/photos"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -126,7 +126,7 @@ func (c *Client) Update(ctx context.Context, albumId string, request *Request) (
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + albumPath(albumId) + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

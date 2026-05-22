@@ -50,7 +50,7 @@ func TestDoWithResponse(t *testing.T) {
 			header: header,
 		})
 
-		req, _ := http.NewRequest(http.MethodPost, "https://www.geni.com/api/user/add", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://www.geni.com/api/user/add", nil)
 		resp, err := c.DoWithResponse(context.Background(), req)
 
 		Expect(err).ToNot(HaveOccurred())
@@ -62,7 +62,7 @@ func TestDoWithResponse(t *testing.T) {
 		RegisterTestingT(t)
 		c := newClientWith(&headerEchoTransport{status: http.StatusForbidden})
 
-		req, _ := http.NewRequest(http.MethodPost, "https://www.geni.com/api/user/add", nil)
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://www.geni.com/api/user/add", nil)
 		_, err := c.DoWithResponse(context.Background(), req)
 
 		Expect(err).To(MatchError(ErrAccessDenied))
