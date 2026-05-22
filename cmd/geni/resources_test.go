@@ -100,7 +100,9 @@ func TestSplitIDs(t *testing.T) {
 func TestRunGetBulk_ArgValidation(t *testing.T) {
 	g := &globalOpts{}
 	handler := resourceGetBulk(func(*geni.Client, context.Context, []string) (any, error) {
-		return nil, nil
+		// The arg-validation tests below all reject before reaching the
+		// bulk fetch, so this body should never execute.
+		panic("unreachable: arg validation should have rejected the call")
 	})
 
 	t.Run("no ids is an error", func(t *testing.T) {
