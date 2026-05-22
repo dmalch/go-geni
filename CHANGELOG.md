@@ -1,3 +1,12 @@
+## 1.6.0 (Unreleased)
+
+- New `geni profile compare <id1> <id2>` CLI command — fetches both
+  profiles and prints a field-by-field diff (names, birth/death date
+  and place, gender, occupation, nicknames) with per-field `match`
+  flags and a match/mismatch summary. The response also embeds the
+  full original profile JSON for each side under `profiles`, so it is
+  self-contained. Useful for vetting duplicates before `profile merge`.
+
 ## 1.5.0
 
 - **BREAKING:** `profile.Client.Merge` now returns

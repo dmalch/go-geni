@@ -52,6 +52,7 @@ Run `geni help` for the full list.
 | `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
+| `geni profile compare <id1> <id2>` | Field-by-field diff of two profiles |
 | `geni profile merge [-yes] <keep-id> <dup-id>` | Merge one profile into another (destructive; prompts for confirmation) |
 | `geni union get <id>` | Fetch a union |
 | `geni union get-bulk <id...>` | Fetch multiple unions by id |
@@ -104,6 +105,9 @@ geni tree ancestors -generations 4 profile-122248213
 # Bulk fetch — ids space- or comma-separated, prints {"results":[…]}
 geni profile get-bulk profile-1 profile-2 profile-3
 geni document get-bulk document-1,document-2 | jq '.results[].title'
+
+# Vet a suspected duplicate before merging
+geni profile compare profile-1 profile-2 | jq '.summary'
 
 # Sandbox
 geni -sandbox whoami
