@@ -33,7 +33,7 @@ func NewClient(t *transport.Client) *Client {
 // individual entries is opaque to the client — see [Response.Stats].
 func (c *Client) Get(ctx context.Context) (*Response, error) {
 	url := c.transport.BaseURL() + "api/stats"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

@@ -24,7 +24,7 @@ func NewClient(t *transport.Client) *Client {
 // Get fetches a single project by id.
 func (c *Client) Get(ctx context.Context, projectId string) (*Project, error) {
 	url := c.transport.BaseURL() + "api/" + projectId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -71,7 +71,7 @@ func (c *Client) Followers(ctx context.Context, projectId string, page int) (*pr
 // profile (with the new project id in its project_ids list).
 func (c *Client) AddProfile(ctx context.Context, profileId, projectId string) (*profile.Profile, error) {
 	url := c.transport.BaseURL() + "api/" + projectId + "/add_profiles"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -96,7 +96,7 @@ func (c *Client) AddProfile(ctx context.Context, profileId, projectId string) (*
 
 func (c *Client) profileListing(ctx context.Context, projectId, sublist string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + projectId + "/" + sublist
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err

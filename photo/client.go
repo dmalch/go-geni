@@ -113,7 +113,7 @@ func (c *Client) Create(ctx context.Context, title, fileName string, file io.Rea
 	}
 
 	url := c.transport.BaseURL() + "api/photo/add"
-	req, err := http.NewRequest(http.MethodPost, url, &body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -139,7 +139,7 @@ func (c *Client) Create(ctx context.Context, title, fileName string, file io.Rea
 // into one bulk request via transport.BulkCoalescer.
 func (c *Client) Get(ctx context.Context, photoId string) (*Photo, error) {
 	url := c.transport.BaseURL() + "api/" + photoId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -185,7 +185,7 @@ func (c *Client) GetBulk(ctx context.Context, photoIds []string) (*BulkResponse,
 	}
 
 	url := c.transport.BaseURL() + "api/photo"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -221,7 +221,7 @@ func (c *Client) Update(ctx context.Context, photoId string, request *Request) (
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + photoId + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -253,7 +253,7 @@ func (c *Client) Untag(ctx context.Context, photoId, profileId string) (*Photo, 
 
 func (c *Client) tagAction(ctx context.Context, photoId, profileId, action string) (*Photo, error) {
 	url := c.transport.BaseURL() + "api/" + photoId + "/" + action + "/" + profileId
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -277,7 +277,7 @@ func (c *Client) tagAction(ctx context.Context, photoId, profileId, action strin
 // page 1). Max 50 tags per page.
 func (c *Client) Tags(ctx context.Context, photoId string, page int) (*profile.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + photoId + "/tags"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -311,7 +311,7 @@ func (c *Client) Tags(ctx context.Context, photoId string, page int) (*profile.B
 // Max 50 comments per page.
 func (c *Client) Comments(ctx context.Context, photoId string, page int) (*comment.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + photoId + "/comments"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -341,7 +341,7 @@ func (c *Client) Comments(ctx context.Context, photoId string, page int) (*comme
 // updated paginated comment list (sandbox behaviour varies).
 func (c *Client) AddComment(ctx context.Context, photoId, text, title string) (*comment.BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + photoId + "/comment"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -372,7 +372,7 @@ func (c *Client) AddComment(ctx context.Context, photoId, text, title string) (*
 // defaults to page 1). Max 50 per page.
 func (c *Client) ForProfile(ctx context.Context, profileId string, page int) (*BulkResponse, error) {
 	url := c.transport.BaseURL() + "api/" + profileId + "/photos"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -420,7 +420,7 @@ func (c *Client) jsonPost(ctx context.Context, profileId, action string, request
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/" + action
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -442,7 +442,7 @@ func (c *Client) jsonPost(ctx context.Context, profileId, action string, request
 // Delete deletes a photo by id.
 func (c *Client) Delete(ctx context.Context, photoId string) error {
 	url := c.transport.BaseURL() + "api/" + photoId + "/delete"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return err

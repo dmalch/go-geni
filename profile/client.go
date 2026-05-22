@@ -56,7 +56,7 @@ func (c *Client) Create(ctx context.Context, request *Request) (*Profile, error)
 	}
 
 	url := c.transport.BaseURL() + "api/profile/add"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -74,7 +74,7 @@ func (c *Client) Create(ctx context.Context, request *Request) (*Profile, error)
 // coalesced into one bulk request via transport.BulkCoalescer.
 func (c *Client) Get(ctx context.Context, profileId string) (*Profile, error) {
 	url := c.transport.BaseURL() + "api/" + profileId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -115,7 +115,7 @@ func (c *Client) GetBulk(ctx context.Context, profileIds []string) (*BulkRespons
 	}
 
 	url := c.transport.BaseURL() + "api/profile"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -155,7 +155,7 @@ func (c *Client) Update(ctx context.Context, profileId string, request *Request)
 	}
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -180,7 +180,7 @@ func (c *Client) UpdateBasics(ctx context.Context, profileId string, request *Re
 	}
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/update-basics"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -197,7 +197,7 @@ func (c *Client) UpdateBasics(ctx context.Context, profileId string, request *Re
 // Delete deletes a profile by id.
 func (c *Client) Delete(ctx context.Context, profileId string) error {
 	url := c.transport.BaseURL() + "api/" + profileId + "/delete"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return err
@@ -236,7 +236,7 @@ func (c *Client) AddSibling(ctx context.Context, profileId string, opts ...AddOp
 
 func (c *Client) addRelative(ctx context.Context, profileId, action string, opts ...AddOption) (*Profile, error) {
 	url := c.transport.BaseURL() + "api/" + profileId + "/" + action
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -264,7 +264,7 @@ func (c *Client) AddParent(ctx context.Context, profileId string, request *Reque
 	}
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/add-parent"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -294,7 +294,7 @@ func (c *Client) Unfollow(ctx context.Context, profileId string) (*Profile, erro
 
 func (c *Client) followAction(ctx context.Context, profileId, action string) (*Profile, error) {
 	url := c.transport.BaseURL() + "api/" + profileId + "/" + action
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -315,7 +315,7 @@ func (c *Client) followAction(ctx context.Context, profileId, action string) (*P
 // response envelope (e.g. {"result":"OK"}).
 func (c *Client) Merge(ctx context.Context, profile1Id, profile2Id string) (*transport.Result, error) {
 	url := c.transport.BaseURL() + "api/" + profile1Id + "/merge/" + profile2Id
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -364,7 +364,7 @@ func (c *Client) WipeEventDates(ctx context.Context, resourceId string, eventKey
 	}
 
 	url := c.transport.BaseURL() + "api/" + resourceId + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return err
 	}

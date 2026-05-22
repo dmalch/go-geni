@@ -26,7 +26,7 @@ func NewClient(t *transport.Client) *Client {
 // into one bulk request via transport.BulkCoalescer.
 func (c *Client) Get(ctx context.Context, unionId string) (*Union, error) {
 	url := c.transport.BaseURL() + "api/" + unionId
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -77,7 +77,7 @@ func (c *Client) GetBulk(ctx context.Context, unionIds []string) (*BulkResponse,
 	}
 
 	url := c.transport.BaseURL() + "api/union"
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -112,7 +112,7 @@ func (c *Client) Update(ctx context.Context, unionId string, request *Request) (
 	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
 
 	url := c.transport.BaseURL() + "api/" + unionId + "/update"
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(jsonStr))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -138,7 +138,7 @@ func (c *Client) Update(ctx context.Context, unionId string, request *Request) (
 // partner list.
 func (c *Client) AddPartner(ctx context.Context, unionId string) (*profile.Profile, error) {
 	url := c.transport.BaseURL() + "api/" + unionId + "/add-partner"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
@@ -165,7 +165,7 @@ func (c *Client) AddPartner(ctx context.Context, unionId string) (*profile.Profi
 // so refetch via [Client.Get] to confirm it took effect.
 func (c *Client) AddChild(ctx context.Context, unionId string, opts ...profile.AddOption) (*profile.Profile, error) {
 	url := c.transport.BaseURL() + "api/" + unionId + "/add-child"
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
 		slog.Error("Error creating request", "error", err)
 		return nil, err
