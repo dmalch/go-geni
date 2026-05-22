@@ -1,4 +1,4 @@
-## 1.5.0 (Unreleased)
+## 1.5.0
 
 - **BREAKING:** `profile.Client.Merge` now returns
   `(*transport.Result, error)` instead of just `error`. The method
