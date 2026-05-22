@@ -7,10 +7,12 @@ linters:
     - durationcheck
     - errcheck
     - errorlint
+    - exptostd
     - forcetypeassert
     - godot
     - govet
     - ineffassign
+    - intrange
     - makezero
     - misspell
     - nilerr
@@ -21,6 +23,7 @@ linters:
     - unconvert
     - unparam
     - unused
+    - usestdlibvars
     - usetesting
   exclusions:
     generated: lax
