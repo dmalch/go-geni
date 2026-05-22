@@ -2,11 +2,54 @@ package main
 
 import (
 	"context"
+	"io"
+	"strings"
 	"testing"
 
 	geni "github.com/dmalch/go-geni"
 	. "github.com/onsi/gomega"
 )
+
+func TestConfirmed(t *testing.T) {
+	RegisterTestingT(t)
+
+	for _, in := range []string{"y", "Y", "yes", "YES", " yes \n", "y\n"} {
+		Expect(confirmed(strings.NewReader(in))).To(BeTrue(), "input %q should confirm", in)
+	}
+	for _, in := range []string{"", "n", "no", "nope", "\n", "yeah", "1"} {
+		Expect(confirmed(strings.NewReader(in))).To(BeFalse(), "input %q should not confirm", in)
+	}
+}
+
+func TestRunProfileMerge_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+
+	t.Run("fewer than two ids is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runProfileMerge(context.Background(), g, []string{"profile-1"})).To(HaveOccurred())
+	})
+
+	t.Run("more than two ids is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runProfileMerge(context.Background(), g, []string{"profile-1", "profile-2", "profile-3"})).To(HaveOccurred())
+	})
+}
+
+func TestRunProfileMerge_AbortsWithoutConfirmation(t *testing.T) {
+	t.Run("a 'no' answer aborts before any API call", func(t *testing.T) {
+		RegisterTestingT(t)
+		g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+		err := runProfileMerge(context.Background(), g, []string{"profile-1", "profile-2"})
+		Expect(err).To(MatchError(ContainSubstring("aborted")))
+	})
+
+	t.Run("empty stdin aborts (fail-safe, no API call)", func(t *testing.T) {
+		RegisterTestingT(t)
+		g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+		err := runProfileMerge(context.Background(), g, []string{"profile-1", "profile-2"})
+		Expect(err).To(MatchError(ContainSubstring("aborted")))
+	})
+}
 
 func TestProfileWebURL(t *testing.T) {
 	RegisterTestingT(t)

@@ -239,9 +239,11 @@ func TestMerge_Request(t *testing.T) {
 	RegisterTestingT(t)
 	c, ft := newFakeClient(http.StatusOK, `{"result":"ok"}`)
 
-	err := c.Merge(context.Background(), "profile-1", "profile-2")
+	res, err := c.Merge(context.Background(), "profile-1", "profile-2")
 
 	Expect(err).ToNot(HaveOccurred())
+	Expect(res).ToNot(BeNil())
+	Expect(res.Result).To(Equal("ok"))
 	Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
 	Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/profile-1/merge/profile-2"))
 }
