@@ -282,6 +282,35 @@ func TestFollow_Request(t *testing.T) {
 	})
 }
 
+func TestWipeEvents_Request(t *testing.T) {
+	t.Run("POSTs date+location wipe payload to /api/<id>/update", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{"id":"union-1"}`)
+
+		err := c.WipeEvents(context.Background(), "union-1", []string{"marriage"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest.Method).To(Equal(http.MethodPost))
+		Expect(ft.lastRequest.URL.Path).To(HaveSuffix("/api/union-1/update"))
+		got, _ := io.ReadAll(ft.lastRequest.Body)
+		// Both sub-objects must be present: Geni deep-merges nested hashes, so
+		// "marriage":{} is a no-op; "marriage":null returns HTTP 500.
+		Expect(string(got)).To(ContainSubstring(`"marriage":`))
+		Expect(string(got)).To(ContainSubstring(`"date":{}`))
+		Expect(string(got)).To(ContainSubstring(`"location":{}`))
+	})
+
+	t.Run("empty eventKeys is a no-op (no request sent)", func(t *testing.T) {
+		RegisterTestingT(t)
+		c, ft := newFakeClient(http.StatusOK, `{}`)
+
+		err := c.WipeEvents(context.Background(), "union-1", nil)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ft.lastRequest).To(BeNil())
+	})
+}
+
 func TestWipeEventDates_Request(t *testing.T) {
 	t.Run("POSTs date-wipe payload to /api/<id>/update", func(t *testing.T) {
 		RegisterTestingT(t)

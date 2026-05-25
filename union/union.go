@@ -8,9 +8,9 @@ import "github.com/dmalch/go-geni/profile"
 
 // Request is the JSON-encoded body for UpdateUnion.
 type Request struct {
-	// Marriage date and location
+	// Marriage event.
 	Marriage *profile.EventElement `json:"marriage,omitempty"`
-	// Divorce date and location
+	// Divorce event.
 	Divorce *profile.EventElement `json:"divorce,omitempty"`
 }
 
