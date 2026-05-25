@@ -1,3 +1,13 @@
+## Unreleased
+
+### FEATURES
+
+- `profile`: add `Client.WipeEvents(ctx, resourceId, eventKeys)` for clearing
+  whole events (marriage, divorce, birth, etc.) on a profile or union. Sibling
+  of `WipeEventDates` which only wipes the date sub-object. Sends
+  `{<event>: {}}` empty-hash sentinel — `null` is rejected by Geni's union
+  endpoint with HTTP 500.
+
 ## 1.7.0
 
 - New `geni union intersect <id1> <id2>` CLI command — fetches both

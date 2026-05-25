@@ -334,6 +334,50 @@ func (c *Client) Merge(ctx context.Context, profile1Id, profile2Id string) (*tra
 	return &result, nil
 }
 
+// WipeEvents issues a targeted POST against /api/<resourceId>/update that
+// clears whole events on a profile or union. It is the sibling of
+// [WipeEventDates], which only clears the date sub-object; use WipeEvents when
+// you need to remove a marriage, divorce, birth, etc. entirely.
+//
+// Payload shape: for each event key the body contains
+// `{"<key>": {"date": {}, "location": {}}}`. Both sub-objects must be
+// explicitly emptied — Geni's union endpoint deep-merges nested objects, so
+// sending `"marriage": {}` is a no-op (existing date/location survive),
+// and `"marriage": null` is rejected with HTTP 500 "value must be a hash!".
+// The empty-object sentinel for each sub-key is the same technique used by
+// [WipeEventDates] for the date sub-object alone (#94). After the wipe Geni
+// may auto-regenerate an event stub with a synthesised `name` field only;
+// the provider treats date==nil && location==nil as a null event in state.
+func (c *Client) WipeEvents(ctx context.Context, resourceId string, eventKeys []string) error {
+	if len(eventKeys) == 0 {
+		return nil
+	}
+
+	payload := make(map[string]any, len(eventKeys))
+	for _, key := range eventKeys {
+		payload[key] = map[string]any{
+			"date":     map[string]any{},
+			"location": map[string]any{},
+		}
+	}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	url := c.transport.BaseURL() + "api/" + resourceId + "/update"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	if _, err := c.transport.Do(ctx, req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 // WipeEventDates issues a targeted PATCH against /api/<resourceId>/update
 // that nulls only the `date` sub-object of each named event (e.g. `birth`,
 // `baptism`, `death`, `burial` on a profile; `marriage` or `divorce` on a
