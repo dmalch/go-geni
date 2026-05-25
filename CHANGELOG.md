@@ -3,10 +3,14 @@
 ### FEATURES
 
 - `profile`: add `Client.WipeEvents(ctx, resourceId, eventKeys)` for clearing
-  whole events (marriage, divorce, birth, etc.) on a profile or union. Sibling
-  of `WipeEventDates` which only wipes the date sub-object. Sends
-  `{<event>: {}}` empty-hash sentinel — `null` is rejected by Geni's union
-  endpoint with HTTP 500.
+  whole events (marriage, divorce, birth, etc.) on a profile or union. POSTs
+  `{<event>: {"date": {}, "location": {}}}` — the only payload Geni's union
+  endpoint honors as a clear. `"<event>": null` is rejected with HTTP 500
+  ("value must be a hash!"), and `"<event>": {}` is silently deep-merged
+  (existing date/location survive, making it a no-op). Geni auto-regenerates a
+  name-only stub after the wipe; callers can treat date==nil && location==nil
+  as a cleared event. Sibling of `WipeEventDates` which clears only the date
+  sub-object.
 
 ## 1.7.0
 
