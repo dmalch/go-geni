@@ -1,3 +1,13 @@
+## 1.7.0
+
+- New `geni union intersect <id1> <id2>` CLI command — fetches both
+  profiles, intersects their union-id lists, bulk-fetches the shared
+  unions via `Union().GetBulk`, and prints them as a JSON object keyed
+  by union id with full union bodies as values. Empty intersection
+  prints `{}` and exits 0. Useful for confirming duplicate profiles
+  share a marriage before `profile merge`, verifying co-parent
+  relationships, and auditing wrong-union attachments.
+
 ## 1.6.0
 
 - New `geni profile compare <id1> <id2>` CLI command — fetches both
