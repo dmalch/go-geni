@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -60,11 +61,14 @@ var _ = Describe("Document API", func() {
 			Expect(updated.Title).To(Equal("AccUpdateAfter"))
 		})
 
-		It("deletes a document", func() {
-			// Skip the auto-cleanup helper — we want to observe the
-			// post-delete state inline. The sandbox soft-deletes
-			// documents (a follow-up GET still succeeds), so we only
-			// assert the delete call itself returns no error.
+		It("deletes a document and Get reports ErrResourceNotFound", func() {
+			// Skip the auto-cleanup helper — we observe the post-delete
+			// state inline. Geni returns HTTP 200 with the empty
+			// bulk-envelope shape ({"results": []}) when a singular
+			// /api/<id> GET targets a deleted document; the transport
+			// coalescer translates that to ErrResourceNotFound so
+			// callers can use the same is-deleted check as for any
+			// missing resource.
 			created, err := client.Document().Create(ctx, &document.Request{
 				Title: "AccDeleteMe",
 				Text:  new("to-be-deleted"),
@@ -72,6 +76,10 @@ var _ = Describe("Document API", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(client.Document().Delete(ctx, created.ID)).To(Succeed())
+
+			_, err = client.Document().Get(ctx, created.ID)
+			Expect(errors.Is(err, geni.ErrResourceNotFound)).To(BeTrue(),
+				"expected ErrResourceNotFound after Delete, got %v", err)
 		})
 	})
 

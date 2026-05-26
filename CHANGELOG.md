@@ -1,3 +1,22 @@
+## 1.9.2 (Unreleased)
+
+### BUG FIXES
+
+- `transport/coalesce`: surface `ErrResourceNotFound` when a singular
+  `/api/<id>` GET returns Geni's empty bulk-envelope shape
+  (`{"results": []}`). Geni emits that shape — not a 404 — when the
+  target is deleted (or never existed) on `document` and `photo`
+  endpoints; previously the coalescer's singular path returned the
+  envelope unchanged and the caller unmarshaled it into a zero-valued
+  `Document` / `Photo` with an empty ID. Profile's deleted shape
+  (`{"id": ..., "deleted": true, "results": null}`) is untouched —
+  `Results` stays nil so the body still passes through and callers
+  inspect `Profile.Deleted`. Fixes the symptom reported in
+  dmalch/terraform-provider-genealogy#123.
+- `test/acceptance` (`document_test.go`, `photo_test.go`): tighten the
+  delete spec to assert `ErrResourceNotFound` after a Delete, locking
+  the post-delete contract in CI's sandbox runs.
+
 ## 1.9.1
 
 ### BUG FIXES
