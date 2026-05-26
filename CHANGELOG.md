@@ -1,3 +1,14 @@
+## 1.9.1 (Unreleased)
+
+### BUG FIXES
+
+- `transport`: classify HTTP/2 `RST_STREAM` errors (`*http2.StreamError`,
+  e.g. `CANCEL` / `REFUSED_STREAM`) as transient so the retry path picks
+  them up. Geni's HTTP/2 frontend cancels streams instead of returning
+  429 when a client exceeds the rolling rate-limit window, which caused
+  spurious failures at high parallelism on the terraform provider
+  (dmalch/terraform-provider-genealogy#122).
+
 ## 1.9.0
 
 - New `geni document for-profile [-page N] <profile-id>` CLI command —
