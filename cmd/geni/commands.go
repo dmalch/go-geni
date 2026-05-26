@@ -51,6 +51,7 @@ func commandTree() map[string]*command {
 			"intersect": {summary: "find unions two profiles share", run: runUnionIntersect},
 		}},
 		"document": {summary: "document resource", sub: map[string]*command{
+			"for-profile": {summary: "list documents attached to a profile", run: runDocumentForProfile},
 			"get": {summary: "fetch a document by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Document().Get(ctx, id)

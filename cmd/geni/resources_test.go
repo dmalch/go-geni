@@ -135,3 +135,22 @@ func TestRunDocumentOpen_ArgValidation(t *testing.T) {
 		Expect(runDocumentOpen(context.Background(), g, []string{"document-1", "document-2"})).To(HaveOccurred())
 	})
 }
+
+func TestRunDocumentForProfile_ArgValidation(t *testing.T) {
+	g := &globalOpts{stderr: io.Discard}
+
+	t.Run("missing positional arg is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentForProfile(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("more than one positional arg is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentForProfile(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
+	})
+
+	t.Run("unknown flag is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentForProfile(context.Background(), g, []string{"-unknown", "profile-1"})).To(HaveOccurred())
+	})
+}

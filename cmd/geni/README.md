@@ -56,6 +56,7 @@ Run `geni help` for the full list.
 | `geni profile merge [-yes] <keep-id> <dup-id>` | Merge one profile into another (destructive; prompts for confirmation) |
 | `geni union get <id>` | Fetch a union |
 | `geni union get-bulk <id...>` | Fetch multiple unions by id |
+| `geni document for-profile [-page N] <profile-id>` | List documents attached to a profile |
 | `geni document get <id>` | Fetch a document |
 | `geni document get-bulk <id...>` | Fetch multiple documents by id |
 | `geni document open <id\|guid>` | Open the document's web page in the browser |
