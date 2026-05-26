@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
 )
@@ -208,9 +209,9 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 }
 
 // translateTransportError maps transient network failures (DNS not
-// found, broken pipe, connection reset, timeouts) to errRetry so the
-// retry-go RetryIf hook picks them up. All other transport errors
-// propagate unchanged.
+// found, broken pipe, connection reset, HTTP/2 stream cancellation,
+// timeouts) to errRetry so the retry-go RetryIf hook picks them up.
+// All other transport errors propagate unchanged.
 func translateTransportError(err error) error {
 	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
 		slog.Error("DNS lookup failed", "error", err)
@@ -229,6 +230,15 @@ func translateTransportError(err error) error {
 			slog.Error("Connection reset by peer error", "error", err)
 			return newErrRetry(500, 1)
 		}
+	}
+
+	// Geni's HTTP/2 frontend RST_STREAMs with CANCEL/REFUSED_STREAM
+	// instead of returning 429 when a client exceeds the rolling
+	// rate-limit window (issue #122). Treat those as transient so the
+	// dynamic limiter has a chance to re-tune from the next response.
+	if streamErr, ok := errors.AsType[http2.StreamError](err); ok {
+		slog.Error("HTTP/2 stream error", "error", err, "code", streamErr.Code)
+		return newErrRetry(500, 1)
 	}
 
 	var netErr net.Error

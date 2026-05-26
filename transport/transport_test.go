@@ -2,6 +2,8 @@ package transport
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,6 +11,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
 )
 
@@ -113,6 +116,50 @@ func TestErrRetry(t *testing.T) {
 		RegisterTestingT(t)
 		err := errRetry{statusCode: 401, secondsUntilRetry: 1}
 		Expect(err.Error()).To(Equal("received 401 status, retry in 1 seconds"))
+	})
+}
+
+func TestTranslateTransportError(t *testing.T) {
+	t.Run("HTTP/2 stream error with CANCEL is retryable", func(t *testing.T) {
+		RegisterTestingT(t)
+		streamErr := http2.StreamError{StreamID: 333, Code: http2.ErrCodeCancel}
+
+		got := translateTransportError(streamErr)
+
+		var er errRetry
+		Expect(errors.As(got, &er)).To(BeTrue(), "expected errRetry, got %T: %v", got, got)
+	})
+
+	t.Run("HTTP/2 stream error with REFUSED_STREAM is retryable", func(t *testing.T) {
+		RegisterTestingT(t)
+		streamErr := http2.StreamError{StreamID: 7, Code: http2.ErrCodeRefusedStream}
+
+		got := translateTransportError(streamErr)
+
+		var er errRetry
+		Expect(errors.As(got, &er)).To(BeTrue(), "expected errRetry, got %T: %v", got, got)
+	})
+
+	t.Run("HTTP/2 stream error wrapped in url.Error is retryable", func(t *testing.T) {
+		RegisterTestingT(t)
+		// http.Client.Do wraps transport errors in *url.Error before returning them.
+		wrapped := &url.Error{Op: "Post", URL: "https://www.geni.com/api/profile/add", Err: http2.StreamError{StreamID: 333, Code: http2.ErrCodeCancel}}
+
+		got := translateTransportError(wrapped)
+
+		var er errRetry
+		Expect(errors.As(got, &er)).To(BeTrue(), "expected errRetry, got %T: %v", got, got)
+	})
+
+	t.Run("Unrelated error propagates unchanged", func(t *testing.T) {
+		RegisterTestingT(t)
+		orig := fmt.Errorf("unexpected boom")
+
+		got := translateTransportError(orig)
+
+		var er errRetry
+		Expect(errors.As(got, &er)).To(BeFalse())
+		Expect(got).To(MatchError(orig))
 	})
 }
 
