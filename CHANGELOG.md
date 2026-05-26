@@ -1,4 +1,4 @@
-## 1.9.1 (Unreleased)
+## 1.9.1
 
 ### BUG FIXES
 
