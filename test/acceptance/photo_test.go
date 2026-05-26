@@ -68,11 +68,12 @@ var _ = Describe("Photo API", func() {
 	})
 
 	Describe("DeletePhoto", func() {
-		// Geni may soft-delete photos (a follow-up GET still succeeds
-		// like it does for documents). We only assert the delete call
-		// itself returns no error or maps a stale id to
-		// ErrResourceNotFound on a second delete.
-		It("removes a freshly-uploaded photo", func() {
+		// Geni returns HTTP 200 with the empty bulk-envelope shape
+		// ({"results": []}) when a singular /api/<id> GET targets a
+		// deleted photo; the transport coalescer translates that to
+		// ErrResourceNotFound so callers can use the same is-deleted
+		// check as for any missing resource.
+		It("removes a freshly-uploaded photo and Get reports ErrResourceNotFound", func() {
 			photo, err := client.Photo().Create(ctx,
 				fmt.Sprintf("AccDeletePhoto-%d", time.Now().UnixNano()),
 				"del.png",
@@ -81,13 +82,9 @@ var _ = Describe("Photo API", func() {
 
 			Expect(client.Photo().Delete(ctx, photo.ID)).To(Succeed())
 
-			// Deleting twice should either succeed (sandbox no-op) or
-			// surface ErrResourceNotFound — both are acceptable.
-			err = client.Photo().Delete(ctx, photo.ID)
-			if err != nil {
-				Expect(errors.Is(err, geni.ErrResourceNotFound)).To(BeTrue(),
-					"unexpected error on double-delete: %v", err)
-			}
+			_, err = client.Photo().Get(ctx, photo.ID)
+			Expect(errors.Is(err, geni.ErrResourceNotFound)).To(BeTrue(),
+				"expected ErrResourceNotFound after Delete, got %v", err)
 		})
 	})
 

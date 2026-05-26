@@ -105,9 +105,29 @@ func (b *BulkCoalescer[Item, Envelope]) PrepareBulkRequest(req *http.Request, ur
 // ParseBulkResponse implements Coalescer.
 func (b *BulkCoalescer[Item, Envelope]) ParseBulkResponse(req *http.Request, body []byte, urlMap *sync.Map) ([]byte, error) {
 	// Singular path: the URL stayed as /api/<id> with no `ids=` query
-	// param — the response is a single Item, not a bulk envelope.
-	// Hand it back unchanged.
+	// param. Geni's contract is "single Item on hit, bulk envelope
+	// {results: []} on miss" — e.g. a GET targeting a deleted document
+	// or photo returns the empty-envelope shape rather than 404. Try
+	// to decode as a bulk envelope first; if the response has a
+	// non-nil Results slice we're in the miss case and surface it as
+	// ErrResourceNotFound. Otherwise the body is a singular Item and
+	// we pass it through unchanged.
+	//
+	// Note: Profile's "deleted" path returns the singular shape with
+	// {"deleted": true, "results": null} — Results stays nil and we
+	// correctly fall through so the caller can inspect Profile.Deleted.
 	if !req.URL.Query().Has("ids") {
+		if envelope, err := b.DecodeBulk(body); err == nil {
+			items := b.ListResults(envelope)
+			if items != nil {
+				for _, item := range items {
+					if b.IDOfResult(item) == b.CurrentID {
+						return json.Marshal(item)
+					}
+				}
+				return nil, ErrResourceNotFound
+			}
+		}
 		return body, nil
 	}
 
