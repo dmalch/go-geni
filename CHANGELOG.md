@@ -1,3 +1,14 @@
+## 1.9.0
+
+- New `geni document for-profile [-page N] <profile-id>` CLI command —
+  lists the documents attached to a profile via Geni's
+  `api/profile-<id>/documents` endpoint. Thin surface over the existing
+  `document.Client.ForProfile`; output is the paginated `BulkResponse`
+  envelope rendered as indented JSON, mirroring the shape of
+  `geni profile search`. Useful for auditing a profile's source
+  attachments without first fetching the profile and walking
+  `documents_url`.
+
 ## 1.8.0
 
 ### FEATURES
