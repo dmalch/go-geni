@@ -202,6 +202,28 @@ func runDocumentOpen(ctx context.Context, g *globalOpts, args []string) error {
 	return open.Start(url)
 }
 
+// runDocumentForProfile handles "geni document for-profile [-page N] <profile-id>".
+func runDocumentForProfile(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni document for-profile", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	page := fs.Int("page", 1, "result page, 1-based")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni document for-profile [-page N] <profile-id>")
+	}
+	c, err := newClient(g)
+	if err != nil {
+		return err
+	}
+	resp, err := c.Document().ForProfile(ctx, fs.Arg(0), *page)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, resp)
+}
+
 // runTreeFamily handles "geni tree family <profile-id>".
 func runTreeFamily(ctx context.Context, g *globalOpts, args []string) error {
 	if len(args) != 1 {
