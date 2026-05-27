@@ -100,6 +100,55 @@ source := oauth2.ReuseTokenSource(nil,
 Headless callers can skip `auth` entirely and supply any `oauth2.TokenSource`
 to `geni.NewClient`.
 
+## Web (AJAX) client
+
+Works around documented gaps in Geni's OAuth API (revision list, document text
+r/w) for personal genealogy tooling. The `web/` sub-tree is a **separate**
+client that talks to the same private AJAX endpoints geni.com itself uses from
+a logged-in browser — cookie auth, per-form CSRF token, HTML responses.
+
+> ⚠️ These endpoints are undocumented, unsupported by Geni.com, and may change
+> or break without notice. Using `web/` may violate geni.com's Terms of
+> Service — review them before use. The package never logs in for you; it
+> requires cookies from a logged-in browser session you established yourself.
+
+```go
+import (
+    "context"
+    "github.com/dmalch/go-geni/web"
+    "github.com/dmalch/go-geni/web/revision"
+    "github.com/dmalch/go-geni/web/document"
+)
+
+c, _ := web.NewClient(web.Options{
+    Cookies: web.CookiesFromHeader("_geni_session=...; remember_user_token=..."),
+})
+
+// List a profile's revision IDs (the OAuth API can't).
+ids, _ := revision.NewClient(c).ForProfile(context.Background(), "<profile-guid>")
+
+// Read / write a document's text body (the OAuth API returns text:null).
+text, _ := document.NewClient(c).GetText(context.Background(), "<doc-guid>")
+err := document.NewClient(c).SaveText(context.Background(), "<doc-guid>", "new body")
+```
+
+Cookies can also be pulled directly from a logged-in browser on the host via
+the opt-in `web/browsercookies` sub-package (uses
+[`steipete/sweetcookie`](https://github.com/steipete/sweetcookie) — Chrome /
+Firefox / Safari / Edge / Brave on macOS, Windows, Linux):
+
+```go
+import "github.com/dmalch/go-geni/web/browsercookies"
+
+cookies, err := browsercookies.FromGeniCom()
+c, _ := web.NewClient(web.Options{Cookies: cookies})
+```
+
+The Web client ships with a conservative **1 req/sec** rate limit by default
+(`web.Options.RateLimit` overrides it on your own account). Runnable examples
+live in [`examples/webrevisions`](examples/webrevisions) and
+[`examples/webdocumenttext`](examples/webdocumenttext).
+
 ## Behaviour
 
 - 1 request/second rate limit, adjusted on the fly from `X-API-Rate-Limit`
