@@ -1,3 +1,25 @@
+## 1.13.0 (Unreleased)
+
+### NEW
+
+- New `geni document text get <id-or-guid>` CLI command — prints a
+  document's text body via the AJAX endpoint the OAuth API can't read.
+  Output is the **raw text** on stdout (not JSON; the artifact requested
+  is text). Reuses the existing one-time AJAX consent gate from v1.11.0.
+- New `geni document text set [-from-file <path>] <id-or-guid>` CLI
+  command — replaces a document's text body. New body comes from
+  `-from-file` or stdin. Always **compare-then-maybe-write**: fetches
+  the current body, normalizes both sides (strip `\r`, `rstrip` per
+  line — same rule used by `update_documents.py`), and skips the POST
+  when they already match. JSON output:
+  `{"status":"updated"\|"unchanged","guid":"…","bytes_written":N}`.
+  Together with `text get`, this replaces the playwright-cli /
+  browser-injection half of `geni-tree-terraform`'s
+  `update_documents.py` workflow with a plain CLI surface.
+- `geni help` now recurses into nested command groups, so three-level
+  commands like `geni document text get` are listed explicitly instead
+  of collapsing into a single `document text` row.
+
 ## 1.12.0
 
 ### NEW
