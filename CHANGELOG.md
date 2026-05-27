@@ -1,3 +1,32 @@
+## 1.10.0
+
+### NEW
+
+- New `web/` sub-tree — a separate, opt-in client for Geni's private AJAX
+  endpoints (the ones the website uses internally from a logged-in browser).
+  Distinct from the OAuth API: cookie auth, per-form CSRF token, HTML
+  responses. Works around two documented gaps:
+  - `web/revision.Client.ForProfile(ctx, guid)` lists a profile's edit
+    history (the OAuth `api/profile-X/revisions` returns 500).
+  - `web/document.Client.GetText` / `SaveText` read and write a document's
+    text body (the OAuth API returns `text: null` on read and ignores
+    `text` on update).
+  The Web client is structurally independent of the OAuth `Client` — no
+  shared state, no cross-imports. It ships with a conservative 1 req/sec
+  default rate limit and no login automation; callers supply cookies from
+  a logged-in browser. See README's "Web (AJAX) client" section.
+- New opt-in helper `web/browsercookies.FromGeniCom()` — bootstraps
+  `web.Options.Cookies` from any installed browser via
+  [`steipete/sweetcookie`](https://github.com/steipete/sweetcookie). Wraps
+  macOS "operation not permitted" failures as `ErrFullDiskAccessRequired`
+  with a System-Settings fix-it message. Sub-package is the only place
+  sweetcookie is imported — `web/` core has zero browser-cookie dependency.
+- New runnable examples: `examples/webrevisions/`,
+  `examples/webdocumenttext/`.
+
+These endpoints are undocumented, unsupported by Geni.com, and may change
+without notice; using `web/` may violate geni.com's Terms of Service.
+
 ## 1.9.2
 
 ### BUG FIXES
