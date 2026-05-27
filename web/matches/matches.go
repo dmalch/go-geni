@@ -357,3 +357,300 @@ func hasClass(n *html.Node, want string) bool {
 	}
 	return false
 }
+
+// Group is the /search/matches/<guid> view tab — new (default),
+// confirmed (requested), or dismissed (removed).
+type Group string
+
+const (
+	GroupNew       Group = ""
+	GroupRequested Group = "requested"
+	GroupRemoved   Group = "removed"
+)
+
+// ForProfileOptions controls the /search/matches/<guid> GET.
+type ForProfileOptions struct {
+	Group Group
+}
+
+// SourceProfile is the row at the top of /search/matches/<guid>: the
+// profile you're looking up matches *for*. Same shape as a TreeMatch
+// minus the compare-action URL and the recursive "similar profiles"
+// link (the source profile's row doesn't carry those).
+type SourceProfile struct {
+	ProfileGuid       string   `json:"profile_guid"`
+	Name              string   `json:"name"`
+	ProfileURL        string   `json:"profile_url"`
+	LifespanText      string   `json:"lifespan_text,omitempty"`
+	Deceased          bool     `json:"deceased,omitempty"`
+	Privacy           string   `json:"privacy,omitempty"`
+	PlaceText         string   `json:"place_text,omitempty"`
+	ImmediateFamily   []string `json:"immediate_family,omitempty"`
+	ManagerName       string   `json:"manager_name,omitempty"`
+	ManagerProfileURL string   `json:"manager_profile_url,omitempty"`
+}
+
+// TreeMatch is one candidate-duplicate row on /search/matches/<guid>.
+type TreeMatch struct {
+	ProfileGuid          string   `json:"profile_guid"`
+	Name                 string   `json:"name"`
+	ProfileURL           string   `json:"profile_url"`
+	LifespanText         string   `json:"lifespan_text,omitempty"`
+	Deceased             bool     `json:"deceased,omitempty"`
+	Privacy              string   `json:"privacy,omitempty"`
+	PlaceText            string   `json:"place_text,omitempty"`
+	ImmediateFamily      []string `json:"immediate_family,omitempty"`
+	ManagerName          string   `json:"manager_name,omitempty"`
+	ManagerProfileURL    string   `json:"manager_profile_url,omitempty"`
+	CompareURL           string   `json:"compare_url"`
+	SimilarProfilesCount int      `json:"similar_profiles_count,omitempty"`
+}
+
+// ForProfileResult is the parsed page for one profile's tree matches.
+type ForProfileResult struct {
+	Source    SourceProfile `json:"source"`
+	Matches   []TreeMatch   `json:"matches"`
+	TotalText string        `json:"total_text,omitempty"`
+}
+
+// ForProfile fetches /search/matches/<sourceGuid> and parses the
+// source-profile row plus the candidate matches. Never passes
+// `auto1=1` — that would cause a 302 to /merge/compare/… when the
+// profile has exactly one match.
+func (c *Client) ForProfile(ctx context.Context, sourceGuid string, opts ForProfileOptions) (*ForProfileResult, error) {
+	u := c.web.BaseURL() + "/search/matches/" + sourceGuid
+	if opts.Group != "" {
+		u += "?" + url.Values{"group": {string(opts.Group)}}.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.web.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("search/matches: HTTP %d", resp.StatusCode)
+	}
+	return parseForProfile(resp.Body)
+}
+
+// parseForProfile walks the /search/matches/<guid> HTML page,
+// extracting the source profile and the candidate-match rows. Rows
+// are discriminated by presence of <input name="review_match[]"> —
+// match rows have one, the source row does not.
+func parseForProfile(r io.Reader) (*ForProfileResult, error) {
+	doc, err := html.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	out := &ForProfileResult{Matches: []TreeMatch{}}
+	walk(doc, func(n *html.Node) bool {
+		if n.Type != html.ElementNode {
+			return true
+		}
+		switch n.Data {
+		case "tr":
+			guid := attr(n, "data-profile-id")
+			if guid == "" {
+				return true
+			}
+			if hasReviewMatchCheckbox(n) {
+				out.Matches = append(out.Matches, parseTreeMatchRow(n, guid))
+			} else if out.Source.ProfileGuid == "" {
+				out.Source = parseSourceRow(n, guid)
+			}
+		case "div":
+			if hasClass(n, "paginator-showing") && out.TotalText == "" {
+				out.TotalText = trimText(textOf(n))
+			}
+		}
+		return true
+	})
+	return out, nil
+}
+
+// hasReviewMatchCheckbox is true if the subtree contains
+// <input name="review_match[]">. Match rows do; the source row
+// doesn't.
+func hasReviewMatchCheckbox(n *html.Node) bool {
+	found := false
+	walk(n, func(x *html.Node) bool {
+		if found {
+			return false
+		}
+		if x.Type == html.ElementNode && x.Data == "input" && attr(x, "name") == "review_match[]" {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
+}
+
+// parseSourceRow is parseTreeMatchRow without the action-cell parser
+// (the source row has no compare-action cell).
+func parseSourceRow(tr *html.Node, guid string) SourceProfile {
+	s := SourceProfile{
+		ProfileGuid: guid,
+		Deceased:    attr(tr, "data-deceased") == "true",
+		Privacy:     attr(tr, "data-privacy"),
+	}
+	for c := tr.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type != html.ElementNode || c.Data != "td" {
+			continue
+		}
+		switch {
+		case hasClass(c, "name-grid-area"):
+			s.Name, s.ProfileURL, s.LifespanText, s.PlaceText, _ = parseSearchNameCell(c)
+		case hasClass(c, "immediate-family-grid-area"):
+			s.ImmediateFamily = parseImmediateFamilyCell(c)
+		case hasClass(c, "manager-grid-area"):
+			s.ManagerName, s.ManagerProfileURL = parseSearchManagerCell(c)
+		}
+	}
+	return s
+}
+
+func parseTreeMatchRow(tr *html.Node, guid string) TreeMatch {
+	m := TreeMatch{
+		ProfileGuid: guid,
+		Deceased:    attr(tr, "data-deceased") == "true",
+		Privacy:     attr(tr, "data-privacy"),
+	}
+	for c := tr.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type != html.ElementNode || c.Data != "td" {
+			continue
+		}
+		switch {
+		case hasClass(c, "name-grid-area"):
+			m.Name, m.ProfileURL, m.LifespanText, m.PlaceText, m.SimilarProfilesCount = parseSearchNameCell(c)
+		case hasClass(c, "immediate-family-grid-area"):
+			m.ImmediateFamily = parseImmediateFamilyCell(c)
+		case hasClass(c, "manager-grid-area"):
+			m.ManagerName, m.ManagerProfileURL = parseSearchManagerCell(c)
+		case hasClass(c, "action-grid-area"):
+			m.CompareURL = parseActionCell(c)
+		}
+	}
+	return m
+}
+
+// parseSearchNameCell extracts the name + URL from the strong span,
+// the place text from the first <div class="small">, the lifespan
+// from <div class="small quiet">, and the recursive "N similar
+// profiles" count from the .similar_profiles link.
+func parseSearchNameCell(td *html.Node) (name, profileURL, lifespan, place string, similarCount int) {
+	walk(td, func(n *html.Node) bool {
+		if n.Type != html.ElementNode {
+			return true
+		}
+		switch n.Data {
+		case "span":
+			if hasClass(n, "strong") {
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if c.Type == html.ElementNode && c.Data == "a" && name == "" {
+						profileURL = attr(c, "href")
+						name = trimText(textOf(c))
+					}
+				}
+			}
+		case "div":
+			switch {
+			case hasClass(n, "small") && hasClass(n, "quiet") && lifespan == "":
+				lifespan = trimText(textOf(n))
+			case hasClass(n, "small") && !hasClass(n, "quiet") && !hasClass(n, "area-title") && place == "":
+				txt := trimText(textOf(n))
+				if txt != "" {
+					place = txt
+				}
+			case hasClass(n, "similar_profiles") && similarCount == 0:
+				similarCount = parseLeadingInt(textOf(n))
+			}
+		}
+		return true
+	})
+	return name, profileURL, lifespan, place, similarCount
+}
+
+// parseImmediateFamilyCell returns one entry per <br>-separated line,
+// stripping the "Семья:" area-title prefix.
+func parseImmediateFamilyCell(td *html.Node) []string {
+	var lines []string
+	var buf strings.Builder
+	var visit func(*html.Node)
+	visit = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			if n.Data == "div" && hasClass(n, "area-title") {
+				return // skip "Семья:" label
+			}
+			if n.Data == "br" {
+				if s := trimText(buf.String()); s != "" {
+					lines = append(lines, s)
+				}
+				buf.Reset()
+				return
+			}
+		}
+		if n.Type == html.TextNode {
+			buf.WriteString(n.Data)
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			visit(c)
+		}
+	}
+	visit(td)
+	if s := trimText(buf.String()); s != "" {
+		lines = append(lines, s)
+	}
+	return lines
+}
+
+func parseSearchManagerCell(td *html.Node) (name, profileURL string) {
+	walk(td, func(n *html.Node) bool {
+		if n.Type != html.ElementNode || n.Data != "a" {
+			return true
+		}
+		if name != "" {
+			return false
+		}
+		profileURL = attr(n, "href")
+		name = trimText(textOf(n))
+		return false
+	})
+	return name, profileURL
+}
+
+// parseActionCell returns the /merge/compare URL.
+func parseActionCell(td *html.Node) string {
+	var compareURL string
+	walk(td, func(n *html.Node) bool {
+		if n.Type != html.ElementNode || n.Data != "a" {
+			return true
+		}
+		href := attr(n, "href")
+		if strings.HasPrefix(href, "/merge/compare/") && compareURL == "" {
+			compareURL = href
+			return false
+		}
+		return true
+	})
+	return compareURL
+}
+
+// parseLeadingInt parses the leading integer of s, ignoring
+// surrounding text. Returns 0 if no digits found.
+func parseLeadingInt(s string) int {
+	s = strings.TrimSpace(s)
+	end := 0
+	for end < len(s) && s[end] >= '0' && s[end] <= '9' {
+		end++
+	}
+	if end == 0 {
+		return 0
+	}
+	n, _ := strconv.Atoi(s[:end])
+	return n
+}

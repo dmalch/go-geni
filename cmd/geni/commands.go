@@ -116,7 +116,8 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"matches": {summary: "merge-center matches (AJAX, one-time consent)", sub: map[string]*command{
-			"list": {summary: "list profiles with pending tree/record/smart matches", run: runMatchesList},
+			"list":        {summary: "list profiles with pending tree/record/smart matches", run: runMatchesList},
+			"for-profile": {summary: "tree-match candidates for one profile", run: runMatchesForProfile},
 		}},
 		"tree": {summary: "family-graph queries", sub: map[string]*command{
 			"family":    {summary: "immediate family of a profile", run: runTreeFamily},

@@ -206,3 +206,133 @@ func TestList_NonOkStatusReturnsError(t *testing.T) {
 	_, err := newClient(t, srv).List(context.Background(), matches.ListOptions{})
 	Expect(err).To(HaveOccurred())
 }
+
+func TestForProfile_ParsesFixture(t *testing.T) {
+	RegisterTestingT(t)
+	fixture, err := os.ReadFile("testdata/search_matches.html")
+	Expect(err).ToNot(HaveOccurred())
+
+	var captured *http.Request
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.Clone(r.Context())
+		_, _ = w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	res, err := newClient(t, srv).ForProfile(context.Background(),
+		"6000000225685438084", matches.ForProfileOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res).ToNot(BeNil())
+
+	// Request shape: path-style URL, no auto1.
+	Expect(captured.Method).To(Equal(http.MethodGet))
+	Expect(captured.URL.Path).To(Equal("/search/matches/6000000225685438084"))
+	Expect(captured.URL.Query()).ToNot(HaveKey("auto1"))
+	Expect(captured.URL.Query()).ToNot(HaveKey("group")) // default group = new, omitted
+
+	// Source profile (the top row).
+	Expect(res.Source.ProfileGuid).To(Equal("6000000225685438084"))
+	Expect(res.Source.Name).To(Equal("Иван Гавриилович Котаев"))
+	Expect(res.Source.ProfileURL).To(Equal("/people/%D0%98%D0%B2%D0%B0%D0%BD-%D0%9A%D0%BE%D1%82%D0%B0%D0%B5%D0%B2/6000000225685438084"))
+	Expect(res.Source.LifespanText).To(Equal("(* - >1915)"))
+	Expect(res.Source.Deceased).To(BeTrue())
+	Expect(res.Source.Privacy).To(Equal("public"))
+	Expect(res.Source.PlaceText).To(Equal("село Журавкино, Спасский уезд, Майданская волость, Тамбовская губерния, Россия"))
+	Expect(res.Source.ImmediateFamily).To(Equal([]string{
+		"Муж Агафьи Тимофеевны Марковой",
+		"Отец Валентины Ивановны Котаевой",
+	}))
+	Expect(res.Source.ManagerName).To(Equal("Дмитрий Викторович Мальчиков"))
+
+	// Matches list — two rows, source row excluded.
+	Expect(res.Matches).To(HaveLen(2))
+	Expect(res.TotalText).To(ContainSubstring("2"))
+
+	first := res.Matches[0]
+	Expect(first.ProfileGuid).To(Equal("6000000225685646845"))
+	Expect(first.Name).To(Equal("Иван Гавриилович Котаев"))
+	Expect(first.LifespanText).To(Equal("(* - >1911)"))
+	Expect(first.Deceased).To(BeTrue())
+	Expect(first.Privacy).To(Equal("public"))
+	Expect(first.PlaceText).To(Equal("село Журавкино, Спасский уезд, Майданская волость, Тамбовская губерния, Россия"))
+	Expect(first.ImmediateFamily).To(Equal([]string{
+		"Муж Агафьи Тимофеевны",
+		"Отец Никифора Ивановича Котаева",
+	}))
+	Expect(first.ManagerName).To(Equal("Дмитрий Викторович Мальчиков"))
+	Expect(first.SimilarProfilesCount).To(Equal(2))
+	Expect(first.CompareURL).To(Equal("/merge/compare/6000000225685438084?return=match%3B&to=6000000225685646845"))
+
+	second := res.Matches[1]
+	Expect(second.ProfileGuid).To(Equal("6000000225685564919"))
+	Expect(second.LifespanText).To(Equal("(* - >1909)"))
+	Expect(second.SimilarProfilesCount).To(Equal(2))
+	Expect(second.CompareURL).To(Equal("/merge/compare/6000000225685438084?return=match%3B&to=6000000225685564919"))
+}
+
+func TestForProfile_GroupQueryParam(t *testing.T) {
+	RegisterTestingT(t)
+	for _, c := range []struct {
+		group        matches.Group
+		expectedPath string
+		expectedQS   string
+	}{
+		{matches.GroupNew, "/search/matches/SRC", ""},
+		{matches.GroupRequested, "/search/matches/SRC", "group=requested"},
+		{matches.GroupRemoved, "/search/matches/SRC", "group=removed"},
+	} {
+		var captured *http.Request
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			captured = r.Clone(r.Context())
+			_, _ = io.WriteString(w, `<html><body><table></table></body></html>`)
+		}))
+		_, err := newClient(t, srv).ForProfile(context.Background(), "SRC",
+			matches.ForProfileOptions{Group: c.group})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(captured.URL.Path).To(Equal(c.expectedPath))
+		Expect(captured.URL.RawQuery).To(Equal(c.expectedQS))
+		Expect(captured.URL.Query()).ToNot(HaveKey("auto1"))
+		srv.Close()
+	}
+}
+
+func TestForProfile_EmptyMatches(t *testing.T) {
+	RegisterTestingT(t)
+	// Hand-crafted: source row only, no checkbox, no paginator-showing.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `<html><body><table><tbody>
+			<tr class="profile-layout-grid" data-profile-id="111" data-deceased="false" data-privacy="public">
+			  <td class="name-grid-area"><span class="strong"><a href="/people/X/111">X</a></span></td>
+			  <td class="manager-grid-area"><a href="/people/Y/999">Y</a></td>
+			</tr>
+		</tbody></table></body></html>`)
+	}))
+	defer srv.Close()
+
+	res, err := newClient(t, srv).ForProfile(context.Background(), "111", matches.ForProfileOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res.Source.ProfileGuid).To(Equal("111"))
+	Expect(res.Source.Name).To(Equal("X"))
+	Expect(res.Matches).To(BeEmpty())
+	Expect(res.TotalText).To(BeEmpty())
+}
+
+func TestForProfile_LoginRedirectMapsToErrNotLoggedIn(t *testing.T) {
+	RegisterTestingT(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	defer srv.Close()
+	_, err := newClient(t, srv).ForProfile(context.Background(), "111", matches.ForProfileOptions{})
+	Expect(errors.Is(err, web.ErrNotLoggedIn)).To(BeTrue(), "expected ErrNotLoggedIn, got %v", err)
+}
+
+func TestForProfile_NonOkStatusReturnsError(t *testing.T) {
+	RegisterTestingT(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	_, err := newClient(t, srv).ForProfile(context.Background(), "111", matches.ForProfileOptions{})
+	Expect(err).To(HaveOccurred())
+}
