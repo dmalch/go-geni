@@ -137,6 +137,10 @@ res, _ := matches.NewClient(c).List(context.Background(), matches.ListOptions{
     Collection: matches.CollectionManaged,
     Filter:     matches.FilterTreeMatches,
 })
+
+// Drill into one profile's tree-match candidates.
+fp, _ := matches.NewClient(c).ForProfile(context.Background(), "<profile-guid>",
+    matches.ForProfileOptions{})
 ```
 
 Cookies can also be pulled directly from a logged-in browser on the host via

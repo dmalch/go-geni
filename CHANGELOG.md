@@ -1,3 +1,22 @@
+## 1.15.0 (Unreleased)
+
+### NEW
+
+- New `geni matches for-profile [-group {new,requested,removed}] <id-or-guid>`
+  CLI command — drills into one profile's tree-match candidates, the
+  data behind clicking a row's tree-match button in `geni matches list`.
+  Output is JSON `{source, matches, total_text}`: the source profile's
+  basics (name, place, lifespan, immediate family, manager) plus an
+  array of candidate-duplicate rows with `compare_url`
+  (`/merge/compare/<src>?to=<match>`) and `similar_profiles_count`.
+  Accepts either `profile-NNN` (resolved to a guid via the OAuth API)
+  or a bare guid. Reuses the one-time AJAX consent gate.
+- `web/matches`: new `Client.ForProfile` method + supporting types
+  (`Group`, `ForProfileOptions`, `SourceProfile`, `TreeMatch`,
+  `ForProfileResult`). Uses path-style URL `/search/matches/<guid>`;
+  never passes `auto1=1` (which would redirect to the merge UI on
+  single-match profiles).
+
 ## 1.14.0
 
 ### NEW

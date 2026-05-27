@@ -265,6 +265,38 @@ func TestMatchesCollectionsContainsDefault(t *testing.T) {
 	Expect(matchesCollections["managed"]).To(Equal(webmatches.CollectionManaged))
 }
 
+func TestRunMatchesForProfile_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("no arg is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runMatchesForProfile(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("two args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runMatchesForProfile(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
+	})
+
+	t.Run("unknown -group rejected pre-network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesForProfile(context.Background(), g, []string{"-group", "bogus", "6000000218702371879"})
+		Expect(err).To(MatchError(ContainSubstring("group")))
+	})
+}
+
+func TestRunMatchesForProfile_AbortsWhenConsentDeclined(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GENI_WEB_CONSENT", "")
+
+	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+
+	err := runMatchesForProfile(context.Background(), g, []string{"6000000218702371879"})
+	Expect(err).To(MatchError(ContainSubstring("declined")))
+}
+
 func TestRunMatchesList_AbortsWhenConsentDeclined(t *testing.T) {
 	RegisterTestingT(t)
 	t.Setenv("HOME", t.TempDir())

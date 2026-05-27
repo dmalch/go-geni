@@ -502,6 +502,16 @@ var matchesDirections = map[string]webmatches.Direction{
 	"desc": webmatches.DirectionDesc,
 }
 
+// matchesGroups maps the user-facing -group values to the
+// /search/matches/<guid> query-string values. "new" is the default
+// (omitted from URL).
+var matchesGroups = map[string]webmatches.Group{
+	"":          webmatches.GroupNew,
+	"new":       webmatches.GroupNew,
+	"requested": webmatches.GroupRequested,
+	"removed":   webmatches.GroupRemoved,
+}
+
 // runMatchesList handles
 //
 //	geni matches list [-collection X] [-filter Y] [-order Z] [-direction D] \
@@ -586,6 +596,64 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 		out = out[:*limit]
 	}
 	return render(g.stdout, out)
+}
+
+// runMatchesForProfile handles
+//
+//	geni matches for-profile [-group new|requested|removed] <profile-id-or-guid>
+//
+// It fetches /search/matches/<guid> and parses the source profile +
+// candidate tree matches. Accepts either a profile-NNN id (resolved
+// to a guid via the OAuth API) or a bare guid. Gated by
+// ensureWebConsent.
+func runMatchesForProfile(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni matches for-profile", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	group := fs.String("group", "new", "{new,requested,removed}")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni matches for-profile [-group X] <profile-id-or-guid>")
+	}
+	grp, ok := matchesGroups[*group]
+	if !ok {
+		return fmt.Errorf("invalid -group %q (want one of: new, requested, removed)", *group)
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	guid := fs.Arg(0)
+	if strings.HasPrefix(guid, "profile-") {
+		c, err := newClient(g)
+		if err != nil {
+			return err
+		}
+		p, err := c.Profile().Get(ctx, guid)
+		if err != nil {
+			return err
+		}
+		if p.Guid == "" {
+			return errors.New("profile has no guid")
+		}
+		guid = p.Guid
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	res, err := webmatches.NewClient(wc).ForProfile(ctx, guid, webmatches.ForProfileOptions{Group: grp})
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, res)
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".
