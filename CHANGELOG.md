@@ -7,7 +7,7 @@
   OAuth API has no equivalent; the underlying `/list/matches` page is
   server-rendered HTML, so the new `web/matches` sub-package parses
   the row table directly. Flags: `-collection {managed,relatives,
-  followed,collaborators}`, `-filter {tree,record,smart}`,
+  followed,collaborators}` (defaults to `managed`), `-filter {tree,record,smart}`,
   `-order {name,relationship,manager,updated_at,matches}`,
   `-direction {asc,desc}`, `-page N` / `-all`, `-limit N`, `-new`
   (keeps only rows whose tree+record+smart count is non-zero).

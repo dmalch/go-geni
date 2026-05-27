@@ -512,7 +512,7 @@ var matchesDirections = map[string]webmatches.Direction{
 func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	fs := flag.NewFlagSet("geni matches list", flag.ContinueOnError)
 	fs.SetOutput(g.stderr)
-	collection := fs.String("collection", "", "{managed,relatives,followed,collaborators}")
+	collection := fs.String("collection", "managed", "{managed,relatives,followed,collaborators}")
 	filter := fs.String("filter", "", "{tree,record,smart}")
 	order := fs.String("order", "", "{name,relationship,manager,updated_at,matches}")
 	direction := fs.String("direction", "", "{asc,desc}")

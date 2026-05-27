@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	geni "github.com/dmalch/go-geni"
+	webmatches "github.com/dmalch/go-geni/web/matches"
 	. "github.com/onsi/gomega"
 )
 
@@ -254,6 +255,14 @@ func TestRunMatchesList_ArgValidation(t *testing.T) {
 		err := runMatchesList(context.Background(), g, []string{"-direction", "sideways"})
 		Expect(err).To(MatchError(ContainSubstring("direction")))
 	})
+}
+
+func TestMatchesCollectionsContainsDefault(t *testing.T) {
+	RegisterTestingT(t)
+	// The CLI's default for -collection is "managed" — verify it
+	// resolves through the lookup map. If someone changes the default,
+	// the lookup must still contain the new key.
+	Expect(matchesCollections["managed"]).To(Equal(webmatches.CollectionManaged))
 }
 
 func TestRunMatchesList_AbortsWhenConsentDeclined(t *testing.T) {
