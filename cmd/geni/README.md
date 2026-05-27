@@ -67,6 +67,7 @@ Run `geni help` for the full list.
 | `geni photoalbum get <id>` | Fetch a photo album |
 | `geni project get <id>` | Fetch a project |
 | `geni surname get <id>` | Fetch a surname |
+| `geni revision for-profile <id\|guid>` | List a profile's revision IDs (AJAX; one-time consent prompt — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni revision get <id>` | Fetch a revision |
 | `geni revision get-bulk <id...>` | Fetch multiple revisions by id |
 | `geni tree family <id>` | Immediate family of a profile |
@@ -75,6 +76,41 @@ Run `geni help` for the full list.
 Every command is read-only except **`geni profile merge`**, which mutates
 data. It prompts for a `y/N` confirmation before merging; pass `-yes` to skip
 the prompt in scripts.
+
+## Web (AJAX) commands
+
+A few CLI commands talk to Geni's **private AJAX endpoints** instead of the
+official OAuth API — they cover gaps the OAuth API doesn't address (e.g. the
+revision-history list). These endpoints are undocumented, unsupported by
+Geni.com, may break without notice, and using them may violate geni.com's
+Terms of Service.
+
+| Command | Description |
+| --- | --- |
+| `geni revision for-profile <id\|guid>` | List a profile's revision IDs (cross over to the OAuth API with `geni revision get revision-<id>` for the body of each) |
+
+### One-time consent
+
+The first AJAX command in a session prints a disclaimer and asks
+`Accept and continue? [y/N]`. On `y` the answer is recorded in
+`~/.genealogy/web_consent.json` and future invocations skip the prompt.
+Delete that file to revoke the consent. For scripted use,
+`GENI_WEB_CONSENT=accepted` bypasses the prompt without writing the file.
+
+### Cookie source
+
+AJAX commands need a logged-in geni.com session. The CLI tries, in order:
+
+1. **`GENI_WEB_COOKIES`** env var (explicit override) — the value of the
+   `Cookie` header copied from a logged-in browser's DevTools.
+2. The host's installed browsers (Chrome, Firefox, Safari, Edge, Brave, …)
+   via [`steipete/sweetcookie`](https://github.com/steipete/sweetcookie) —
+   `geni` reads valid, non-expired geni.com cookies straight from the
+   browser cookie store.
+
+On macOS, reading Safari's cookies requires Full Disk Access for your
+terminal in System Settings → Privacy & Security. If neither source yields
+cookies, the error message tells you which step failed.
 
 ## Flags
 

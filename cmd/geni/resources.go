@@ -11,6 +11,8 @@ import (
 
 	geni "github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/tree"
+	"github.com/dmalch/go-geni/web"
+	webrevision "github.com/dmalch/go-geni/web/revision"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -222,6 +224,54 @@ func runDocumentForProfile(ctx context.Context, g *globalOpts, args []string) er
 		return err
 	}
 	return render(g.stdout, resp)
+}
+
+// runRevisionForProfile handles "geni revision for-profile <id-or-guid>"
+// — it lists the revision IDs of a profile via the Web AJAX client.
+// Accepts either a profile-NNN id (resolved to a guid via the OAuth
+// API) or a bare guid (passed straight to the web client).
+//
+// Gated by ensureWebConsent: first invocation prompts y/N and writes
+// ~/.genealogy/web_consent.json; subsequent calls skip the prompt.
+func runRevisionForProfile(ctx context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: geni revision for-profile <profile-id-or-guid>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	guid := args[0]
+	if strings.HasPrefix(guid, "profile-") {
+		c, err := newClient(g)
+		if err != nil {
+			return err
+		}
+		p, err := c.Profile().Get(ctx, guid)
+		if err != nil {
+			return err
+		}
+		if p.Guid == "" {
+			return errors.New("profile has no guid")
+		}
+		guid = p.Guid
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+
+	ids, err := webrevision.NewClient(wc).ForProfile(ctx, guid)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, ids)
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

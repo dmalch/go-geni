@@ -101,6 +101,7 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"revision": {summary: "revision resource", sub: map[string]*command{
+			"for-profile": {summary: "list a profile's revision IDs (AJAX, one-time consent)", run: runRevisionForProfile},
 			"get": {summary: "fetch a revision by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Revision().Get(ctx, id)
