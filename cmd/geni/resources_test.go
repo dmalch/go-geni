@@ -21,6 +21,74 @@ func TestConfirmed(t *testing.T) {
 	}
 }
 
+func TestValidateResourceID(t *testing.T) {
+	t.Run("valid prefix+digits passes", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, c := range []struct{ prefix, id string }{
+			{"revision-", "revision-88812132160"},
+			{"profile-", "profile-1"},
+			{"document-", "document-44598467"},
+		} {
+			Expect(validateResourceID(c.prefix, c.id)).To(Succeed(), "valid %q", c.id)
+		}
+	})
+
+	t.Run("bare numeric is rejected with actionable message", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := validateResourceID("revision-", "88812132160")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("88812132160"))
+		Expect(err.Error()).To(ContainSubstring("revision-"))
+		Expect(err.Error()).To(ContainSubstring("revision-88812132160"))
+	})
+
+	t.Run("other bad shapes are rejected", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, bad := range []string{
+			"",
+			"profile-",
+			"profile-abc",
+			"revision-12345-extra",
+			"profile-12345 ",
+		} {
+			Expect(validateResourceID("profile-", bad)).To(HaveOccurred(), "bad %q", bad)
+		}
+	})
+
+	t.Run("wrong prefix is rejected", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := validateResourceID("revision-", "profile-12345")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("revision-"))
+	})
+}
+
+func TestResourceGet_RejectsBadIDBeforeAPICall(t *testing.T) {
+	RegisterTestingT(t)
+	h := resourceGet("revision-", func(_ *geni.Client, _ context.Context, _ string) (any, error) {
+		panic("API must not be called when id validation rejects")
+	})
+
+	g := &globalOpts{stderr: io.Discard}
+	err := h(context.Background(), g, []string{"88812132160"})
+
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("revision-88812132160"))
+}
+
+func TestResourceGetBulk_RejectsAnyBadIDBeforeAPICall(t *testing.T) {
+	RegisterTestingT(t)
+	h := resourceGetBulk("revision-", func(_ *geni.Client, _ context.Context, _ []string) (any, error) {
+		panic("API must not be called when any id is invalid")
+	})
+
+	g := &globalOpts{stderr: io.Discard}
+	err := h(context.Background(), g, []string{"revision-1", "88812132160", "revision-2"})
+
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("88812132160"))
+}
+
 func TestRunProfileMerge_ArgValidation(t *testing.T) {
 	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
 
@@ -49,6 +117,18 @@ func TestRunProfileMerge_AbortsWithoutConfirmation(t *testing.T) {
 		err := runProfileMerge(context.Background(), g, []string{"profile-1", "profile-2"})
 		Expect(err).To(MatchError(ContainSubstring("aborted")))
 	})
+}
+
+func TestPrefixRevisionIDs(t *testing.T) {
+	RegisterTestingT(t)
+	Expect(prefixRevisionIDs([]string{"88793956740", "88793956730"})).
+		To(Equal([]string{"revision-88793956740", "revision-88793956730"}))
+}
+
+func TestPrefixRevisionIDs_EmptyInputReturnsEmpty(t *testing.T) {
+	RegisterTestingT(t)
+	Expect(prefixRevisionIDs(nil)).To(BeEmpty())
+	Expect(prefixRevisionIDs([]string{})).To(BeEmpty())
 }
 
 func TestRunRevisionForProfile_ArgValidation(t *testing.T) {
@@ -125,7 +205,7 @@ func TestSplitIDs(t *testing.T) {
 
 func TestRunGetBulk_ArgValidation(t *testing.T) {
 	g := &globalOpts{}
-	handler := resourceGetBulk(func(*geni.Client, context.Context, []string) (any, error) {
+	handler := resourceGetBulk("profile-", func(*geni.Client, context.Context, []string) (any, error) {
 		// The arg-validation tests below all reject before reaching the
 		// bulk fetch, so this body should never execute.
 		panic("unreachable: arg validation should have rejected the call")
