@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 	"strings"
 
 	"github.com/steipete/sweetcookie"
@@ -81,9 +80,6 @@ func toHTTPCookies(in []sweetcookie.Cookie) []*http.Cookie {
 }
 
 func isPermissionDenied(err error) bool {
-	if runtime.GOOS != "darwin" {
-		return false
-	}
 	msg := err.Error()
 	return strings.Contains(msg, "operation not permitted") ||
 		strings.Contains(msg, "permission denied")
