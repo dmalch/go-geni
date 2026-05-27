@@ -72,6 +72,7 @@ Run `geni help` for the full list.
 | `geni revision for-profile <id\|guid>` | List a profile's revision IDs (AJAX; one-time consent prompt — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni revision get <id>` | Fetch a revision |
 | `geni revision get-bulk <id...>` | Fetch multiple revisions by id |
+| `geni matches list [flags]` | List profiles with pending tree/record/smart matches in the merge center (AJAX — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni tree family <id>` | Immediate family of a profile |
 | `geni tree ancestors <id>` | Ancestors of a profile (`-generations N`) |
 
@@ -92,6 +93,7 @@ Terms of Service.
 | `geni revision for-profile <id\|guid>` | List a profile's revision IDs (cross over to the OAuth API with `geni revision get revision-<id>` for the body of each) |
 | `geni document text get <id\|guid>` | Print a document's text body. **Raw text on stdout, not JSON** — the OAuth API can't read this field. Use redirection (`> body.txt`) to capture. |
 | `geni document text set [-from-file <p>] <id\|guid>` | Replace a document's text body. New body comes from `-from-file` or stdin. The command first fetches the current body and skips the POST if it already matches (after stripping `\r` and per-line trailing whitespace). JSON output: `{"status":"updated"\|"unchanged","guid":"…","bytes_written":N}`. |
+| `geni matches list [-collection X] [-filter Y] [-order Z] [-direction D] [-page N \| -all] [-limit N]` | List the merge-center matches (the OAuth API has no equivalent). Output is a JSON array of `{profile_guid, name, profile_url, lifespan_text, deceased, privacy, relationship, manager_name, manager_profile_url, updated_at_text, tree_match_count, record_match_count, smart_match_count, smart_match_value}`. `-collection` is one of `managed,relatives,followed,collaborators` (default: `managed`); `-filter` one of `tree,record,smart`; `-order` one of `name,relationship,manager,updated_at,matches`; `-direction` `asc\|desc`. `-all` paginates until exhausted; `-limit` caps total rows. Pipe through `jq` to filter further (e.g. `\| jq '.[] \| select(.tree_match_count + .record_match_count + .smart_match_count > 0)'`). |
 
 ### One-time consent
 

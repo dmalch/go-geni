@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	geni "github.com/dmalch/go-geni"
+	webmatches "github.com/dmalch/go-geni/web/matches"
 	. "github.com/onsi/gomega"
 )
 
@@ -219,6 +220,60 @@ func TestRunRevisionForProfile_ArgValidation(t *testing.T) {
 		RegisterTestingT(t)
 		Expect(runRevisionForProfile(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
 	})
+}
+
+func TestRunMatchesList_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("positional args rejected", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesList(context.Background(), g, []string{"profile-1"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	t.Run("unknown -filter rejected before network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesList(context.Background(), g, []string{"-filter", "bogus"})
+		Expect(err).To(MatchError(ContainSubstring("filter")))
+	})
+
+	t.Run("unknown -order rejected before network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesList(context.Background(), g, []string{"-order", "bogus"})
+		Expect(err).To(MatchError(ContainSubstring("order")))
+	})
+
+	t.Run("unknown -collection rejected before network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesList(context.Background(), g, []string{"-collection", "bogus"})
+		Expect(err).To(MatchError(ContainSubstring("collection")))
+	})
+
+	t.Run("unknown -direction rejected before network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runMatchesList(context.Background(), g, []string{"-direction", "sideways"})
+		Expect(err).To(MatchError(ContainSubstring("direction")))
+	})
+}
+
+func TestMatchesCollectionsContainsDefault(t *testing.T) {
+	RegisterTestingT(t)
+	// The CLI's default for -collection is "managed" — verify it
+	// resolves through the lookup map. If someone changes the default,
+	// the lookup must still contain the new key.
+	Expect(matchesCollections["managed"]).To(Equal(webmatches.CollectionManaged))
+}
+
+func TestRunMatchesList_AbortsWhenConsentDeclined(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GENI_WEB_CONSENT", "")
+
+	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+
+	err := runMatchesList(context.Background(), g, nil)
+	Expect(err).To(MatchError(ContainSubstring("declined")))
 }
 
 func TestRunRevisionForProfile_AbortsWhenConsentDeclined(t *testing.T) {
