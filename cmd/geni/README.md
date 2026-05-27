@@ -54,7 +54,6 @@ Run `geni help` for the full list.
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
 | `geni profile compare <id1> <id2>` | Field-by-field diff of two profiles |
 | `geni profile merge [-yes] <keep-id> <dup-id>` | Merge one profile into another (destructive; prompts for confirmation) |
-| `geni profile revisions <id\|guid>` | List a profile's revision IDs (AJAX; one-time consent prompt — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni union get <id>` | Fetch a union |
 | `geni union get-bulk <id...>` | Fetch multiple unions by id |
 | `geni document for-profile [-page N] <profile-id>` | List documents attached to a profile |
@@ -68,6 +67,7 @@ Run `geni help` for the full list.
 | `geni photoalbum get <id>` | Fetch a photo album |
 | `geni project get <id>` | Fetch a project |
 | `geni surname get <id>` | Fetch a surname |
+| `geni revision for-profile <id\|guid>` | List a profile's revision IDs (AJAX; one-time consent prompt — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni revision get <id>` | Fetch a revision |
 | `geni revision get-bulk <id...>` | Fetch multiple revisions by id |
 | `geni tree family <id>` | Immediate family of a profile |
@@ -87,7 +87,7 @@ Terms of Service.
 
 | Command | Description |
 | --- | --- |
-| `geni profile revisions <id\|guid>` | List a profile's revision IDs (cross over to the OAuth API with `geni revision get revision-<id>` for the body of each) |
+| `geni revision for-profile <id\|guid>` | List a profile's revision IDs (cross over to the OAuth API with `geni revision get revision-<id>` for the body of each) |
 
 ### One-time consent
 

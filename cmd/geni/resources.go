@@ -226,16 +226,16 @@ func runDocumentForProfile(ctx context.Context, g *globalOpts, args []string) er
 	return render(g.stdout, resp)
 }
 
-// runProfileRevisions handles "geni profile revisions <id-or-guid>" —
-// it lists the revision IDs of a profile via the Web AJAX client.
+// runRevisionForProfile handles "geni revision for-profile <id-or-guid>"
+// — it lists the revision IDs of a profile via the Web AJAX client.
 // Accepts either a profile-NNN id (resolved to a guid via the OAuth
 // API) or a bare guid (passed straight to the web client).
 //
 // Gated by ensureWebConsent: first invocation prompts y/N and writes
 // ~/.genealogy/web_consent.json; subsequent calls skip the prompt.
-func runProfileRevisions(ctx context.Context, g *globalOpts, args []string) error {
+func runRevisionForProfile(ctx context.Context, g *globalOpts, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: geni profile revisions <profile-id-or-guid>")
+		return errors.New("usage: geni revision for-profile <profile-id-or-guid>")
 	}
 
 	if err := ensureWebConsent(g); err != nil {

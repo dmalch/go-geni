@@ -34,11 +34,10 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Profile().GetBulk(ctx, ids)
 				})},
-			"search":    {summary: "search profiles by name", run: runProfileSearch},
-			"open":      {summary: "open a profile's web page in the browser", run: runProfileOpen},
-			"merge":     {summary: "merge one profile into another (destructive)", run: runProfileMerge},
-			"compare":   {summary: "compare two profiles field by field", run: runProfileCompare},
-			"revisions": {summary: "list a profile's revision IDs (AJAX, one-time consent)", run: runProfileRevisions},
+			"search":  {summary: "search profiles by name", run: runProfileSearch},
+			"open":    {summary: "open a profile's web page in the browser", run: runProfileOpen},
+			"merge":   {summary: "merge one profile into another (destructive)", run: runProfileMerge},
+			"compare": {summary: "compare two profiles field by field", run: runProfileCompare},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
 			"get": {summary: "fetch a union by id", run: resourceGet(
@@ -102,6 +101,7 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"revision": {summary: "revision resource", sub: map[string]*command{
+			"for-profile": {summary: "list a profile's revision IDs (AJAX, one-time consent)", run: runRevisionForProfile},
 			"get": {summary: "fetch a revision by id", run: resourceGet(
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Revision().Get(ctx, id)

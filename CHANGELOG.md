@@ -2,12 +2,13 @@
 
 ### NEW
 
-- New `geni profile revisions <id-or-guid>` CLI command — lists a profile's
-  revision IDs via the `web/` AJAX client. The first AJAX-backed command
-  in `cmd/geni`. Accepts either `profile-NNN` (resolved to a guid via the
-  OAuth API) or a bare guid, and prints the revision IDs as a JSON array.
-  Cross over to the OAuth API with `geni revision get revision-<id>` for
-  each revision's body.
+- New `geni revision for-profile <id-or-guid>` CLI command — lists a
+  profile's revision IDs via the `web/` AJAX client. The first
+  AJAX-backed command in `cmd/geni`, and it mirrors the existing
+  `geni document for-profile` shape. Accepts either `profile-NNN`
+  (resolved to a guid via the OAuth API) or a bare guid, and prints the
+  revision IDs as a JSON array. Cross over to the OAuth API with
+  `geni revision get revision-<id>` for each revision's body.
 - One-time AJAX-API consent gate (`cmd/geni/web.go`). The first AJAX
   command prints a disclaimer covering the undocumented / unsupported /
   ToS-risk nature of these endpoints and asks for a `y/N` confirmation.

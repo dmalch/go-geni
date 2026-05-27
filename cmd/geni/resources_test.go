@@ -51,29 +51,29 @@ func TestRunProfileMerge_AbortsWithoutConfirmation(t *testing.T) {
 	})
 }
 
-func TestRunProfileRevisions_ArgValidation(t *testing.T) {
+func TestRunRevisionForProfile_ArgValidation(t *testing.T) {
 	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
 	t.Setenv("GENI_WEB_CONSENT", "accepted") // skip the consent prompt
 
 	t.Run("no args is an error", func(t *testing.T) {
 		RegisterTestingT(t)
-		Expect(runProfileRevisions(context.Background(), g, nil)).To(HaveOccurred())
+		Expect(runRevisionForProfile(context.Background(), g, nil)).To(HaveOccurred())
 	})
 
 	t.Run("two args is an error", func(t *testing.T) {
 		RegisterTestingT(t)
-		Expect(runProfileRevisions(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
+		Expect(runRevisionForProfile(context.Background(), g, []string{"profile-1", "profile-2"})).To(HaveOccurred())
 	})
 }
 
-func TestRunProfileRevisions_AbortsWhenConsentDeclined(t *testing.T) {
+func TestRunRevisionForProfile_AbortsWhenConsentDeclined(t *testing.T) {
 	RegisterTestingT(t)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("GENI_WEB_CONSENT", "")
 
 	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
 
-	err := runProfileRevisions(context.Background(), g, []string{"6000000218702371879"})
+	err := runRevisionForProfile(context.Background(), g, []string{"6000000218702371879"})
 	Expect(err).To(MatchError(ContainSubstring("declined")))
 }
 
