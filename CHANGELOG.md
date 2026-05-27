@@ -9,6 +9,12 @@
   browsers are logged in and you want to pin a particular session
   (e.g. when only one of them has the right account active).
   Accepts `chrome,edge,brave,arc,chromium,vivaldi,opera,firefox,safari`.
+- New `geni config` command group with `geni config show` and
+  `geni config browser <name|"">`. Persists the default browser
+  preference to `~/.genealogy/config.json` so the choice survives
+  across invocations — pass once, then drop `-browser` from later
+  calls. Resolution order is flag > env var > persisted config >
+  sweetcookie default.
 - `web/browsercookies`: `FromGeniCom` is now variadic —
   `FromGeniCom(browsers ...string)`. No-arg call preserves the old
   behavior (default browser priority); with one or more names, only

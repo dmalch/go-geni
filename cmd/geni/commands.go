@@ -115,6 +115,10 @@ func commandTree() map[string]*command {
 					return c.Revision().GetBulk(ctx, ids)
 				})},
 		}},
+		"config": {summary: "persisted CLI configuration (~/.genealogy/config.json)", sub: map[string]*command{
+			"show":    {summary: "print the stored config as JSON", run: runConfigShow},
+			"browser": {summary: "set or clear the default cookie-source browser", run: runConfigBrowser},
+		}},
 		"matches": {summary: "merge-center matches (AJAX, one-time consent)", sub: map[string]*command{
 			"list":        {summary: "list profiles with pending tree/record/smart matches", run: runMatchesList},
 			"for-profile": {summary: "tree-match candidates for one profile", run: runMatchesForProfile},

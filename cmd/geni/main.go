@@ -60,6 +60,11 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	if g.browser == "" {
 		g.browser = os.Getenv("GENI_WEB_BROWSER")
 	}
+	if g.browser == "" {
+		if c, err := loadUserConfig(); err == nil {
+			g.browser = c.Browser
+		}
+	}
 
 	rest := fs.Args()
 	if len(rest) == 0 {
