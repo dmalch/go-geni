@@ -103,7 +103,7 @@ func TestLoadWebCookies_EnvVarTakesPrecedence(t *testing.T) {
 	t.Setenv("GENI_WEB_COOKIES", "_geni_session=abc; remember_user_token=xyz")
 
 	prev := browserCookieFetcher
-	browserCookieFetcher = func() ([]*http.Cookie, error) {
+	browserCookieFetcher = func(...string) ([]*http.Cookie, error) {
 		t.Fatal("browser fallback must not be called when GENI_WEB_COOKIES is set")
 		return nil, nil
 	}
@@ -122,14 +122,36 @@ func TestLoadWebCookies_EmptyEnvUsesBrowserFallback(t *testing.T) {
 	t.Setenv("GENI_WEB_COOKIES", "")
 
 	want := []*http.Cookie{{Name: "from-browser", Value: "ok"}}
+	var gotBrowsers []string
 	prev := browserCookieFetcher
-	browserCookieFetcher = func() ([]*http.Cookie, error) { return want, nil }
+	browserCookieFetcher = func(browsers ...string) ([]*http.Cookie, error) {
+		gotBrowsers = browsers
+		return want, nil
+	}
 	t.Cleanup(func() { browserCookieFetcher = prev })
 
 	cookies, err := loadWebCookies(&globalOpts{stderr: io.Discard})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cookies).To(Equal(want))
+	Expect(gotBrowsers).To(BeEmpty(), "no -browser flag means no browser filter forwarded")
+}
+
+func TestLoadWebCookies_ForwardsBrowserFlag(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("GENI_WEB_COOKIES", "")
+
+	var gotBrowsers []string
+	prev := browserCookieFetcher
+	browserCookieFetcher = func(browsers ...string) ([]*http.Cookie, error) {
+		gotBrowsers = browsers
+		return []*http.Cookie{{Name: "x", Value: "y"}}, nil
+	}
+	t.Cleanup(func() { browserCookieFetcher = prev })
+
+	_, err := loadWebCookies(&globalOpts{stderr: io.Discard, browser: "safari"})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(gotBrowsers).To(Equal([]string{"safari"}))
 }
 
 func TestLoadWebCookies_BrowserFailureWrappedWithHint(t *testing.T) {
@@ -138,7 +160,7 @@ func TestLoadWebCookies_BrowserFailureWrappedWithHint(t *testing.T) {
 
 	boom := errors.New("operation not permitted")
 	prev := browserCookieFetcher
-	browserCookieFetcher = func() ([]*http.Cookie, error) { return nil, boom }
+	browserCookieFetcher = func(...string) ([]*http.Cookie, error) { return nil, boom }
 	t.Cleanup(func() { browserCookieFetcher = prev })
 
 	_, err := loadWebCookies(&globalOpts{stderr: io.Discard})

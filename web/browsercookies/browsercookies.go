@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/steipete/sweetcookie"
@@ -33,18 +34,34 @@ var (
 			"grant Full Disk Access in System Settings → Privacy & Security)")
 )
 
+// SupportedBrowsers lists the browser names accepted by FromGeniCom.
+// Matches sweetcookie's backends. Stored as lowercase strings to
+// avoid leaking the sweetcookie.Browser type to callers.
+var SupportedBrowsers = []string{
+	"chrome", "edge", "brave", "arc", "chromium",
+	"vivaldi", "opera", "firefox", "safari",
+}
+
 // readCookies is the sweetcookie entry point, indirected for tests.
-var readCookies = func() (sweetcookie.Result, error) {
+var readCookies = func(browsers []sweetcookie.Browser) (sweetcookie.Result, error) {
 	return sweetcookie.Get(context.Background(), sweetcookie.Options{
-		URL: "https://www.geni.com/",
+		URL:      "https://www.geni.com/",
+		Browsers: browsers,
 	})
 }
 
-// FromGeniCom reads valid (non-expired) geni.com cookies from any
-// browser cookie store on the host and returns them as []*http.Cookie
-// suitable for web.Options.Cookies.
-func FromGeniCom() ([]*http.Cookie, error) {
-	res, err := readCookies()
+// FromGeniCom reads valid (non-expired) geni.com cookies from the
+// host's browser stores and returns them as []*http.Cookie suitable
+// for web.Options.Cookies. With no arguments, sweetcookie's default
+// browser priority is used. With one or more browser names, only
+// those backends are queried (and in the order given). Names are
+// case-insensitive; see SupportedBrowsers for the valid set.
+func FromGeniCom(browsers ...string) ([]*http.Cookie, error) {
+	bs, err := parseBrowsers(browsers)
+	if err != nil {
+		return nil, err
+	}
+	res, err := readCookies(bs)
 	if err != nil {
 		if isPermissionDenied(err) {
 			return nil, fmt.Errorf("%w: %w", ErrFullDiskAccessRequired, err)
@@ -55,6 +72,22 @@ func FromGeniCom() ([]*http.Cookie, error) {
 		return nil, ErrNoCookies
 	}
 	return toHTTPCookies(res.Cookies), nil
+}
+
+func parseBrowsers(names []string) ([]sweetcookie.Browser, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	out := make([]sweetcookie.Browser, 0, len(names))
+	for _, n := range names {
+		norm := strings.ToLower(strings.TrimSpace(n))
+		if !slices.Contains(SupportedBrowsers, norm) {
+			return nil, fmt.Errorf("browsercookies: unknown browser %q (supported: %s)",
+				n, strings.Join(SupportedBrowsers, ", "))
+		}
+		out = append(out, sweetcookie.Browser(norm))
+	}
+	return out, nil
 }
 
 func toHTTPCookies(in []sweetcookie.Cookie) []*http.Cookie {

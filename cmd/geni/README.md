@@ -48,6 +48,8 @@ Run `geni help` for the full list.
 | `geni whoami` | Show the authenticated user |
 | `geni stats` | Show platform-wide statistics |
 | `geni help` | Show usage |
+| `geni config show` | Print the persisted CLI config (`~/.genealogy/config.json`) as JSON |
+| `geni config browser <name\|"">` | Set or clear the persisted default for `-browser` (see [Cookie source](#cookie-source)) |
 | `geni profile get <id>` | Fetch a profile by id |
 | `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
@@ -115,6 +117,21 @@ AJAX commands need a logged-in geni.com session. The CLI tries, in order:
    `geni` reads valid, non-expired geni.com cookies straight from the
    browser cookie store.
 
+By default every backend is tried in sweetcookie's priority order
+(Chrome → Edge → Brave → Arc → Chromium → Vivaldi → Opera → Firefox →
+Safari). To pin to one browser there are three layers, checked in
+priority order:
+
+1. **`-browser=<name>`** global flag — per-invocation override.
+2. **`GENI_WEB_BROWSER`** env var — automation override.
+3. **`~/.genealogy/config.json`** persisted preference — set once
+   with `geni config browser <name>`; cleared with
+   `geni config browser ""`. Survives across invocations.
+
+Accepted values: `chrome,edge,brave,arc,chromium,vivaldi,opera,firefox,safari`.
+
+Inspect the persisted config with `geni config show`.
+
 On macOS, reading Safari's cookies requires Full Disk Access for your
 terminal in System Settings → Privacy & Security. If neither source yields
 cookies, the error message tells you which step failed.
@@ -124,6 +141,10 @@ cookies, the error message tells you which step failed.
 - **`-sandbox`** — global flag, placed **before** the command
   (`geni -sandbox whoami`). Targets `sandbox.geni.com` instead of production;
   also enabled by `GENI_USE_SANDBOX=true`.
+- **`-browser`** — global flag, placed **before** the command
+  (`geni -browser=safari matches list`). Limits AJAX cookie reads to one
+  backend. Accepts `chrome,edge,brave,arc,chromium,vivaldi,opera,firefox,safari`;
+  empty (default) tries every browser. Also settable via `GENI_WEB_BROWSER`.
 - Per-command flags go **after** the command —
   `geni profile search -page 2 Smith`, `geni tree ancestors -generations 3 <id>`.
 
