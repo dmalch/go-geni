@@ -7,12 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 
 	geni "github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/tree"
 	"github.com/dmalch/go-geni/web"
+	webdocument "github.com/dmalch/go-geni/web/document"
 	webrevision "github.com/dmalch/go-geni/web/revision"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -100,6 +102,22 @@ func resourceGetBulk(prefix string, getBulk func(c *geni.Client, ctx context.Con
 		}
 		return render(g.stdout, v)
 	}
+}
+
+// normalizeDocumentText strips carriage returns and per-line trailing
+// whitespace so two text bodies that differ only in line endings or
+// trailing padding compare equal. Matches the rule used by
+// geni-tree-terraform's update_documents.py.
+func normalizeDocumentText(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = strings.ReplaceAll(s, "\r", "")
+	lines := strings.Split(s, "\n")
+	for i, ln := range lines {
+		lines[i] = strings.TrimRight(ln, " \t")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // runProfileSearch handles "geni profile search [-page N] <name...>".
@@ -316,6 +334,132 @@ func prefixRevisionIDs(ids []string) []string {
 		out[i] = "revision-" + id
 	}
 	return out
+}
+
+// resolveDocumentGuid returns the document's guid for either a
+// "document-NNN" id (one OAuth Get call) or a bare guid (returned
+// verbatim). Mirrors runDocumentOpen's resolution path so the AJAX
+// text commands accept the same id shapes as the rest of the document
+// CLI.
+func resolveDocumentGuid(ctx context.Context, g *globalOpts, idOrGuid string) (string, error) {
+	if !strings.HasPrefix(idOrGuid, "document-") {
+		return idOrGuid, nil
+	}
+	c, err := newClient(g)
+	if err != nil {
+		return "", err
+	}
+	d, err := c.Document().Get(ctx, idOrGuid)
+	if err != nil {
+		return "", err
+	}
+	if d.Guid == "" {
+		return "", errors.New("document has no guid")
+	}
+	return d.Guid, nil
+}
+
+// runDocumentTextGet handles "geni document text get <id-or-guid>" —
+// it prints the document's text body on stdout. AJAX-backed; gated by
+// the one-time web consent prompt. Stdout is the raw text (not JSON)
+// since the artifact requested is text, not a record.
+func runDocumentTextGet(ctx context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: geni document text get <document-id-or-guid>")
+	}
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	guid, err := resolveDocumentGuid(ctx, g, args[0])
+	if err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	text, err := webdocument.NewClient(wc).GetText(ctx, guid)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(g.stdout, text)
+	return err
+}
+
+// runDocumentTextSet handles
+//
+//	geni document text set [-from-file <path>] <document-id-or-guid>
+//
+// It reads the new body from -from-file or stdin, fetches the current
+// body, and POSTs only when the normalized bodies differ. Output is
+// JSON: {"status":"updated"|"unchanged","guid":"…","bytes_written":N}.
+func runDocumentTextSet(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni document text set", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	fromFile := fs.String("from-file", "", "read new body from this file instead of stdin")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni document text set [-from-file <path>] <document-id-or-guid>")
+	}
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	var newBody []byte
+	if *fromFile != "" {
+		b, err := os.ReadFile(*fromFile)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", *fromFile, err)
+		}
+		newBody = b
+	} else {
+		b, err := io.ReadAll(g.stdin)
+		if err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+		newBody = b
+	}
+	if len(newBody) == 0 {
+		return errors.New("new body is empty (read from " +
+			map[bool]string{true: "stdin", false: "-from-file"}[*fromFile == ""] +
+			"); refusing to overwrite document text with nothing")
+	}
+
+	guid, err := resolveDocumentGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	dc := webdocument.NewClient(wc)
+
+	current, err := dc.GetText(ctx, guid)
+	if err != nil {
+		return err
+	}
+	if normalizeDocumentText(current) == normalizeDocumentText(string(newBody)) {
+		return render(g.stdout, map[string]any{"status": "unchanged", "guid": guid})
+	}
+	if err := dc.SaveText(ctx, guid, string(newBody)); err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]any{
+		"status":        "updated",
+		"guid":          guid,
+		"bytes_written": len(newBody),
+	})
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

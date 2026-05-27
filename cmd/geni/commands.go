@@ -61,6 +61,10 @@ func commandTree() map[string]*command {
 					return c.Document().GetBulk(ctx, ids)
 				})},
 			"open": {summary: "open a document's web page in the browser", run: runDocumentOpen},
+			"text": {summary: "document text body (AJAX, one-time consent)", sub: map[string]*command{
+				"get": {summary: "print a document's text body (raw, not JSON)", run: runDocumentTextGet},
+				"set": {summary: "replace a document's text body (skips POST if unchanged)", run: runDocumentTextSet},
+			}},
 		}},
 		"photo": {summary: "photo resource", sub: map[string]*command{
 			"get": {summary: "fetch a photo by id", run: resourceGet("photo-",
@@ -122,32 +126,33 @@ func commandTree() map[string]*command {
 func printUsage(w io.Writer) {
 	_, _ = fmt.Fprint(w, "geni — command-line client for the Geni.com API\n\n"+
 		"Usage:\n  geni [-sandbox] <command> [<subcommand>] [flags] [args]\n\nCommands:\n")
+	printCommands(w, "", commandTree())
+	_, _ = fmt.Fprint(w, "\nGlobal flags:\n"+
+		"  -sandbox    use sandbox.geni.com instead of production\n\n"+
+		"Run \"geni login\" once to authenticate; the token is cached under ~/.genealogy.\n")
+}
 
-	tree := commandTree()
-	names := make([]string, 0, len(tree))
-	for n := range tree {
+// printCommands recursively walks the command tree printing one line
+// per leaf, with the full dotted path. Internal-only nodes (those with
+// sub != nil) collapse into their leaves.
+func printCommands(w io.Writer, prefix string, sub map[string]*command) {
+	names := make([]string, 0, len(sub))
+	for n := range sub {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		c := tree[n]
+		c := sub[n]
+		path := n
+		if prefix != "" {
+			path = prefix + " " + n
+		}
 		if c.sub == nil {
-			_, _ = fmt.Fprintf(w, "  %-26s %s\n", n, c.summary)
+			_, _ = fmt.Fprintf(w, "  %-30s %s\n", path, c.summary)
 			continue
 		}
-		verbs := make([]string, 0, len(c.sub))
-		for v := range c.sub {
-			verbs = append(verbs, v)
-		}
-		sort.Strings(verbs)
-		for _, v := range verbs {
-			_, _ = fmt.Fprintf(w, "  %-26s %s\n", n+" "+v, c.sub[v].summary)
-		}
+		printCommands(w, path, c.sub)
 	}
-
-	_, _ = fmt.Fprint(w, "\nGlobal flags:\n"+
-		"  -sandbox    use sandbox.geni.com instead of production\n\n"+
-		"Run \"geni login\" once to authenticate; the token is cached under ~/.genealogy.\n")
 }
 
 // runLogin performs the interactive OAuth handshake and caches the

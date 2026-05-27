@@ -131,6 +131,81 @@ func TestPrefixRevisionIDs_EmptyInputReturnsEmpty(t *testing.T) {
 	Expect(prefixRevisionIDs([]string{})).To(BeEmpty())
 }
 
+func TestRunDocumentTextGet_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("no args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentTextGet(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("two args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentTextGet(context.Background(), g, []string{"document-1", "document-2"})).To(HaveOccurred())
+	})
+}
+
+func TestRunDocumentTextSet_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("no args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentTextSet(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("two positional args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runDocumentTextSet(context.Background(), g, []string{"document-1", "document-2"})).To(HaveOccurred())
+	})
+
+	t.Run("-from-file path that does not exist is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runDocumentTextSet(context.Background(), g, []string{"-from-file", "/does/not/exist", "document-1"})
+		Expect(err).To(HaveOccurred())
+	})
+}
+
+func TestRunDocumentTextSet_RejectsEmptyStdin(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+
+	err := runDocumentTextSet(context.Background(), g, []string{"document-1"})
+
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("empty"))
+}
+
+func TestNormalizeDocumentText(t *testing.T) {
+	t.Run("strips carriage returns", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(normalizeDocumentText("line1\r\nline2\r\n")).To(Equal("line1\nline2\n"))
+	})
+
+	t.Run("trims trailing whitespace per line", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(normalizeDocumentText("line1   \nline2\t\nline3 ")).To(Equal("line1\nline2\nline3"))
+	})
+
+	t.Run("CRLF + trailing spaces combined", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(normalizeDocumentText("a  \r\nb\r\n")).To(Equal("a\nb\n"))
+	})
+
+	t.Run("empty input → empty output", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(normalizeDocumentText("")).To(BeEmpty())
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		RegisterTestingT(t)
+		once := normalizeDocumentText("a\r\nb \r\n")
+		Expect(normalizeDocumentText(once)).To(Equal(once))
+	})
+}
+
 func TestRunRevisionForProfile_ArgValidation(t *testing.T) {
 	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
 	t.Setenv("GENI_WEB_CONSENT", "accepted") // skip the consent prompt

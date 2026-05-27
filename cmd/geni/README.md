@@ -60,6 +60,8 @@ Run `geni help` for the full list.
 | `geni document get <id>` | Fetch a document |
 | `geni document get-bulk <id...>` | Fetch multiple documents by id |
 | `geni document open <id\|guid>` | Open the document's web page in the browser |
+| `geni document text get <id\|guid>` | Print a document's text body — raw, **not** JSON (AJAX; see [Web (AJAX) commands](#web-ajax-commands)) |
+| `geni document text set [-from-file <p>] <id\|guid>` | Replace a document's text body from stdin or `-from-file`; no-op when the body already matches (AJAX) |
 | `geni photo get <id>` | Fetch a photo |
 | `geni photo get-bulk <id...>` | Fetch multiple photos by id |
 | `geni video get <id>` | Fetch a video |
@@ -88,6 +90,8 @@ Terms of Service.
 | Command | Description |
 | --- | --- |
 | `geni revision for-profile <id\|guid>` | List a profile's revision IDs (cross over to the OAuth API with `geni revision get revision-<id>` for the body of each) |
+| `geni document text get <id\|guid>` | Print a document's text body. **Raw text on stdout, not JSON** — the OAuth API can't read this field. Use redirection (`> body.txt`) to capture. |
+| `geni document text set [-from-file <p>] <id\|guid>` | Replace a document's text body. New body comes from `-from-file` or stdin. The command first fetches the current body and skips the POST if it already matches (after stripping `\r` and per-line trailing whitespace). JSON output: `{"status":"updated"\|"unchanged","guid":"…","bytes_written":N}`. |
 
 ### One-time consent
 
@@ -122,7 +126,9 @@ cookies, the error message tells you which step failed.
 
 ## Output
 
-Results are pretty-printed JSON on **stdout**; diagnostics and errors go to
+Results are pretty-printed JSON on **stdout**, with one exception:
+`geni document text get` prints the document's raw text body (it is the
+artifact requested, not a record about it). Diagnostics and errors go to
 **stderr**. stdout stays pure JSON, so it pipes cleanly:
 
 ```bash
