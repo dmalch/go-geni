@@ -505,7 +505,7 @@ var matchesDirections = map[string]webmatches.Direction{
 // runMatchesList handles
 //
 //	geni matches list [-collection X] [-filter Y] [-order Z] [-direction D] \
-//	                  [-page N | -all] [-limit N] [-new]
+//	                  [-page N | -all] [-limit N]
 //
 // It paginates the merge-center matches list via the Web AJAX client.
 // Output is a JSON array of match entries. Gated by ensureWebConsent.
@@ -519,7 +519,6 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	page := fs.Int("page", 0, "1-based page number; ignored with -all")
 	all := fs.Bool("all", false, "paginate until no next page")
 	limit := fs.Int("limit", 0, "cap output rows after pagination (0 = no cap)")
-	newOnly := fs.Bool("new", false, "filter to entries with tree+record+smart counts > 0")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -583,15 +582,6 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 		}
 	}
 
-	if *newOnly {
-		filtered := out[:0]
-		for _, m := range out {
-			if m.TreeMatchCount+m.RecordMatchCount+m.SmartMatchCount > 0 {
-				filtered = append(filtered, m)
-			}
-		}
-		out = filtered
-	}
 	if *limit > 0 && len(out) > *limit {
 		out = out[:*limit]
 	}

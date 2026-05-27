@@ -9,8 +9,7 @@
   the row table directly. Flags: `-collection {managed,relatives,
   followed,collaborators}` (defaults to `managed`), `-filter {tree,record,smart}`,
   `-order {name,relationship,manager,updated_at,matches}`,
-  `-direction {asc,desc}`, `-page N` / `-all`, `-limit N`, `-new`
-  (keeps only rows whose tree+record+smart count is non-zero).
+  `-direction {asc,desc}`, `-page N` / `-all`, `-limit N`.
   Output is a JSON array; reuses the same one-time AJAX consent
   gate as `geni revision for-profile` and `geni document text`.
 - New `web/matches` library sub-package — `matches.Client.List` GETs
