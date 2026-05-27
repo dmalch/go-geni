@@ -26,11 +26,11 @@ func commandTree() map[string]*command {
 		"help":   {summary: "show this usage text", run: runHelp},
 
 		"profile": {summary: "profile resource", sub: map[string]*command{
-			"get": {summary: "fetch a profile by id", run: resourceGet(
+			"get": {summary: "fetch a profile by id", run: resourceGet("profile-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Profile().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple profiles by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple profiles by id", run: resourceGetBulk("profile-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Profile().GetBulk(ctx, ids)
 				})},
@@ -40,11 +40,11 @@ func commandTree() map[string]*command {
 			"compare": {summary: "compare two profiles field by field", run: runProfileCompare},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
-			"get": {summary: "fetch a union by id", run: resourceGet(
+			"get": {summary: "fetch a union by id", run: resourceGet("union-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Union().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple unions by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple unions by id", run: resourceGetBulk("union-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Union().GetBulk(ctx, ids)
 				})},
@@ -52,61 +52,61 @@ func commandTree() map[string]*command {
 		}},
 		"document": {summary: "document resource", sub: map[string]*command{
 			"for-profile": {summary: "list documents attached to a profile", run: runDocumentForProfile},
-			"get": {summary: "fetch a document by id", run: resourceGet(
+			"get": {summary: "fetch a document by id", run: resourceGet("document-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Document().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple documents by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple documents by id", run: resourceGetBulk("document-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Document().GetBulk(ctx, ids)
 				})},
 			"open": {summary: "open a document's web page in the browser", run: runDocumentOpen},
 		}},
 		"photo": {summary: "photo resource", sub: map[string]*command{
-			"get": {summary: "fetch a photo by id", run: resourceGet(
+			"get": {summary: "fetch a photo by id", run: resourceGet("photo-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Photo().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple photos by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple photos by id", run: resourceGetBulk("photo-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Photo().GetBulk(ctx, ids)
 				})},
 		}},
 		"video": {summary: "video resource", sub: map[string]*command{
-			"get": {summary: "fetch a video by id", run: resourceGet(
+			"get": {summary: "fetch a video by id", run: resourceGet("video-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Video().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple videos by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple videos by id", run: resourceGetBulk("video-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Video().GetBulk(ctx, ids)
 				})},
 		}},
 		"photoalbum": {summary: "photo album resource", sub: map[string]*command{
-			"get": {summary: "fetch a photo album by id", run: resourceGet(
+			"get": {summary: "fetch a photo album by id", run: resourceGet("album-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.PhotoAlbum().Get(ctx, id)
 				})},
 		}},
 		"project": {summary: "project resource", sub: map[string]*command{
-			"get": {summary: "fetch a project by id", run: resourceGet(
+			"get": {summary: "fetch a project by id", run: resourceGet("project-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Project().Get(ctx, id)
 				})},
 		}},
 		"surname": {summary: "surname resource", sub: map[string]*command{
-			"get": {summary: "fetch a surname by id", run: resourceGet(
+			"get": {summary: "fetch a surname by id", run: resourceGet("surname-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Surname().Get(ctx, id)
 				})},
 		}},
 		"revision": {summary: "revision resource", sub: map[string]*command{
 			"for-profile": {summary: "list a profile's revision IDs (AJAX, one-time consent)", run: runRevisionForProfile},
-			"get": {summary: "fetch a revision by id", run: resourceGet(
+			"get": {summary: "fetch a revision by id", run: resourceGet("revision-",
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Revision().Get(ctx, id)
 				})},
-			"get-bulk": {summary: "fetch multiple revisions by id", run: resourceGetBulk(
+			"get-bulk": {summary: "fetch multiple revisions by id", run: resourceGetBulk("revision-",
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Revision().GetBulk(ctx, ids)
 				})},

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	geni "github.com/dmalch/go-geni"
@@ -16,13 +17,36 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
+// resourceIDPattern matches a Geni resource id: alphabetic prefix
+// ending in "-" followed by one or more digits.
+var resourceIDPattern = regexp.MustCompile(`^[a-z_]+-\d+$`)
+
+// validateResourceID returns nil if id is shaped like the expected
+// resource id (prefix followed by digits), or an actionable error that
+// names both the bad input and the correct form. The example in the
+// error message rebuilds the user's input under the expected prefix so
+// it doubles as a copy-paste fix when they typed a bare numeric id.
+func validateResourceID(prefix, id string) error {
+	if !resourceIDPattern.MatchString(id) || !strings.HasPrefix(id, prefix) {
+		example := prefix + "<numeric-id>"
+		if digits := strings.TrimLeft(id, "0123456789"); digits == "" && id != "" {
+			example = prefix + id
+		}
+		return fmt.Errorf("invalid resource id %q: expected %q-prefixed form, e.g. %s", id, prefix, example)
+	}
+	return nil
+}
+
 // resourceGet builds a leaf handler for a "get <id>" command: it reads
-// exactly one id argument, constructs a client, calls get, and renders
-// the result.
-func resourceGet(get func(c *geni.Client, ctx context.Context, id string) (any, error)) func(context.Context, *globalOpts, []string) error {
+// exactly one id argument, validates it against prefix, constructs a
+// client, calls get, and renders the result.
+func resourceGet(prefix string, get func(c *geni.Client, ctx context.Context, id string) (any, error)) func(context.Context, *globalOpts, []string) error {
 	return func(ctx context.Context, g *globalOpts, args []string) error {
 		if len(args) != 1 {
 			return errors.New("expected exactly one <id> argument")
+		}
+		if err := validateResourceID(prefix, args[0]); err != nil {
+			return err
 		}
 		c, err := newClient(g)
 		if err != nil {
@@ -52,13 +76,19 @@ func splitIDs(args []string) []string {
 }
 
 // resourceGetBulk builds a leaf handler for a "get-bulk <id...>"
-// command: it parses the id list, constructs a client, calls the
-// resource's bulk endpoint, and renders the results envelope.
-func resourceGetBulk(getBulk func(c *geni.Client, ctx context.Context, ids []string) (any, error)) func(context.Context, *globalOpts, []string) error {
+// command: it parses the id list, validates each entry against prefix,
+// constructs a client, calls the resource's bulk endpoint, and renders
+// the results envelope.
+func resourceGetBulk(prefix string, getBulk func(c *geni.Client, ctx context.Context, ids []string) (any, error)) func(context.Context, *globalOpts, []string) error {
 	return func(ctx context.Context, g *globalOpts, args []string) error {
 		ids := splitIDs(args)
 		if len(ids) == 0 {
 			return errors.New("expected one or more ids (space- or comma-separated)")
+		}
+		for i, id := range ids {
+			if err := validateResourceID(prefix, id); err != nil {
+				return fmt.Errorf("id at position %d: %w", i+1, err)
+			}
 		}
 		c, err := newClient(g)
 		if err != nil {
@@ -271,7 +301,21 @@ func runRevisionForProfile(ctx context.Context, g *globalOpts, args []string) er
 	if err != nil {
 		return err
 	}
-	return render(g.stdout, ids)
+	return render(g.stdout, prefixRevisionIDs(ids))
+}
+
+// prefixRevisionIDs adapts the AJAX endpoint's bare numeric rev_ids
+// into the "revision-NNN" form the OAuth API (and `geni revision get`)
+// expects, so the output chains directly into `xargs … geni revision get`.
+func prefixRevisionIDs(ids []string) []string {
+	if len(ids) == 0 {
+		return []string{}
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = "revision-" + id
+	}
+	return out
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

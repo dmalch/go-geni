@@ -1,3 +1,25 @@
+## 1.12.0 (Unreleased)
+
+### NEW
+
+- `cmd/geni`: every `<resource> get` / `<resource> get-bulk` now validates
+  the id format client-side before calling the API. Bare numeric IDs
+  (e.g. `geni revision get 88812132160`) now return an actionable
+  error pointing at the expected `revision-NNN` form instead of a
+  cryptic upstream 500 wrapped through retry-go. Covers profile,
+  union, document, photo, video, photoalbum, project, surname, and
+  revision. The pre-flight rejection also stops the library's
+  transport-layer `slog.Error` from firing for this class of mistake.
+
+### CHANGED
+
+- `cmd/geni`: `geni revision for-profile` now emits IDs in the
+  prefixed `revision-NNN` form so its output chains directly into
+  `geni revision get` — e.g.
+  `geni revision for-profile profile-X | jq -r '.[]' | xargs -I{} geni revision get {}`.
+  **Breaking** for anyone scripting against the v1.11.0 bare-numeric
+  output.
+
 ## 1.11.0
 
 ### NEW
