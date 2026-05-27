@@ -115,6 +115,12 @@ AJAX commands need a logged-in geni.com session. The CLI tries, in order:
    `geni` reads valid, non-expired geni.com cookies straight from the
    browser cookie store.
 
+By default every backend is tried in sweetcookie's priority order
+(Chrome → Edge → Brave → Arc → Chromium → Vivaldi → Opera → Firefox →
+Safari). To pin to one browser, set `-browser=<name>` (global flag) or
+`GENI_WEB_BROWSER=<name>`. Accepted values:
+`chrome,edge,brave,arc,chromium,vivaldi,opera,firefox,safari`.
+
 On macOS, reading Safari's cookies requires Full Disk Access for your
 terminal in System Settings → Privacy & Security. If neither source yields
 cookies, the error message tells you which step failed.
@@ -124,6 +130,10 @@ cookies, the error message tells you which step failed.
 - **`-sandbox`** — global flag, placed **before** the command
   (`geni -sandbox whoami`). Targets `sandbox.geni.com` instead of production;
   also enabled by `GENI_USE_SANDBOX=true`.
+- **`-browser`** — global flag, placed **before** the command
+  (`geni -browser=safari matches list`). Limits AJAX cookie reads to one
+  backend. Accepts `chrome,edge,brave,arc,chromium,vivaldi,opera,firefox,safari`;
+  empty (default) tries every browser. Also settable via `GENI_WEB_BROWSER`.
 - Per-command flags go **after** the command —
   `geni profile search -page 2 Smith`, `geni tree ancestors -generations 3 <id>`.
 

@@ -28,7 +28,9 @@ Accept and continue? [y/N]: `
 
 // browserCookieFetcher is the source for cookies when GENI_WEB_COOKIES
 // is unset. Indirected so tests can stub it without touching the host's
-// real browser stores.
+// real browser stores. The variadic argument forwards to
+// browsercookies.FromGeniCom: empty = default browser priority, one or
+// more names = only those backends in that order.
 var browserCookieFetcher = browsercookies.FromGeniCom
 
 // webConsentFilePath returns the path of the one-time AJAX-consent
@@ -81,13 +83,18 @@ func ensureWebConsent(g *globalOpts) error {
 }
 
 // loadWebCookies returns cookies for web.Options.Cookies, preferring an
-// explicit GENI_WEB_COOKIES env var and falling back to whatever the
-// host's browsers have stored for geni.com.
-func loadWebCookies(_ *globalOpts) ([]*http.Cookie, error) {
+// explicit GENI_WEB_COOKIES env var and falling back to the host's
+// browser stores. When g.browser is set, only that backend is read;
+// otherwise every browser is tried in sweetcookie's default order.
+func loadWebCookies(g *globalOpts) ([]*http.Cookie, error) {
 	if header := os.Getenv("GENI_WEB_COOKIES"); header != "" {
 		return web.CookiesFromHeader(header), nil
 	}
-	cookies, err := browserCookieFetcher()
+	var browsers []string
+	if g != nil && g.browser != "" {
+		browsers = []string{g.browser}
+	}
+	cookies, err := browserCookieFetcher(browsers...)
 	if err != nil {
 		return nil, fmt.Errorf("could not read geni.com cookies from any browser "+
 			"(set GENI_WEB_COOKIES to the Cookie header from a logged-in browser as a fallback): %w", err)

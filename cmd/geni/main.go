@@ -20,6 +20,7 @@ import (
 // globalOpts holds the flags and I/O streams shared by every command.
 type globalOpts struct {
 	sandbox bool
+	browser string // -browser / GENI_WEB_BROWSER — narrows cookie reads to one backend
 	stdin   io.Reader
 	stdout  io.Writer
 	stderr  io.Writer
@@ -45,6 +46,7 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	fs := flag.NewFlagSet("geni", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.BoolVar(&g.sandbox, "sandbox", false, "use sandbox.geni.com instead of production")
+	fs.StringVar(&g.browser, "browser", "", "AJAX cookie source (chrome|edge|brave|arc|chromium|vivaldi|opera|firefox|safari); empty = try all")
 	fs.Usage = func() { printUsage(stderr) }
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -54,6 +56,9 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 	}
 	if os.Getenv("GENI_USE_SANDBOX") == "true" {
 		g.sandbox = true
+	}
+	if g.browser == "" {
+		g.browser = os.Getenv("GENI_WEB_BROWSER")
 	}
 
 	rest := fs.Args()

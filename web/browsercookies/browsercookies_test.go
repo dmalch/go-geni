@@ -54,7 +54,9 @@ func TestToHTTPCookies(t *testing.T) {
 func TestFromGeniCom_ReturnsErrNoCookiesWhenEmpty(t *testing.T) {
 	RegisterTestingT(t)
 	prev := readCookies
-	readCookies = func() (sweetcookie.Result, error) { return sweetcookie.Result{}, nil }
+	readCookies = func([]sweetcookie.Browser) (sweetcookie.Result, error) {
+		return sweetcookie.Result{}, nil
+	}
 	t.Cleanup(func() { readCookies = prev })
 
 	_, err := FromGeniCom()
@@ -65,7 +67,7 @@ func TestFromGeniCom_ReturnsErrNoCookiesWhenEmpty(t *testing.T) {
 func TestFromGeniCom_WrapsBackendErrors(t *testing.T) {
 	RegisterTestingT(t)
 	prev := readCookies
-	readCookies = func() (sweetcookie.Result, error) {
+	readCookies = func([]sweetcookie.Browser) (sweetcookie.Result, error) {
 		return sweetcookie.Result{}, errors.New("operation not permitted")
 	}
 	t.Cleanup(func() { readCookies = prev })
@@ -75,4 +77,55 @@ func TestFromGeniCom_WrapsBackendErrors(t *testing.T) {
 	Expect(err).To(HaveOccurred())
 	Expect(errors.Is(err, ErrFullDiskAccessRequired)).To(BeTrue(),
 		"expected ErrFullDiskAccessRequired wrap, got %v", err)
+}
+
+func TestFromGeniCom_ForwardsBrowserFilter(t *testing.T) {
+	RegisterTestingT(t)
+	var got []sweetcookie.Browser
+	prev := readCookies
+	readCookies = func(bs []sweetcookie.Browser) (sweetcookie.Result, error) {
+		got = bs
+		return sweetcookie.Result{Cookies: []sweetcookie.Cookie{{Name: "x", Value: "y"}}}, nil
+	}
+	t.Cleanup(func() { readCookies = prev })
+
+	_, err := FromGeniCom("Safari", "  firefox  ")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(got).To(Equal([]sweetcookie.Browser{
+		sweetcookie.BrowserSafari, sweetcookie.BrowserFirefox,
+	}))
+}
+
+func TestFromGeniCom_NoArgsPassesNilBrowsers(t *testing.T) {
+	RegisterTestingT(t)
+	var got []sweetcookie.Browser
+	called := false
+	prev := readCookies
+	readCookies = func(bs []sweetcookie.Browser) (sweetcookie.Result, error) {
+		called = true
+		got = bs
+		return sweetcookie.Result{Cookies: []sweetcookie.Cookie{{Name: "x", Value: "y"}}}, nil
+	}
+	t.Cleanup(func() { readCookies = prev })
+
+	_, err := FromGeniCom()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(called).To(BeTrue())
+	Expect(got).To(BeNil(), "no args should yield nil so sweetcookie picks the default order")
+}
+
+func TestFromGeniCom_RejectsUnknownBrowserBeforeNetwork(t *testing.T) {
+	RegisterTestingT(t)
+	called := false
+	prev := readCookies
+	readCookies = func([]sweetcookie.Browser) (sweetcookie.Result, error) {
+		called = true
+		return sweetcookie.Result{}, nil
+	}
+	t.Cleanup(func() { readCookies = prev })
+
+	_, err := FromGeniCom("not-a-browser")
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("not-a-browser"))
+	Expect(called).To(BeFalse(), "expected validation to short-circuit before readCookies")
 }
