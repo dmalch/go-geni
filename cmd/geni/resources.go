@@ -15,6 +15,7 @@ import (
 	"github.com/dmalch/go-geni/tree"
 	"github.com/dmalch/go-geni/web"
 	webdocument "github.com/dmalch/go-geni/web/document"
+	webmatches "github.com/dmalch/go-geni/web/matches"
 	webrevision "github.com/dmalch/go-geni/web/revision"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -460,6 +461,141 @@ func runDocumentTextSet(ctx context.Context, g *globalOpts, args []string) error
 		"guid":          guid,
 		"bytes_written": len(newBody),
 	})
+}
+
+// matchesCollections maps user-facing -collection values to the Geni
+// query-string values. Both keys map identically since the underlying
+// names are already user-readable.
+var matchesCollections = map[string]webmatches.Collection{
+	"":              "",
+	"managed":       webmatches.CollectionManaged,
+	"relatives":     webmatches.CollectionRelatives,
+	"followed":      webmatches.CollectionFollowed,
+	"collaborators": webmatches.CollectionCollaborators,
+}
+
+// matchesFilters maps the user-facing -filter values to the Geni
+// query-string values. Shortened on the CLI side because the
+// "_matches" suffix is redundant under `geni matches list`.
+var matchesFilters = map[string]webmatches.Filter{
+	"":       "",
+	"tree":   webmatches.FilterTreeMatches,
+	"record": webmatches.FilterRecordMatches,
+	"smart":  webmatches.FilterSmartMatches,
+}
+
+// matchesOrders maps user-facing -order values to the Geni
+// query-string values (some of which are unintuitive — "value_add"
+// is the matches column, "mc_updated_at" is the updated_at column).
+var matchesOrders = map[string]webmatches.Order{
+	"":             "",
+	"name":         webmatches.OrderName,
+	"relationship": webmatches.OrderRelationship,
+	"manager":      webmatches.OrderManager,
+	"updated_at":   webmatches.OrderUpdatedAt,
+	"matches":      webmatches.OrderMatches,
+}
+
+var matchesDirections = map[string]webmatches.Direction{
+	"":     "",
+	"asc":  webmatches.DirectionAsc,
+	"desc": webmatches.DirectionDesc,
+}
+
+// runMatchesList handles
+//
+//	geni matches list [-collection X] [-filter Y] [-order Z] [-direction D] \
+//	                  [-page N | -all] [-limit N] [-new]
+//
+// It paginates the merge-center matches list via the Web AJAX client.
+// Output is a JSON array of match entries. Gated by ensureWebConsent.
+func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni matches list", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	collection := fs.String("collection", "", "{managed,relatives,followed,collaborators}")
+	filter := fs.String("filter", "", "{tree,record,smart}")
+	order := fs.String("order", "", "{name,relationship,manager,updated_at,matches}")
+	direction := fs.String("direction", "", "{asc,desc}")
+	page := fs.Int("page", 0, "1-based page number; ignored with -all")
+	all := fs.Bool("all", false, "paginate until no next page")
+	limit := fs.Int("limit", 0, "cap output rows after pagination (0 = no cap)")
+	newOnly := fs.Bool("new", false, "filter to entries with tree+record+smart counts > 0")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: geni matches list [flags] (no positional args)")
+	}
+
+	col, ok := matchesCollections[*collection]
+	if !ok {
+		return fmt.Errorf("invalid -collection %q (want one of: managed, relatives, followed, collaborators)", *collection)
+	}
+	flt, ok := matchesFilters[*filter]
+	if !ok {
+		return fmt.Errorf("invalid -filter %q (want one of: tree, record, smart)", *filter)
+	}
+	ord, ok := matchesOrders[*order]
+	if !ok {
+		return fmt.Errorf("invalid -order %q (want one of: name, relationship, manager, updated_at, matches)", *order)
+	}
+	dir, ok := matchesDirections[*direction]
+	if !ok {
+		return fmt.Errorf("invalid -direction %q (want one of: asc, desc)", *direction)
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	mc := webmatches.NewClient(wc)
+
+	startPage := *page
+	if startPage <= 0 {
+		startPage = 1
+	}
+
+	var out []webmatches.Match
+	for p := startPage; ; p++ {
+		res, err := mc.List(ctx, webmatches.ListOptions{
+			Collection: col,
+			Filter:     flt,
+			Order:      ord,
+			Direction:  dir,
+			Page:       p,
+		})
+		if err != nil {
+			return err
+		}
+		out = append(out, res.Matches...)
+		if !*all || !res.HasNext {
+			break
+		}
+		if *limit > 0 && len(out) >= *limit {
+			break
+		}
+	}
+
+	if *newOnly {
+		filtered := out[:0]
+		for _, m := range out {
+			if m.TreeMatchCount+m.RecordMatchCount+m.SmartMatchCount > 0 {
+				filtered = append(filtered, m)
+			}
+		}
+		out = filtered
+	}
+	if *limit > 0 && len(out) > *limit {
+		out = out[:*limit]
+	}
+	return render(g.stdout, out)
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

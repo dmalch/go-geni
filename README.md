@@ -103,7 +103,7 @@ to `geni.NewClient`.
 ## Web (AJAX) client
 
 Works around documented gaps in Geni's OAuth API (revision list, document text
-r/w) for personal genealogy tooling. The `web/` sub-tree is a **separate**
+r/w, merge-center matches list) for personal genealogy tooling. The `web/` sub-tree is a **separate**
 client that talks to the same private AJAX endpoints geni.com itself uses from
 a logged-in browser — cookie auth, per-form CSRF token, HTML responses.
 
@@ -118,6 +118,7 @@ import (
     "github.com/dmalch/go-geni/web"
     "github.com/dmalch/go-geni/web/revision"
     "github.com/dmalch/go-geni/web/document"
+    "github.com/dmalch/go-geni/web/matches"
 )
 
 c, _ := web.NewClient(web.Options{
@@ -130,6 +131,12 @@ ids, _ := revision.NewClient(c).ForProfile(context.Background(), "<profile-guid>
 // Read / write a document's text body (the OAuth API returns text:null).
 text, _ := document.NewClient(c).GetText(context.Background(), "<doc-guid>")
 err := document.NewClient(c).SaveText(context.Background(), "<doc-guid>", "new body")
+
+// List the merge-center matches (the OAuth API has no equivalent).
+res, _ := matches.NewClient(c).List(context.Background(), matches.ListOptions{
+    Collection: matches.CollectionManaged,
+    Filter:     matches.FilterTreeMatches,
+})
 ```
 
 Cookies can also be pulled directly from a logged-in browser on the host via

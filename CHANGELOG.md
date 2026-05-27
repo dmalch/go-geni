@@ -1,3 +1,23 @@
+## 1.14.0 (Unreleased)
+
+### NEW
+
+- New `geni matches list` CLI command — lists profiles with pending
+  tree / record / smart matches from the Geni merge center. The
+  OAuth API has no equivalent; the underlying `/list/matches` page is
+  server-rendered HTML, so the new `web/matches` sub-package parses
+  the row table directly. Flags: `-collection {managed,relatives,
+  followed,collaborators}`, `-filter {tree,record,smart}`,
+  `-order {name,relationship,manager,updated_at,matches}`,
+  `-direction {asc,desc}`, `-page N` / `-all`, `-limit N`, `-new`
+  (keeps only rows whose tree+record+smart count is non-zero).
+  Output is a JSON array; reuses the same one-time AJAX consent
+  gate as `geni revision for-profile` and `geni document text`.
+- New `web/matches` library sub-package — `matches.Client.List` GETs
+  `/list/matches` and returns parsed `[]Match` + `HasNext`
+  pagination flag. Mirrors the shape of `web/revision` and
+  `web/document`.
+
 ## 1.13.0
 
 ### NEW

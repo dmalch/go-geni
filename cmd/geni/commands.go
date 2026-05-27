@@ -115,6 +115,9 @@ func commandTree() map[string]*command {
 					return c.Revision().GetBulk(ctx, ids)
 				})},
 		}},
+		"matches": {summary: "merge-center matches (AJAX, one-time consent)", sub: map[string]*command{
+			"list": {summary: "list profiles with pending tree/record/smart matches", run: runMatchesList},
+		}},
 		"tree": {summary: "family-graph queries", sub: map[string]*command{
 			"family":    {summary: "immediate family of a profile", run: runTreeFamily},
 			"ancestors": {summary: "ancestors of a profile", run: runTreeAncestors},
