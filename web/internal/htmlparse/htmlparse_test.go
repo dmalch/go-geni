@@ -43,6 +43,34 @@ func TestAuthenticityToken(t *testing.T) {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(tok).To(Equal("real-token"))
 	})
+
+	t.Run("extracts Tr8n.csrfToken from inline script when no form input present", func(t *testing.T) {
+		RegisterTestingT(t)
+		html := `<html><body><script type="text/javascript">
+			//<![CDATA[
+			Tr8n.csrfParam = "authenticity_token";
+			Tr8n.csrfToken = "2DOpoQ1i9BG/bgRSvlglqigNIyVXAzjylY1Dw3Pyqgk=";
+			//]]>
+		</script></body></html>`
+
+		tok, err := AuthenticityToken(strings.NewReader(html))
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tok).To(Equal("2DOpoQ1i9BG/bgRSvlglqigNIyVXAzjylY1Dw3Pyqgk="))
+	})
+
+	t.Run("prefers form input over Tr8n.csrfToken when both present", func(t *testing.T) {
+		RegisterTestingT(t)
+		html := `<html><body>
+			<form><input type="hidden" name="authenticity_token" value="form-token"></form>
+			<script>Tr8n.csrfToken = "js-token";</script>
+		</body></html>`
+
+		tok, err := AuthenticityToken(strings.NewReader(html))
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tok).To(Equal("form-token"))
+	})
 }
 
 func TestTextareaContent(t *testing.T) {

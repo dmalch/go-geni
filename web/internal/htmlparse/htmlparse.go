@@ -6,6 +6,7 @@ package htmlparse
 import (
 	"errors"
 	"io"
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -20,28 +21,53 @@ var (
 	ErrTextareaNotFound = errors.New("textarea not found")
 )
 
+// tr8nCSRFTokenRE matches a JS assignment like
+//
+//	Tr8n.csrfToken = "abc==";
+//
+// which Geni's logged-in pages embed inline when no Rails form is being
+// rendered. Captures the token value.
+var tr8nCSRFTokenRE = regexp.MustCompile(`Tr8n\.csrfToken\s*=\s*"([^"]+)"`)
+
 // AuthenticityToken returns the value of the first
-// <input name="authenticity_token" value="…"> in r.
+// <input name="authenticity_token" value="…"> in r. When that input is
+// absent, falls back to the inline `Tr8n.csrfToken = "…"` script that
+// Geni embeds on logged-in pages.
 func AuthenticityToken(r io.Reader) (string, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return "", err
 	}
-	var token string
+	var (
+		token   string
+		scripts []string
+	)
 	walk(doc, func(n *html.Node) bool {
-		if n.Type != html.ElementNode || n.Data != "input" {
+		if n.Type != html.ElementNode {
 			return true
 		}
-		if attr(n, "name") != "authenticity_token" {
-			return true
+		if n.Data == "input" && attr(n, "name") == "authenticity_token" {
+			token = attr(n, "value")
+			return false
 		}
-		token = attr(n, "value")
-		return false
+		if n.Data == "script" {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					scripts = append(scripts, c.Data)
+				}
+			}
+		}
+		return true
 	})
-	if token == "" {
-		return "", ErrTokenNotFound
+	if token != "" {
+		return token, nil
 	}
-	return token, nil
+	for _, s := range scripts {
+		if m := tr8nCSRFTokenRE.FindStringSubmatch(s); m != nil {
+			return m[1], nil
+		}
+	}
+	return "", ErrTokenNotFound
 }
 
 // TextareaContent returns the text content of the first

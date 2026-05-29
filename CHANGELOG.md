@@ -1,3 +1,22 @@
+## 1.16.1
+
+### FIXED
+
+- `web/internal/htmlparse.AuthenticityToken`: fall back to scraping the
+  inline `Tr8n.csrfToken = "…"` JavaScript assignment when no
+  `<input name="authenticity_token">` form input is present. Geni's
+  logged-in pages no longer always render a Rails form on the CSRF
+  source page (`/documents/save_document_content`); they now expose the
+  token only via `Tr8n.csrfToken`. Affected every AJAX command that needs
+  CSRF (notably `geni document text set`), which was failing with
+  `scrape authenticity_token: authenticity_token not found`.
+- `web/document.Client.SaveText`: accept HTTP 3xx (specifically 302) as
+  success. Geni's Rails app responds to a successful
+  `POST /documents/save_document_content` with a 302 redirect to
+  `/documents` (the post-redirect-get pattern). The client previously
+  rejected this as `save_document_content: HTTP 302` even though the
+  save had actually persisted.
+
 ## 1.16.0
 
 ### NEW

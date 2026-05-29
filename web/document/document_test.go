@@ -138,3 +138,26 @@ func TestSaveText_NonOkResponseReturnsError(t *testing.T) {
 	err := newClient(t, srv, "/csrf-source").SaveText(context.Background(), "guid", "body")
 	Expect(err).To(HaveOccurred())
 }
+
+func TestSaveText_Accepts302RedirectAsSuccess(t *testing.T) {
+	// Rails apps reply to a successful POST with a 302 redirect to the
+	// resource's view page. Geni's `/documents/save_document_content`
+	// behaves this way; the client must accept it as a successful save.
+	RegisterTestingT(t)
+	var posted bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `<form><input type="hidden" name="authenticity_token" value="tok"></form>`)
+			return
+		}
+		posted = true
+		w.Header().Set("Location", "/documents")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv, "/csrf-source").SaveText(context.Background(), "guid", "body")
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(posted).To(BeTrue())
+}

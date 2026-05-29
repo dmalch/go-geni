@@ -89,7 +89,10 @@ func (c *Client) postSave(ctx context.Context, guid, body string) error {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return errCSRFRetry
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	// Geni's Rails app responds to a successful save with a 302 redirect
+	// back to /documents (the Rails post-redirect-get pattern). Treat any
+	// 2xx or 3xx as success.
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		return fmt.Errorf("save_document_content: HTTP %d", resp.StatusCode)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
