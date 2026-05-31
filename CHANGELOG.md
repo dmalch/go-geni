@@ -1,4 +1,20 @@
-## 1.16.1
+## 1.17.0
+
+### NEW
+
+- New `geni matches reject [-yes] <source-profile> <match-profile>`
+  command and `web/matches.Client.Reject`. Removes a pending tree/
+  record/smart match between two profiles — the "Удалить совпадение" /
+  "No, remove match" action in the Geni merge center — by POSTing to
+  `/profile_actions/remove_match/<source>?profile_id=<match>`. The
+  action is symmetric (argument order does not matter) and reversible:
+  rejected matches move to the "removed" group, viewable via
+  `geni matches for-profile -group removed <source>`. Both arguments
+  accept either a `profile-NNN` id (resolved to a guid via the OAuth
+  API) or a bare guid. A y/N confirmation is required unless `-yes` is
+  passed. Like the other `matches`/`document` web commands it is gated
+  by the one-time AJAX consent prompt and reuses the CSRF + 422-retry
+  pattern from `web/document`.
 
 ### FIXED
 

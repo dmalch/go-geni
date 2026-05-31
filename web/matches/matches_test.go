@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
@@ -335,4 +336,117 @@ func TestForProfile_NonOkStatusReturnsError(t *testing.T) {
 	defer srv.Close()
 	_, err := newClient(t, srv).ForProfile(context.Background(), "111", matches.ForProfileOptions{})
 	Expect(err).To(HaveOccurred())
+}
+
+func TestReject_PostsRemoveMatchWithCSRF(t *testing.T) {
+	RegisterTestingT(t)
+	type call struct {
+		method string
+		path   string
+		query  url.Values
+		form   url.Values
+	}
+	var calls []call
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		calls = append(calls, call{method: r.Method, path: r.URL.Path, query: r.URL.Query(), form: r.Form})
+		// First GET (CSRF source) — return a page with a token.
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `<form><input type="hidden" name="authenticity_token" value="tok-1"></form>`)
+			return
+		}
+		_, _ = io.WriteString(w, "success")
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv).Reject(context.Background(), "6000000206102028412", "6000000225685453832")
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(calls).To(HaveLen(2))
+
+	Expect(calls[0].method).To(Equal(http.MethodGet)) // CSRF source fetch
+
+	post := calls[1]
+	Expect(post.method).To(Equal(http.MethodPost))
+	Expect(post.path).To(Equal("/profile_actions/remove_match/6000000206102028412"))
+	Expect(post.query.Get("profile_id")).To(Equal("6000000225685453832"))
+	Expect(post.query.Get("return_here")).To(Equal("true"))
+	Expect(post.form.Get("authenticity_token")).To(Equal("tok-1"))
+}
+
+func TestReject_Accepts302RedirectAsSuccess(t *testing.T) {
+	// The compare-page variant of remove_match replies with a 302
+	// redirect (Rails post-redirect-get). Treat it as success, matching
+	// the document-save contract.
+	RegisterTestingT(t)
+	var posted bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `<form><input type="hidden" name="authenticity_token" value="tok"></form>`)
+			return
+		}
+		posted = true
+		w.Header().Set("Location", "/search/matches/6000000206102028412")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv).Reject(context.Background(), "6000000206102028412", "6000000225685453832")
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(posted).To(BeTrue())
+}
+
+func TestReject_RefreshesCSRFOn422AndRetries(t *testing.T) {
+	RegisterTestingT(t)
+	tokens := []string{"stale", "fresh"}
+	var postedTokens []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			tok := tokens[0]
+			tokens = tokens[1:]
+			_, _ = io.WriteString(w, `<form><input type="hidden" name="authenticity_token" value="`+tok+`"></form>`)
+			return
+		}
+		_ = r.ParseForm()
+		postedTokens = append(postedTokens, r.Form.Get("authenticity_token"))
+		if len(postedTokens) == 1 {
+			http.Error(w, "csrf bad", http.StatusUnprocessableEntity)
+			return
+		}
+		_, _ = io.WriteString(w, "success")
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv).Reject(context.Background(), "src", "match")
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(postedTokens).To(Equal([]string{"stale", "fresh"}))
+}
+
+func TestReject_NonOkResponseReturnsError(t *testing.T) {
+	RegisterTestingT(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `<form><input type="hidden" name="authenticity_token" value="tok"></form>`)
+			return
+		}
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv).Reject(context.Background(), "src", "match")
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("remove_match"))
+}
+
+func TestReject_LoginRedirectMapsToErrNotLoggedIn(t *testing.T) {
+	RegisterTestingT(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	defer srv.Close()
+
+	err := newClient(t, srv).Reject(context.Background(), "src", "match")
+	Expect(errors.Is(err, web.ErrNotLoggedIn)).To(BeTrue(), "expected ErrNotLoggedIn, got %v", err)
 }
