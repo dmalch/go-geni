@@ -625,20 +625,9 @@ func runMatchesForProfile(ctx context.Context, g *globalOpts, args []string) err
 		return err
 	}
 
-	guid := fs.Arg(0)
-	if strings.HasPrefix(guid, "profile-") {
-		c, err := newClient(g)
-		if err != nil {
-			return err
-		}
-		p, err := c.Profile().Get(ctx, guid)
-		if err != nil {
-			return err
-		}
-		if p.Guid == "" {
-			return errors.New("profile has no guid")
-		}
-		guid = p.Guid
+	guid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
 	}
 
 	cookies, err := loadWebCookies(g)
@@ -654,6 +643,89 @@ func runMatchesForProfile(ctx context.Context, g *globalOpts, args []string) err
 		return err
 	}
 	return render(g.stdout, res)
+}
+
+// runMatchesReject handles
+//
+//	geni matches reject [-yes] <source-profile-id-or-guid> <match-profile-id-or-guid>
+//
+// It removes the pending match between the source profile and the match
+// candidate (the "Удалить совпадение" action in the merge center).
+// Either argument may be a profile-NNN id (resolved to a guid via the
+// OAuth API) or a bare guid. The reject is reversible — rejected matches
+// move to the "removed" group, viewable via `matches for-profile -group
+// removed` — but a y/N confirmation is still required unless -yes is
+// passed. Gated by ensureWebConsent.
+func runMatchesReject(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni matches reject", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 2 {
+		return errors.New("usage: geni matches reject [-yes] <source-profile-id-or-guid> <match-profile-id-or-guid>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	sourceGuid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	matchGuid, err := resolveProfileGuid(ctx, g, fs.Arg(1))
+	if err != nil {
+		return err
+	}
+
+	if !*yes {
+		_, _ = fmt.Fprintf(g.stderr,
+			"Reject match %s for profile %s? [y/N]: ", matchGuid, sourceGuid)
+		if !confirmed(g.stdin) {
+			return errors.New("reject aborted")
+		}
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	if err := webmatches.NewClient(wc).Reject(ctx, sourceGuid, matchGuid); err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]string{
+		"status": "rejected",
+		"source": sourceGuid,
+		"match":  matchGuid,
+	})
+}
+
+// resolveProfileGuid returns id unchanged when it is already a bare guid,
+// or looks up the profile's guid via the OAuth API when given a
+// profile-NNN id. Shared by the matches web commands, which key off
+// guids but accept the friendlier profile-NNN form.
+func resolveProfileGuid(ctx context.Context, g *globalOpts, id string) (string, error) {
+	if !strings.HasPrefix(id, "profile-") {
+		return id, nil
+	}
+	c, err := newClient(g)
+	if err != nil {
+		return "", err
+	}
+	p, err := c.Profile().Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if p.Guid == "" {
+		return "", errors.New("profile has no guid")
+	}
+	return p.Guid, nil
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

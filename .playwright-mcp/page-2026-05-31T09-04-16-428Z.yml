@@ -1,0 +1,360 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - list [ref=e6] [cursor=pointer]:
+        - listitem [ref=e7]:
+          - generic [ref=e8]:
+            - img "Photo_silhouette_m_thumb2" [ref=e10]
+            - generic [ref=e11]:
+              - link "Дмитрий В... ▾" [ref=e12]:
+                - /url: "#"
+              - generic [ref=e13]: Omni
+      - generic "Поделиться" [ref=e15] [cursor=pointer]: share
+      - list [ref=e16]:
+        - listitem [ref=e17]:
+          - link "0" [ref=e19] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e20]: "0"
+          - text:  
+      - generic [ref=e21]:
+        - text: 
+        - textbox [ref=e27]: Поиск людей
+    - generic [ref=e28]:
+      - link [ref=e29] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e30]:
+        - text: 
+        - list [ref=e32]:
+          - listitem [ref=e33]:
+            - link "Главная" [ref=e35] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e36]:
+            - link "Древо" [ref=e38] [cursor=pointer]:
+              - /url: /family-tree
+          - listitem [ref=e39]:
+            - link "Семья ▾" [ref=e41] [cursor=pointer]:
+              - /url: "#"
+          - listitem [ref=e42]:
+            - link "Исследования ▾" [ref=e44] [cursor=pointer]:
+              - /url: "#"
+  - generic [ref=e46]:
+    - heading "Представляют ли эти профили одного и того же человека?" [level=1] [ref=e49]
+    - generic [ref=e51]:
+      - generic [ref=e53]:
+        - table [ref=e54]:
+          - rowgroup [ref=e55]:
+            - row "Photo_silhouette_f_small Ирина Савельевна Цыбина Icn_world ? Photo_silhouette_f_small Неонилла Савельевна Icn_world" [ref=e56]:
+              - columnheader "Photo_silhouette_f_small Ирина Савельевна Цыбина Icn_world" [ref=e57]:
+                - generic [ref=e58]:
+                  - term [ref=e59]:
+                    - generic [ref=e60]:
+                      - img [ref=e62]
+                      - link "Photo_silhouette_f_small" [ref=e63] [cursor=pointer]:
+                        - /url: /people/%D0%98%D1%80%D0%B8%D0%BD%D0%B0-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000218702512856?through=6000000221750520965
+                        - img "Photo_silhouette_f_small" [ref=e64]
+                  - definition [ref=e65]:
+                    - link "Ирина Савельевна Цыбина" [ref=e66] [cursor=pointer]:
+                      - /url: /people/%D0%98%D1%80%D0%B8%D0%BD%D0%B0-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000218702512856?through=6000000221750520965
+                    - img "Icn_world" [ref=e68]
+              - columnheader "?" [ref=e69]
+              - columnheader "Photo_silhouette_f_small Неонилла Савельевна Icn_world" [ref=e70]:
+                - generic [ref=e71]:
+                  - term [ref=e72]:
+                    - generic [ref=e73]:
+                      - img [ref=e75]
+                      - link "Photo_silhouette_f_small" [ref=e76] [cursor=pointer]:
+                        - /url: /people/%D0%9D%D0%B5%D0%BE%D0%BD%D0%B8%D0%BB%D0%BB%D0%B0/6000000221750520965
+                        - img "Photo_silhouette_f_small" [ref=e77]
+                  - definition [ref=e78]:
+                    - link "Неонилла Савельевна" [ref=e79] [cursor=pointer]:
+                      - /url: /people/%D0%9D%D0%B5%D0%BE%D0%BD%D0%B8%D0%BB%D0%BB%D0%B0/6000000221750520965
+                    - img "Icn_world" [ref=e81]
+            - row [ref=e82]:
+              - cell [ref=e83]
+              - cell [ref=e84]
+            - row [ref=e85]:
+              - cell [ref=e86]:
+                - separator [ref=e87]
+              - cell [ref=e88]:
+                - separator [ref=e89]
+            - row "Дочь Савелия Ивановича Цыбина и Екатерины Ивановны Цыбиной Дочь Савелия Егоровича и Варвары Ивановны" [ref=e90]:
+              - cell "Дочь Савелия Ивановича Цыбина и Екатерины Ивановны Цыбиной" [ref=e91]:
+                - generic [ref=e92]:
+                  - term [ref=e93]: Дочь
+                  - definition [ref=e94]:
+                    - link "Савелия Ивановича Цыбина" [ref=e95] [cursor=pointer]:
+                      - /url: /people/%D0%A1%D0%B0%D0%B2%D0%B5%D0%BB%D0%B8%D0%B9-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD/6000000205600130024?through=6000000221750520965
+                    - text: и
+                    - link "Екатерины Ивановны Цыбиной" [ref=e96] [cursor=pointer]:
+                      - /url: /people/%D0%95%D0%BA%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%BD%D0%B0-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000205601064844?through=6000000221750520965
+              - cell "Дочь Савелия Егоровича и Варвары Ивановны" [ref=e97]:
+                - generic [ref=e98]:
+                  - term [ref=e99]: Дочь
+                  - definition [ref=e100]:
+                    - link "Савелия Егоровича" [ref=e101] [cursor=pointer]:
+                      - /url: /people/%D0%A1%D0%B0%D0%B2%D0%B5%D0%BB%D0%B8%D0%B9/6000000221750506147?through=6000000221750520965
+                    - text: и
+                    - link "Варвары Ивановны" [ref=e102] [cursor=pointer]:
+                      - /url: /people/%D0%92%D0%B0%D1%80%D0%B2%D0%B0%D1%80%D0%B0/6000000221750643893?through=6000000221750520965
+            - row "Сестра Василисы Савельевны Цыбиной; Гавриила Савельевича Цыбина; Евдокии Савельевны Цыбиной; Ирины Савельевны; Марфы Савельевны Цыбиной и ещё 2" [ref=e103]:
+              - cell "Сестра Василисы Савельевны Цыбиной; Гавриила Савельевича Цыбина; Евдокии Савельевны Цыбиной; Ирины Савельевны; Марфы Савельевны Цыбиной и ещё 2" [ref=e104]:
+                - generic [ref=e105]:
+                  - term [ref=e106]: Сестра
+                  - definition [ref=e107]:
+                    - link "Василисы Савельевны Цыбиной" [ref=e108] [cursor=pointer]:
+                      - /url: /people/%D0%92%D0%B0%D1%81%D0%B8%D0%BB%D0%B8%D1%81%D0%B0-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000218702357026?through=6000000221750520965
+                    - text: ;
+                    - link "Гавриила Савельевича Цыбина" [ref=e109] [cursor=pointer]:
+                      - /url: /people/%D0%93%D0%B0%D0%B2%D1%80%D0%B8%D0%B8%D0%BB-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD/6000000222898986841?through=6000000221750520965
+                    - text: ;
+                    - link "Евдокии Савельевны Цыбиной" [ref=e110] [cursor=pointer]:
+                      - /url: /people/%D0%95%D0%B2%D0%B4%D0%BE%D0%BA%D0%B8%D1%8F-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000218702473824?through=6000000221750520965
+                    - text: ;
+                    - link "Ирины Савельевны" [ref=e111] [cursor=pointer]:
+                      - /url: /people/%D0%98%D1%80%D0%B8%D0%BD%D0%B0/6000000221408317963?through=6000000221750520965
+                    - text: ;
+                    - link "Марфы Савельевны Цыбиной" [ref=e112] [cursor=pointer]:
+                      - /url: /people/%D0%9C%D0%B0%D1%80%D1%84%D0%B0-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD%D0%B0/6000000218702713823?through=6000000221750520965
+                    - generic [ref=e113]:
+                      - text: и
+                      - link "ещё 2" [ref=e114] [cursor=pointer]:
+                        - /url: "#"
+              - cell [ref=e115]
+            - row "Неполнородная сестра Ксенофонта Савельевича Цыбина; Марфы Савельевны; Пелагеи Савельевны и Платона Савельевича Цыбина" [ref=e116]:
+              - cell "Неполнородная сестра Ксенофонта Савельевича Цыбина; Марфы Савельевны; Пелагеи Савельевны и Платона Савельевича Цыбина" [ref=e117]:
+                - generic [ref=e118]:
+                  - term [ref=e119]: Неполнородная сестра
+                  - definition [ref=e120]:
+                    - link "Ксенофонта Савельевича Цыбина" [ref=e121] [cursor=pointer]:
+                      - /url: /people/%D0%9A%D1%81%D0%B5%D0%BD%D0%BE%D1%84%D0%BE%D0%BD%D1%82-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD/6000000205632608864?through=6000000221750520965
+                    - text: ;
+                    - link "Марфы Савельевны" [ref=e122] [cursor=pointer]:
+                      - /url: /people/%D0%9C%D0%B0%D1%80%D1%84%D0%B0/6000000217841411917?through=6000000221750520965
+                    - text: ;
+                    - link "Пелагеи Савельевны" [ref=e123] [cursor=pointer]:
+                      - /url: /people/%D0%9F%D0%B5%D0%BB%D0%B0%D0%B3%D0%B5%D1%8F/6000000217733576922?through=6000000221750520965
+                    - text: и
+                    - link "Платона Савельевича Цыбина" [ref=e124] [cursor=pointer]:
+                      - /url: /people/%D0%9F%D0%BB%D0%B0%D1%82%D0%BE%D0%BD-%D0%A6%D1%8B%D0%B1%D0%B8%D0%BD/6000000205679408880?through=6000000221750520965
+              - cell [ref=e125]
+            - row [ref=e126]:
+              - cell [ref=e127]:
+                - separator [ref=e128]
+              - cell [ref=e129]:
+                - separator [ref=e130]
+            - row "Жив Нет Жив Нет" [ref=e131]:
+              - cell "Жив Нет" [ref=e132]:
+                - generic [ref=e133]:
+                  - term [ref=e134]: Жив
+                  - definition [ref=e135]: Нет
+              - cell "Жив Нет" [ref=e136]:
+                - generic [ref=e137]:
+                  - term [ref=e138]: Жив
+                  - definition [ref=e139]: Нет
+            - row "Дата рождения ±1839 Дата рождения 16.10.1836" [ref=e140]:
+              - cell "Дата рождения ±1839" [ref=e141]:
+                - generic [ref=e142]:
+                  - term [ref=e143]: Дата рождения
+                  - definition [ref=e144]: ±1839
+              - cell "Дата рождения 16.10.1836" [ref=e145]:
+                - generic [ref=e146]:
+                  - term [ref=e147]: Дата рождения
+                  - definition [ref=e148]: 16.10.1836
+            - row "Дата смерти после 1.10.1850 Дата смерти" [ref=e149]:
+              - cell "Дата смерти после 1.10.1850" [ref=e150]:
+                - generic [ref=e151]:
+                  - term [ref=e152]: Дата смерти
+                  - definition [ref=e153]: после 1.10.1850
+              - cell "Дата смерти" [ref=e154]:
+                - generic [ref=e155]:
+                  - term [ref=e156]: Дата смерти
+                  - definition
+            - row "Имя Irina Имя Neonilla" [ref=e157]:
+              - cell "Имя Irina" [ref=e158]:
+                - generic [ref=e159]:
+                  - term [ref=e160]: Имя
+                  - definition [ref=e161]: Irina
+              - cell "Имя Neonilla" [ref=e162]:
+                - generic [ref=e163]:
+                  - term [ref=e164]: Имя
+                  - definition [ref=e165]: Neonilla
+            - row "Имя (русский) Ирина Имя (русский) Неонилла" [ref=e166]:
+              - cell "Имя (русский) Ирина" [ref=e167]:
+                - generic [ref=e168]:
+                  - term [ref=e169]: Имя (русский)
+                  - definition [ref=e170]: Ирина
+              - cell "Имя (русский) Неонилла" [ref=e171]:
+                - generic [ref=e172]:
+                  - term [ref=e173]: Имя (русский)
+                  - definition [ref=e174]: Неонилла
+            - row "Отчество Savel'evna Отчество Savel'evna" [ref=e175]:
+              - cell "Отчество Savel'evna" [ref=e176]:
+                - generic [ref=e177]:
+                  - term [ref=e178]: Отчество
+                  - definition [ref=e179]: Savel'evna
+              - cell "Отчество Savel'evna" [ref=e180]:
+                - generic [ref=e181]:
+                  - term [ref=e182]: Отчество
+                  - definition [ref=e183]: Savel'evna
+            - row "Отчество (русский) Савельевна Отчество (русский) Савельевна" [ref=e184]:
+              - cell "Отчество (русский) Савельевна" [ref=e185]:
+                - generic [ref=e186]:
+                  - term [ref=e187]: Отчество (русский)
+                  - definition [ref=e188]: Савельевна
+              - cell "Отчество (русский) Савельевна" [ref=e189]:
+                - generic [ref=e190]:
+                  - term [ref=e191]: Отчество (русский)
+                  - definition [ref=e192]: Савельевна
+            - row "Фамилия Tsybina Фамилия" [ref=e193]:
+              - cell "Фамилия Tsybina" [ref=e194]:
+                - generic [ref=e195]:
+                  - term [ref=e196]: Фамилия
+                  - definition [ref=e197]: Tsybina
+              - cell "Фамилия" [ref=e198]:
+                - generic [ref=e199]:
+                  - term [ref=e200]: Фамилия
+                  - definition
+            - row "Фамилия (русский) Цыбина Фамилия (русский)" [ref=e201]:
+              - cell "Фамилия (русский) Цыбина" [ref=e202]:
+                - generic [ref=e203]:
+                  - term [ref=e204]: Фамилия (русский)
+                  - definition [ref=e205]: Цыбина
+              - cell "Фамилия (русский)" [ref=e206]:
+                - generic [ref=e207]:
+                  - term [ref=e208]: Фамилия (русский)
+                  - definition
+            - row "Пол Женщина Пол Женщина" [ref=e209]:
+              - cell "Пол Женщина" [ref=e210]:
+                - generic [ref=e211]:
+                  - term [ref=e212]: Пол
+                  - definition [ref=e213]: Женщина
+              - cell "Пол Женщина" [ref=e214]:
+                - generic [ref=e215]:
+                  - term [ref=e216]: Пол
+                  - definition [ref=e217]: Женщина
+            - row "Место рождения Место рождения село Журавкино, Спасский уезд, Майданская волость, Тамбовская губерния, Россия" [ref=e218]:
+              - cell "Место рождения" [ref=e219]:
+                - generic [ref=e220]:
+                  - term [ref=e221]: Место рождения
+                  - definition
+              - cell "Место рождения село Журавкино, Спасский уезд, Майданская волость, Тамбовская губерния, Россия" [ref=e222]:
+                - generic [ref=e223]:
+                  - term [ref=e224]: Место рождения
+                  - definition [ref=e225]: село Журавкино, Спасский уезд, Майданская волость, Тамбовская губерния, Россия
+            - row "Дата крещения Дата крещения 18.10.1836" [ref=e226]:
+              - cell "Дата крещения" [ref=e227]:
+                - generic [ref=e228]:
+                  - term [ref=e229]: Дата крещения
+                  - definition
+              - cell "Дата крещения 18.10.1836" [ref=e230]:
+                - generic [ref=e231]:
+                  - term [ref=e232]: Дата крещения
+                  - definition [ref=e233]: 18.10.1836
+            - row "Менеджер Дмитрий Викторович Мальчиков Менеджер Дмитрий Викторович Мальчиков" [ref=e234]:
+              - cell "Менеджер Дмитрий Викторович Мальчиков" [ref=e235]:
+                - generic [ref=e236]:
+                  - term [ref=e237]: Менеджер
+                  - definition [ref=e238]:
+                    - link "Дмитрий Викторович Мальчиков" [ref=e240] [cursor=pointer]:
+                      - /url: /people/%D0%94%D0%BC%D0%B8%D1%82%D1%80%D0%B8%D0%B9-%D0%9C%D0%B0%D0%BB%D1%8C%D1%87%D0%B8%D0%BA%D0%BE%D0%B2/6000000206907528877
+              - cell "Менеджер Дмитрий Викторович Мальчиков" [ref=e241]:
+                - generic [ref=e242]:
+                  - term [ref=e243]: Менеджер
+                  - definition [ref=e244]:
+                    - link "Дмитрий Викторович Мальчиков" [ref=e246] [cursor=pointer]:
+                      - /url: /people/%D0%94%D0%BC%D0%B8%D1%82%D1%80%D0%B8%D0%B9-%D0%9C%D0%B0%D0%BB%D1%8C%D1%87%D0%B8%D0%BA%D0%BE%D0%B2/6000000206907528877
+            - row "Создано 20.5.2025 Создано 16.10.2025" [ref=e247]:
+              - cell "Создано 20.5.2025" [ref=e248]:
+                - generic [ref=e249]:
+                  - term [ref=e250]: Создано
+                  - definition [ref=e251]: 20.5.2025
+              - cell "Создано 16.10.2025" [ref=e252]:
+                - generic [ref=e253]:
+                  - term [ref=e254]: Создано
+                  - definition [ref=e255]: 16.10.2025
+        - generic [ref=e256]:
+          - generic [ref=e257]: Зелёный текст указывает совпадающие данные.
+          - generic [ref=e258]: Зелёная рамка означает профиль во всемирном генеалогическом древе
+          - generic [ref=e259]:
+            - text: Просмотрите параллельно отчёты по
+            - link "потомкам" [ref=e260] [cursor=pointer]:
+              - /url: /list/descendants/6000000218702512856?compare_id=6000000221750520965
+            - text: или
+            - link "предкам" [ref=e261] [cursor=pointer]:
+              - /url: /list/ancestors/6000000218702512856?compare_id=6000000221750520965
+            - text: ", чтобы получить дополнительную информацию"
+      - generic [ref=e264]:
+        - generic [ref=e265]:
+          - heading "Эти профили находятся в разных древах." [level=3] [ref=e266]
+          - text: Внимание! Слияние этих профилей объединит соответствующие древа и может потребовать слияния других парных профилей.
+        - generic [ref=e267]:
+          - link "Да, объединить эти профили" [ref=e268] [cursor=pointer]:
+            - /url: "#"
+          - link "Нет, удалить совпадение" [ref=e269] [cursor=pointer]:
+            - /url: "#"
+          - link "Я решу позже" [ref=e271] [cursor=pointer]:
+            - /url: /search/matches/6000000218702512856
+  - generic [ref=e273]:
+    - generic [ref=e274]:
+      - list [ref=e275]:
+        - listitem [ref=e276]: © 2026 Geni.com
+        - listitem [ref=e277]:
+          - link "О нас" [ref=e278] [cursor=pointer]:
+            - /url: https://www.geni.com/corp
+        - listitem [ref=e279]:
+          - link "Условия" [ref=e280] [cursor=pointer]:
+            - /url: https://www.geni.com/company/terms_of_use
+        - listitem [ref=e281]:
+          - link "Конфиденциальность" [ref=e282] [cursor=pointer]:
+            - /url: https://www.geni.com/privacy
+        - listitem [ref=e283]:
+          - link "Политика конфиденциальности для США" [ref=e284] [cursor=pointer]:
+            - /url: https://www.geni.com/privacy/state_rights
+        - listitem [ref=e285]:
+          - link "Файлы cookie" [ref=e286] [cursor=pointer]:
+            - /url: https://www.geni.com/account_settings/cookie_settings
+        - listitem [ref=e287]:
+          - link "Правила поведения" [ref=e288] [cursor=pointer]:
+            - /url: https://www.geni.com/code-of-conduct
+        - listitem [ref=e289]:
+          - link "Блог" [ref=e290] [cursor=pointer]:
+            - /url: https://www.geni.com/blog
+        - listitem [ref=e291]:
+          - link "Всемирное генеалогическое древо" [ref=e292] [cursor=pointer]:
+            - /url: https://www.geni.com/worldfamilytree
+        - listitem [ref=e293]:
+          - link "Справка" [ref=e294] [cursor=pointer]:
+            - /url: https://www.geni.com/sso/zendesk/login?return_to=https%3A%2F%2Fhelp.geni.com
+        - listitem [ref=e295]:
+          - link "Русский" [ref=e296] [cursor=pointer]:
+            - /url: /account_settings/language_selector
+      - generic [ref=e297]:
+        - link "Bluesky_Logo" [ref=e298] [cursor=pointer]:
+          - /url: https://bsky.app/profile/geni.com
+          - img "Bluesky_Logo" [ref=e299]
+        - link "Facebook_white_small_short" [ref=e300] [cursor=pointer]:
+          - /url: https://www.facebook.com/genidotcom/
+          - img "Facebook_white_small_short" [ref=e301]
+    - generic [ref=e303]:
+      - link "English (US)" [ref=e306] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=en-US
+      - link "eesti" [ref=e309] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=et
+      - link "Svenska" [ref=e312] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=sv
+      - link "Español (España)" [ref=e315] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=es
+      - link "Français" [ref=e318] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=fr
+      - link "עברית" [ref=e321] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=he
+      - link "Norsk (bokmål)" [ref=e324] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=no
+      - link "dansk" [ref=e327] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=da
+      - link "Nederlands" [ref=e330] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=nl
+      - link "Deutsch" [ref=e333] [cursor=pointer]:
+        - /url: /tr8n/language/switch?language_action=switch_language&locale=de
+      - link "»" [ref=e334] [cursor=pointer]:
+        - /url: /tr8n/language/table

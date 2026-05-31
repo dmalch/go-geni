@@ -10,6 +10,7 @@ package matches
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -145,6 +146,66 @@ func (c *Client) List(ctx context.Context, opts ListOptions) (*ListResult, error
 		currentPage = 1
 	}
 	return parseListMatches(resp.Body, currentPage)
+}
+
+// errCSRFRetry signals a stale authenticity_token (HTTP 422). The
+// caller invalidates the cached CSRF, refetches, and retries once.
+var errCSRFRetry = errors.New("csrf retry needed")
+
+// Reject removes the pending match between sourceGuid and matchGuid —
+// the "Удалить совпадение" / "No, remove match" action in the merge
+// center. The action is symmetric: argument order only affects which
+// profile the server "returns to" afterwards. Rejected matches move to
+// the "removed" group and can be reviewed via ForProfile with
+// GroupRemoved.
+//
+// On a 422 (a stale authenticity_token) the cached CSRF is invalidated,
+// refetched, and the POST retried once, mirroring document.SaveText.
+func (c *Client) Reject(ctx context.Context, sourceGuid, matchGuid string) error {
+	err := c.postReject(ctx, sourceGuid, matchGuid)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, errCSRFRetry) {
+		return err
+	}
+	c.web.InvalidateCSRF()
+	return c.postReject(ctx, sourceGuid, matchGuid)
+}
+
+func (c *Client) postReject(ctx context.Context, sourceGuid, matchGuid string) error {
+	token, err := c.web.CSRFToken(ctx)
+	if err != nil {
+		return fmt.Errorf("get csrf: %w", err)
+	}
+	u := c.web.BaseURL() + "/profile_actions/remove_match/" + sourceGuid + "?" +
+		url.Values{"profile_id": {matchGuid}, "return_here": {"true"}}.Encode()
+	form := url.Values{"authenticity_token": {token}}.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, strings.NewReader(form))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.web.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Geni replies with the plain "success" body (return_here=true) or a
+	// 302 redirect (compare-page variant). A 422 means the token went
+	// stale — signal a single retry. Treat any other 2xx/3xx as success.
+	if resp.StatusCode == http.StatusUnprocessableEntity {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return errCSRFRetry
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return fmt.Errorf("remove_match: HTTP %d", resp.StatusCode)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
 }
 
 // parseListMatches walks the merge-center HTML page and returns the

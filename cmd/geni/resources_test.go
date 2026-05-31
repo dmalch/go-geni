@@ -308,6 +308,55 @@ func TestRunMatchesList_AbortsWhenConsentDeclined(t *testing.T) {
 	Expect(err).To(MatchError(ContainSubstring("declined")))
 }
 
+func TestRunMatchesReject_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("no args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runMatchesReject(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("one arg is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runMatchesReject(context.Background(), g, []string{"6000000206102028412"})).To(HaveOccurred())
+	})
+
+	t.Run("three args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runMatchesReject(context.Background(), g, []string{"a", "b", "c"})).To(HaveOccurred())
+	})
+}
+
+func TestRunMatchesReject_AbortsWithoutConfirmation(t *testing.T) {
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("a 'no' answer aborts before any reject", func(t *testing.T) {
+		RegisterTestingT(t)
+		g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+		err := runMatchesReject(context.Background(), g, []string{"6000000206102028412", "6000000225685453832"})
+		Expect(err).To(MatchError(ContainSubstring("aborted")))
+	})
+
+	t.Run("empty stdin aborts (fail-safe)", func(t *testing.T) {
+		RegisterTestingT(t)
+		g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+		err := runMatchesReject(context.Background(), g, []string{"6000000206102028412", "6000000225685453832"})
+		Expect(err).To(MatchError(ContainSubstring("aborted")))
+	})
+}
+
+func TestRunMatchesReject_AbortsWhenConsentDeclined(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GENI_WEB_CONSENT", "")
+
+	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+
+	err := runMatchesReject(context.Background(), g, []string{"6000000206102028412", "6000000225685453832"})
+	Expect(err).To(MatchError(ContainSubstring("declined")))
+}
+
 func TestRunRevisionForProfile_AbortsWhenConsentDeclined(t *testing.T) {
 	RegisterTestingT(t)
 	t.Setenv("HOME", t.TempDir())
