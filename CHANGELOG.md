@@ -16,6 +16,8 @@
   by the one-time AJAX consent prompt and reuses the CSRF + 422-retry
   pattern from `web/document`.
 
+## 1.16.1
+
 ### FIXED
 
 - `web/internal/htmlparse.AuthenticityToken`: fall back to scraping the
