@@ -14,6 +14,7 @@ import (
 	geni "github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/tree"
 	"github.com/dmalch/go-geni/web"
+	webconflicts "github.com/dmalch/go-geni/web/conflicts"
 	webdocument "github.com/dmalch/go-geni/web/document"
 	webmatches "github.com/dmalch/go-geni/web/matches"
 	webrevision "github.com/dmalch/go-geni/web/revision"
@@ -726,6 +727,160 @@ func resolveProfileGuid(ctx context.Context, g *globalOpts, id string) (string, 
 		return "", errors.New("profile has no guid")
 	}
 	return p.Guid, nil
+}
+
+// runConflictsList handles
+//
+//	geni conflicts list [-page N | -all] [-limit N]
+//
+// It paginates the merge-center data-conflicts list via the Web AJAX
+// client. Output is a JSON array of conflict entries. Gated by
+// ensureWebConsent.
+func runConflictsList(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni conflicts list", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	page := fs.Int("page", 0, "1-based page number; ignored with -all")
+	all := fs.Bool("all", false, "paginate until no next page")
+	limit := fs.Int("limit", 0, "cap output rows after pagination (0 = no cap)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: geni conflicts list [flags] (no positional args)")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	cc := webconflicts.NewClient(wc)
+
+	startPage := *page
+	if startPage <= 0 {
+		startPage = 1
+	}
+
+	var out []webconflicts.Conflict
+	for p := startPage; ; p++ {
+		res, err := cc.List(ctx, webconflicts.ListOptions{Page: p})
+		if err != nil {
+			return err
+		}
+		out = append(out, res.Conflicts...)
+		if !*all || !res.HasNext {
+			break
+		}
+		if *limit > 0 && len(out) >= *limit {
+			break
+		}
+	}
+
+	if *limit > 0 && len(out) > *limit {
+		out = out[:*limit]
+	}
+	return render(g.stdout, out)
+}
+
+// runConflictsShow handles
+//
+//	geni conflicts show <profile-id-or-guid>
+//
+// It fetches /merge/resolve/<guid> and reports the conflicting fields.
+// A profile with no outstanding conflict prints has_conflict:false.
+// Accepts either a profile-NNN id (resolved to a guid via the OAuth API)
+// or a bare guid. Gated by ensureWebConsent.
+func runConflictsShow(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni conflicts show", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni conflicts show <profile-id-or-guid>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	guid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	res, err := webconflicts.NewClient(wc).Get(ctx, guid)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, res)
+}
+
+// runConflictsResolve handles
+//
+//	geni conflicts resolve [-yes] <profile-id-or-guid>
+//
+// It clears a profile's merge data conflict by keeping the surviving
+// (primary) profile's value for every conflicting field — the correct
+// default when the survivor is canonical. The action is destructive
+// (it overwrites the merge's unresolved state), so a y/N confirmation is
+// required unless -yes is passed. Resolving an already-clean profile is a
+// no-op. Accepts a profile-NNN id or a bare guid. Gated by
+// ensureWebConsent.
+func runConflictsResolve(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni conflicts resolve", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni conflicts resolve [-yes] <profile-id-or-guid>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	guid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+
+	if !*yes {
+		_, _ = fmt.Fprintf(g.stderr,
+			"Resolve data conflict for profile %s (keep primary values)? [y/N]: ", guid)
+		if !confirmed(g.stdin) {
+			return errors.New("resolve aborted")
+		}
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	if err != nil {
+		return err
+	}
+	if err := webconflicts.NewClient(wc).Resolve(ctx, guid, nil); err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]string{
+		"status":  "resolved",
+		"profile": guid,
+	})
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

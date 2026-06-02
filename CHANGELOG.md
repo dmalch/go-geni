@@ -1,3 +1,30 @@
+## 1.18.0 (Unreleased)
+
+### NEW
+
+- New `geni conflicts` command group and `web/conflicts` sub-package for
+  Geni merge **data conflicts** — the unresolved field disagreements
+  (names, dates, residence) Geni leaves after merging two profiles. The
+  OAuth API has no equivalent (`GET /api/<id>/data-conflicts` 500s and
+  the `merge_pending`/`merge_note` profile fields stay null), so the
+  feature parses the server-rendered Merge Center pages, mirroring
+  `web/matches`:
+  - `geni conflicts list [-page N | -all] [-limit N]` — lists profiles
+    with an unresolved conflict (GET `/list/data_conflicts`), as a JSON
+    array of `{profile_guid, name, resolve_url, …}`.
+  - `geni conflicts show <id-or-guid>` — shows the conflicting fields for
+    one profile (GET `/merge/resolve/<guid>`). A resolved profile prints
+    `has_conflict:false` (the page 302-redirects to `/people/…`).
+  - `geni conflicts resolve [-yes] <id-or-guid>` — clears the conflict by
+    keeping the surviving (primary) profile's value for every field (the
+    correct default when the survivor is canonical). Destructive, so a
+    y/N confirmation is required unless `-yes` is passed; resolving an
+    already-clean profile is a no-op.
+
+  Arguments accept either a `profile-NNN` id (resolved to a guid via the
+  OAuth API) or a bare guid. Gated by the one-time AJAX consent prompt and
+  reuses the CSRF + 422-retry pattern from `web/document` / `web/matches`.
+
 ## 1.17.0
 
 ### NEW
