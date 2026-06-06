@@ -1,4 +1,4 @@
-## Unreleased
+## 1.19.0
 
 ### NEW
 
