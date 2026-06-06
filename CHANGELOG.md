@@ -1,3 +1,19 @@
+## Unreleased
+
+### NEW
+
+- `geni profile get` now accepts a guid via a new `-guid` flag:
+  `geni profile get -guid 6000000206907528877`. Geni's OAuth API does not
+  resolve a bare guid at `api/<guid>` (it 500s), so the flag rewrites the
+  argument to the immutable `profile-g<guid>` form, which the single-get
+  endpoint honours. Without `-guid` the strict `profile-NNN` validation is
+  unchanged, so a bare numeric id still gets the "you forgot the prefix"
+  hint rather than silently becoming a guid lookup.
+
+  This is single-get only: Geni's bulk endpoint (`api/profile?ids=…`)
+  silently ignores every guid form, so `get-bulk` keeps requiring
+  `profile-NNN` ids.
+
 ## 1.18.0
 
 ### NEW

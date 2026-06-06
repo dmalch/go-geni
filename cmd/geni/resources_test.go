@@ -66,7 +66,7 @@ func TestValidateResourceID(t *testing.T) {
 
 func TestResourceGet_RejectsBadIDBeforeAPICall(t *testing.T) {
 	RegisterTestingT(t)
-	h := resourceGet("revision-", func(_ *geni.Client, _ context.Context, _ string) (any, error) {
+	h := resourceGet("revision-", false, func(_ *geni.Client, _ context.Context, _ string) (any, error) {
 		panic("API must not be called when id validation rejects")
 	})
 
@@ -75,6 +75,55 @@ func TestResourceGet_RejectsBadIDBeforeAPICall(t *testing.T) {
 
 	Expect(err).To(HaveOccurred())
 	Expect(err.Error()).To(ContainSubstring("revision-88812132160"))
+}
+
+func TestResolveGetID(t *testing.T) {
+	g := &globalOpts{stderr: io.Discard}
+
+	t.Run("without allowGuid: strict prefix-NNN, no -guid flag", func(t *testing.T) {
+		RegisterTestingT(t)
+		id, err := resolveGetID("profile-", false, g, []string{"profile-123"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(id).To(Equal("profile-123"))
+
+		// -guid is not a recognised flag when allowGuid is false, so the
+		// arg count check rejects it (flag.Parse stops at the bare id).
+		_, err = resolveGetID("profile-", false, g, []string{"6000000206907528877"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	t.Run("with allowGuid but no -guid: still strict prefix-NNN", func(t *testing.T) {
+		RegisterTestingT(t)
+		id, err := resolveGetID("profile-", true, g, []string{"profile-123"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(id).To(Equal("profile-123"))
+
+		_, err = resolveGetID("profile-", true, g, []string{"6000000206907528877"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	t.Run("-guid rewrites a bare guid to the profile-g<guid> form", func(t *testing.T) {
+		RegisterTestingT(t)
+		id, err := resolveGetID("profile-", true, g, []string{"-guid", "6000000206907528877"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(id).To(Equal("profile-g6000000206907528877"))
+	})
+
+	t.Run("-guid rejects a non-numeric / prefixed argument", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, bad := range []string{"profile-123", "profile-g6000", "abc", ""} {
+			_, err := resolveGetID("profile-", true, g, []string{"-guid", bad})
+			Expect(err).To(HaveOccurred(), "bad guid %q", bad)
+		}
+	})
+
+	t.Run("-guid requires exactly one positional argument", func(t *testing.T) {
+		RegisterTestingT(t)
+		_, err := resolveGetID("profile-", true, g, []string{"-guid"})
+		Expect(err).To(HaveOccurred())
+		_, err = resolveGetID("profile-", true, g, []string{"-guid", "1", "2"})
+		Expect(err).To(HaveOccurred())
+	})
 }
 
 func TestResourceGetBulk_RejectsAnyBadIDBeforeAPICall(t *testing.T) {
