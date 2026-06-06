@@ -25,6 +25,9 @@ import (
 // ending in "-" followed by one or more digits.
 var resourceIDPattern = regexp.MustCompile(`^[a-z_]+-\d+$`)
 
+// bareGuidPattern matches a Geni guid: a bare run of digits, no prefix.
+var bareGuidPattern = regexp.MustCompile(`^\d+$`)
+
 // validateResourceID returns nil if id is shaped like the expected
 // resource id (prefix followed by digits), or an actionable error that
 // names both the bad input and the correct form. The example in the
@@ -44,24 +47,66 @@ func validateResourceID(prefix, id string) error {
 // resourceGet builds a leaf handler for a "get <id>" command: it reads
 // exactly one id argument, validates it against prefix, constructs a
 // client, calls get, and renders the result.
-func resourceGet(prefix string, get func(c *geni.Client, ctx context.Context, id string) (any, error)) func(context.Context, *globalOpts, []string) error {
+//
+// When allowGuid is set, the handler also accepts a -guid flag that
+// reinterprets the argument as a bare numeric guid; see resolveGetID.
+func resourceGet(prefix string, allowGuid bool, get func(c *geni.Client, ctx context.Context, id string) (any, error)) func(context.Context, *globalOpts, []string) error {
 	return func(ctx context.Context, g *globalOpts, args []string) error {
-		if len(args) != 1 {
-			return errors.New("expected exactly one <id> argument")
-		}
-		if err := validateResourceID(prefix, args[0]); err != nil {
+		id, err := resolveGetID(prefix, allowGuid, g, args)
+		if err != nil {
 			return err
 		}
 		c, err := newClient(g)
 		if err != nil {
 			return err
 		}
-		v, err := get(c, ctx, args[0])
+		v, err := get(c, ctx, id)
 		if err != nil {
 			return err
 		}
 		return render(g.stdout, v)
 	}
+}
+
+// resolveGetID validates the single <id> argument of a "get" command and
+// returns the id to query. With allowGuid set, a -guid flag lets the
+// caller pass a bare numeric guid instead of a "<prefix>NNN" id; the guid
+// is rewritten to Geni's immutable "<prefix>g<guid>" form (e.g.
+// profile-g6000000206907528877), the only API shape that resolves a guid
+// to a single resource — the bulk ids= endpoint silently ignores guids,
+// so guid lookups are single-get only. Without allowGuid the behaviour is
+// the strict "<prefix>NNN" form, unchanged.
+func resolveGetID(prefix string, allowGuid bool, g *globalOpts, args []string) (string, error) {
+	if !allowGuid {
+		if len(args) != 1 {
+			return "", errors.New("expected exactly one <id> argument")
+		}
+		if err := validateResourceID(prefix, args[0]); err != nil {
+			return "", err
+		}
+		return args[0], nil
+	}
+
+	fs := flag.NewFlagSet("geni get", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	guid := fs.Bool("guid", false, "treat the argument as a bare numeric guid instead of a "+prefix+"NNN id")
+	if err := fs.Parse(args); err != nil {
+		return "", err
+	}
+	if fs.NArg() != 1 {
+		return "", errors.New("expected exactly one <id> argument")
+	}
+	id := fs.Arg(0)
+	if *guid {
+		if !bareGuidPattern.MatchString(id) {
+			return "", fmt.Errorf("invalid guid %q: expected a bare numeric guid (digits only) when -guid is set", id)
+		}
+		return prefix + "g" + id, nil
+	}
+	if err := validateResourceID(prefix, id); err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 // splitIDs flattens the args of a get-bulk command into an id list.

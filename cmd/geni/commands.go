@@ -26,7 +26,7 @@ func commandTree() map[string]*command {
 		"help":   {summary: "show this usage text", run: runHelp},
 
 		"profile": {summary: "profile resource", sub: map[string]*command{
-			"get": {summary: "fetch a profile by id", run: resourceGet("profile-",
+			"get": {summary: "fetch a profile by id (or -guid <guid>)", run: resourceGet("profile-", true,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Profile().Get(ctx, id)
 				})},
@@ -40,7 +40,7 @@ func commandTree() map[string]*command {
 			"compare": {summary: "compare two profiles field by field", run: runProfileCompare},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
-			"get": {summary: "fetch a union by id", run: resourceGet("union-",
+			"get": {summary: "fetch a union by id", run: resourceGet("union-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Union().Get(ctx, id)
 				})},
@@ -52,7 +52,7 @@ func commandTree() map[string]*command {
 		}},
 		"document": {summary: "document resource", sub: map[string]*command{
 			"for-profile": {summary: "list documents attached to a profile", run: runDocumentForProfile},
-			"get": {summary: "fetch a document by id", run: resourceGet("document-",
+			"get": {summary: "fetch a document by id", run: resourceGet("document-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Document().Get(ctx, id)
 				})},
@@ -67,7 +67,7 @@ func commandTree() map[string]*command {
 			}},
 		}},
 		"photo": {summary: "photo resource", sub: map[string]*command{
-			"get": {summary: "fetch a photo by id", run: resourceGet("photo-",
+			"get": {summary: "fetch a photo by id", run: resourceGet("photo-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Photo().Get(ctx, id)
 				})},
@@ -77,7 +77,7 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"video": {summary: "video resource", sub: map[string]*command{
-			"get": {summary: "fetch a video by id", run: resourceGet("video-",
+			"get": {summary: "fetch a video by id", run: resourceGet("video-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Video().Get(ctx, id)
 				})},
@@ -87,26 +87,26 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"photoalbum": {summary: "photo album resource", sub: map[string]*command{
-			"get": {summary: "fetch a photo album by id", run: resourceGet("album-",
+			"get": {summary: "fetch a photo album by id", run: resourceGet("album-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.PhotoAlbum().Get(ctx, id)
 				})},
 		}},
 		"project": {summary: "project resource", sub: map[string]*command{
-			"get": {summary: "fetch a project by id", run: resourceGet("project-",
+			"get": {summary: "fetch a project by id", run: resourceGet("project-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Project().Get(ctx, id)
 				})},
 		}},
 		"surname": {summary: "surname resource", sub: map[string]*command{
-			"get": {summary: "fetch a surname by id", run: resourceGet("surname-",
+			"get": {summary: "fetch a surname by id", run: resourceGet("surname-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Surname().Get(ctx, id)
 				})},
 		}},
 		"revision": {summary: "revision resource", sub: map[string]*command{
 			"for-profile": {summary: "list a profile's revision IDs (AJAX, one-time consent)", run: runRevisionForProfile},
-			"get": {summary: "fetch a revision by id", run: resourceGet("revision-",
+			"get": {summary: "fetch a revision by id", run: resourceGet("revision-", false,
 				func(c *geni.Client, ctx context.Context, id string) (any, error) {
 					return c.Revision().Get(ctx, id)
 				})},

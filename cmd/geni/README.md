@@ -19,6 +19,7 @@ The binary lands in `$(go env GOPATH)/bin` — make sure that's on your `PATH`.
 geni login                            # browser OAuth; caches the token
 geni whoami                           # the authenticated account
 geni profile get profile-122248213    # fetch a profile as JSON
+geni profile get -guid 6000000000000   # ...or by bare guid
 geni profile open profile-122248213   # open the profile's web page
 ```
 
@@ -50,7 +51,7 @@ Run `geni help` for the full list.
 | `geni help` | Show usage |
 | `geni config show` | Print the persisted CLI config (`~/.genealogy/config.json`) as JSON |
 | `geni config browser <name\|"">` | Set or clear the persisted default for `-browser` (see [Cookie source](#cookie-source)) |
-| `geni profile get <id>` | Fetch a profile by id |
+| `geni profile get <id>` / `geni profile get -guid <guid>` | Fetch a profile by `profile-NNN` id, or by bare guid with `-guid` (rewritten to the `profile-g<guid>` immutable-id form; the only API shape that resolves a guid). Single-get only — the bulk endpoint can't resolve guids. |
 | `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
