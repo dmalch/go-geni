@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	geni "github.com/dmalch/go-geni"
@@ -875,25 +876,45 @@ func runConflictsShow(ctx context.Context, g *globalOpts, args []string) error {
 
 // runConflictsResolve handles
 //
-//	geni conflicts resolve [-yes] <profile-id-or-guid>
+//	geni conflicts resolve [-yes] [-prefer-nonempty] [-pick field=col]... [-dry-run] <profile-id-or-guid>
 //
-// It clears a profile's merge data conflict by keeping the surviving
-// (primary) profile's value for every conflicting field — the correct
-// default when the survivor is canonical. The action is destructive
-// (it overwrites the merge's unresolved state), so a y/N confirmation is
-// required unless -yes is passed. Resolving an already-clean profile is a
-// no-op. Accepts a profile-NNN id or a bare guid. Gated by
-// ensureWebConsent.
+// By default it clears a profile's merge data conflict by keeping the
+// surviving (primary) profile's value for every conflicting field — the
+// correct default when the survivor is canonical. -prefer-nonempty instead
+// keeps a merged-in (e.g. external contributor's) value for any field the
+// survivor left blank, so that contribution is not silently dropped. -pick
+// resolves a named field to an explicit column (0 = primary, 1+ = a merged
+// profile's value). -dry-run fetches the conflict and prints the choices it
+// would submit without changing anything.
+//
+// The action is destructive (it overwrites the merge's unresolved state),
+// so a y/N confirmation is required unless -yes (or -dry-run) is passed.
+// Resolving an already-clean profile is a no-op. Accepts a profile-NNN id or
+// a bare guid. Gated by ensureWebConsent.
 func runConflictsResolve(ctx context.Context, g *globalOpts, args []string) error {
 	fs := flag.NewFlagSet("geni conflicts resolve", flag.ContinueOnError)
 	fs.SetOutput(g.stderr)
 	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	preferNonEmpty := fs.Bool("prefer-nonempty", false,
+		"keep a merged-in value for any field the survivor left blank")
+	dryRun := fs.Bool("dry-run", false,
+		"print the choices that would be submitted without resolving")
+	var picks repeatableFlag
+	fs.Var(&picks, "pick",
+		"resolve a field to an explicit column: -pick field=col (repeatable)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: geni conflicts resolve [-yes] <profile-id-or-guid>")
+		return errors.New("usage: geni conflicts resolve [-yes] [-prefer-nonempty] [-pick field=col]... [-dry-run] <profile-id-or-guid>")
 	}
+	pickMap, err := parsePicks(picks)
+	if err != nil {
+		return err
+	}
+	// "Smart" resolution (per-field choices) needs the conflict's fields and
+	// blobs up front; plain keep-primary lets Resolve fetch them itself.
+	smart := *preferNonEmpty || len(pickMap) > 0 || *dryRun
 
 	if err := ensureWebConsent(g); err != nil {
 		return err
@@ -901,14 +922,6 @@ func runConflictsResolve(ctx context.Context, g *globalOpts, args []string) erro
 	guid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
 	if err != nil {
 		return err
-	}
-
-	if !*yes {
-		_, _ = fmt.Fprintf(g.stderr,
-			"Resolve data conflict for profile %s (keep primary values)? [y/N]: ", guid)
-		if !confirmed(g.stdin) {
-			return errors.New("resolve aborted")
-		}
 	}
 
 	cookies, err := loadWebCookies(g)
@@ -919,13 +932,105 @@ func runConflictsResolve(ctx context.Context, g *globalOpts, args []string) erro
 	if err != nil {
 		return err
 	}
-	if err := webconflicts.NewClient(wc).Resolve(ctx, guid, nil); err != nil {
+	cc := webconflicts.NewClient(wc)
+
+	var choices map[string]string
+	if smart {
+		detail, err := cc.Get(ctx, guid)
+		if err != nil {
+			return err
+		}
+		if !detail.HasConflict {
+			return render(g.stdout, map[string]string{
+				"status":  "no-conflict",
+				"profile": guid,
+			})
+		}
+		choices, err = webconflicts.BuildResolveChoices(detail.Fields, *preferNonEmpty, pickMap)
+		if err != nil {
+			return err
+		}
+		if *dryRun {
+			return render(g.stdout, dryRunResolution(guid, detail.Fields, choices))
+		}
+	}
+
+	if !*yes {
+		_, _ = fmt.Fprintf(g.stderr,
+			"Resolve data conflict for profile %s? [y/N]: ", guid)
+		if !confirmed(g.stdin) {
+			return errors.New("resolve aborted")
+		}
+	}
+
+	if err := cc.Resolve(ctx, guid, choices); err != nil {
 		return err
 	}
 	return render(g.stdout, map[string]string{
 		"status":  "resolved",
 		"profile": guid,
 	})
+}
+
+// repeatableFlag collects a flag that may appear more than once.
+type repeatableFlag []string
+
+func (r *repeatableFlag) String() string { return strings.Join(*r, ",") }
+func (r *repeatableFlag) Set(v string) error {
+	*r = append(*r, v)
+	return nil
+}
+
+// parsePicks turns "field=col" entries into a field → column-index map. An
+// empty input yields an empty (non-nil) map, never nil.
+func parsePicks(raw []string) (map[string]int, error) {
+	out := make(map[string]int, len(raw))
+	for _, p := range raw {
+		field, col, ok := strings.Cut(p, "=")
+		if !ok || field == "" {
+			return nil, fmt.Errorf("pick %q: want field=col", p)
+		}
+		idx, err := strconv.Atoi(strings.TrimSpace(col))
+		if err != nil {
+			return nil, fmt.Errorf("pick %q: column must be an integer", p)
+		}
+		out[field] = idx
+	}
+	return out, nil
+}
+
+// dryRunResolution renders, per conflicting field, the value that would be
+// submitted: the chosen merged-in value where a choice was made, otherwise
+// the surviving profile's primary value (the keep-primary default).
+func dryRunResolution(guid string, fields []webconflicts.ConflictField, choices map[string]string) map[string]any {
+	rows := make([]map[string]string, 0, len(fields))
+	for _, f := range fields {
+		row := map[string]string{"field": f.Field, "primary": f.PrimaryValue}
+		if blob, ok := choices[f.Field]; ok {
+			row["action"] = "keep-merged"
+			row["chosen"] = displayForBlob(f, blob)
+		} else {
+			row["action"] = "keep-primary"
+			row["chosen"] = f.PrimaryValue
+		}
+		rows = append(rows, row)
+	}
+	return map[string]any{
+		"status":  "dry-run",
+		"profile": guid,
+		"fields":  rows,
+	}
+}
+
+// displayForBlob maps a chosen submit blob back to its displayed text by
+// its column position, for human-readable dry-run output.
+func displayForBlob(f webconflicts.ConflictField, blob string) string {
+	for i, b := range f.DataResolveData {
+		if b == blob && i < len(f.DisplayValues) {
+			return f.DisplayValues[i]
+		}
+	}
+	return ""
 }
 
 // runTreeFamily handles "geni tree family <profile-id>".

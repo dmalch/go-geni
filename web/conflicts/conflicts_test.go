@@ -257,6 +257,72 @@ func TestResolve_AppliesChoiceForNamedField(t *testing.T) {
 	Expect(postedForm.Get("resolve[death_date]")).ToNot(BeEmpty())
 }
 
+func TestBuildResolveChoices_KeepPrimaryByDefault(t *testing.T) {
+	RegisterTestingT(t)
+	fields := []conflicts.ConflictField{
+		{Field: "names/ru/last_name",
+			DisplayValues:   []string{"Марков", "Маркин"},
+			DataResolveData: []string{"blob-primary", "blob-other"}},
+	}
+	// No prefer-nonempty, no picks → keep primary everywhere, i.e. empty map.
+	choices, err := conflicts.BuildResolveChoices(fields, false, nil)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(choices).To(BeEmpty())
+}
+
+func TestBuildResolveChoices_PreferNonEmptyAdoptsMergedValue(t *testing.T) {
+	RegisterTestingT(t)
+	fields := []conflicts.ConflictField{
+		// Survivor blank, an external contributor filled it in → adopt it.
+		{Field: "death_date",
+			PrimaryValue:    "",
+			DisplayValues:   []string{"", "1873"},
+			DataResolveData: []string{"blob-void", "blob-1873"}},
+		// Survivor already has a value → untouched (no data lost).
+		{Field: "names/ru/first_name",
+			PrimaryValue:    "Иван",
+			DisplayValues:   []string{"Иван", "Ваня"},
+			DataResolveData: []string{"blob-ivan", "blob-vanya"}},
+		// Survivor blank and every other column blank too → nothing to adopt.
+		{Field: "current_residence",
+			DisplayValues:   []string{"", ""},
+			DataResolveData: []string{"blob-void", "blob-void2"}},
+	}
+	choices, err := conflicts.BuildResolveChoices(fields, true, nil)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(choices).To(HaveKeyWithValue("death_date", "blob-1873"))
+	Expect(choices).ToNot(HaveKey("names/ru/first_name"))
+	Expect(choices).ToNot(HaveKey("current_residence"))
+}
+
+func TestBuildResolveChoices_PickSelectsColumnAndOverridesPreferNonEmpty(t *testing.T) {
+	RegisterTestingT(t)
+	fields := []conflicts.ConflictField{
+		{Field: "death_date",
+			PrimaryValue:    "",
+			DisplayValues:   []string{"", "1873", "1875"},
+			DataResolveData: []string{"blob-void", "blob-1873", "blob-1875"}},
+	}
+	// An explicit pick wins over prefer-nonempty's first-non-empty choice.
+	choices, err := conflicts.BuildResolveChoices(fields, true, map[string]int{"death_date": 2})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(choices).To(HaveKeyWithValue("death_date", "blob-1875"))
+}
+
+func TestBuildResolveChoices_PickRejectsUnknownFieldAndBadColumn(t *testing.T) {
+	RegisterTestingT(t)
+	fields := []conflicts.ConflictField{
+		{Field: "death_date", DataResolveData: []string{"a", "b"}},
+	}
+	_, err := conflicts.BuildResolveChoices(fields, false, map[string]int{"nope": 0})
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("unknown"))
+
+	_, err = conflicts.BuildResolveChoices(fields, false, map[string]int{"death_date": 5})
+	Expect(err).To(HaveOccurred())
+	Expect(err.Error()).To(ContainSubstring("out of range"))
+}
+
 func TestResolve_AlreadyResolvedIsNoOp(t *testing.T) {
 	RegisterTestingT(t)
 	var posted bool
