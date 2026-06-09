@@ -1,4 +1,4 @@
-## Unreleased
+## 1.20.0
 
 ### NEW
 
