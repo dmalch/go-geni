@@ -67,6 +67,12 @@ type ConflictField struct {
 	PrimaryValue    string   `json:"primary_value,omitempty"`
 	OtherValues     []string `json:"other_values,omitempty"`
 	DataResolveData []string `json:"-"`
+	// DisplayValues is the per-column displayed text, column-aligned with
+	// DataResolveData (index 0 = primary). Unlike OtherValues it keeps
+	// empty (void) columns and does not dedupe, so column i's display text
+	// and its submit blob (DataResolveData[i]) always line up — which is
+	// what BuildResolveChoices needs to detect an empty primary.
+	DisplayValues []string `json:"-"`
 }
 
 // ConflictDetail is the parsed /merge/resolve/<guid> page. When
@@ -224,6 +230,78 @@ func (c *Client) postResolve(ctx context.Context, guid string, choices map[strin
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
+}
+
+// BuildResolveChoices computes the per-field resolution map passed to
+// Resolve, given a profile's conflicting fields. Fields absent from the
+// returned map keep the surviving (primary) profile's value — Resolve's
+// default — so an empty map means "keep primary for everything".
+//
+// preferNonEmpty preserves data an external contributor added that the
+// survivor lacks: for every field whose primary column (index 0) displays
+// nothing but a later column does, it adopts that column's submit blob.
+// picks is an explicit field → column-index selection (0 = primary) for
+// resolving genuine disagreements by hand; it overrides preferNonEmpty for
+// the named field. An unknown field or an out-of-range column is an error
+// rather than a silent no-op.
+func BuildResolveChoices(fields []ConflictField, preferNonEmpty bool, picks map[string]int) (map[string]string, error) {
+	byField := make(map[string]ConflictField, len(fields))
+	for _, f := range fields {
+		byField[f.Field] = f
+	}
+
+	choices := map[string]string{}
+	for name, idx := range picks {
+		f, ok := byField[name]
+		if !ok {
+			return nil, fmt.Errorf("pick: unknown conflicting field %q", name)
+		}
+		if idx < 0 || idx >= len(f.DataResolveData) {
+			return nil, fmt.Errorf(
+				"pick: field %q column %d out of range (have %d column(s))",
+				name, idx, len(f.DataResolveData))
+		}
+		choices[name] = f.DataResolveData[idx]
+	}
+
+	if preferNonEmpty {
+		for _, f := range fields {
+			if _, picked := choices[f.Field]; picked {
+				continue // an explicit pick wins.
+			}
+			if displayAt(f, 0) != "" {
+				continue // survivor already has a value — nothing lost.
+			}
+			if i, ok := firstNonEmptyColumn(f); ok {
+				choices[f.Field] = f.DataResolveData[i]
+			}
+		}
+	}
+	return choices, nil
+}
+
+// displayAt returns the displayed text of column i, falling back to
+// PrimaryValue for column 0 when DisplayValues was not populated (e.g. a
+// hand-built ConflictField).
+func displayAt(f ConflictField, i int) string {
+	if i >= 0 && i < len(f.DisplayValues) {
+		return f.DisplayValues[i]
+	}
+	if i == 0 {
+		return f.PrimaryValue
+	}
+	return ""
+}
+
+// firstNonEmptyColumn returns the index of the first non-primary column
+// (index >= 1) that displays a value backed by a submit blob.
+func firstNonEmptyColumn(f ConflictField) (int, bool) {
+	for i := 1; i < len(f.DataResolveData); i++ {
+		if displayAt(f, i) != "" {
+			return i, true
+		}
+	}
+	return 0, false
 }
 
 // parseListConflicts walks the data-conflicts HTML page and returns the
@@ -384,6 +462,7 @@ func resolveFieldRow(tr *html.Node) (ConflictField, bool) {
 	seen := map[string]bool{}
 	for i, col := range valueCols {
 		field.DataResolveData = append(field.DataResolveData, col.blob)
+		field.DisplayValues = append(field.DisplayValues, col.text)
 		if i == 0 {
 			field.PrimaryValue = col.text
 			seen[col.text] = true

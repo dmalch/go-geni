@@ -1,3 +1,28 @@
+## Unreleased
+
+### NEW
+
+- `geni conflicts resolve` can now **preserve** a merged-in profile's data
+  instead of always keeping the surviving (primary) profile's value. After a
+  merge, the keep-primary default silently drops anything the other profile
+  carried — exactly the information an external contributor added from a source
+  outside your own tree. Three new flags address that:
+  - `-prefer-nonempty` — for every field the survivor left **blank**, keep the
+    merged-in value (the common "external contributor filled in a death date /
+    residence" case).
+  - `-pick field=col` (repeatable) — resolve a named field to an explicit
+    column (`0` = primary/survivor, `1+` = a merged profile's value), for
+    genuine disagreements decided by hand. An unknown field or out-of-range
+    column is an error, not a silent no-op.
+  - `-dry-run` — fetch the conflict and print the choices that *would* be
+    submitted (per field: `keep-primary` / `keep-merged` plus the chosen value)
+    without changing anything.
+
+  The default (no flags) is unchanged: keep the primary value for every field.
+  Internally this adds a pure `conflicts.BuildResolveChoices` helper and a
+  column-aligned `ConflictField.DisplayValues` (the existing `OtherValues` is
+  deduped/filtered, so it can't reliably detect an empty primary).
+
 ## 1.19.0
 
 ### NEW
