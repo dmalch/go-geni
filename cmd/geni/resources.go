@@ -14,11 +14,11 @@ import (
 
 	geni "github.com/dmalch/go-geni"
 	"github.com/dmalch/go-geni/tree"
-	"github.com/dmalch/go-geni/web"
 	webconflicts "github.com/dmalch/go-geni/web/conflicts"
 	webdocument "github.com/dmalch/go-geni/web/document"
 	webmatches "github.com/dmalch/go-geni/web/matches"
 	webrevision "github.com/dmalch/go-geni/web/revision"
+	webunions "github.com/dmalch/go-geni/web/unions"
 	"github.com/skratchdot/open-golang/open"
 )
 
@@ -358,7 +358,7 @@ func runRevisionForProfile(ctx context.Context, g *globalOpts, args []string) er
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func runDocumentTextGet(ctx context.Context, g *globalOpts, args []string) error
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -487,7 +487,7 @@ func runDocumentTextSet(ctx context.Context, g *globalOpts, args []string) error
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -607,7 +607,7 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -681,7 +681,7 @@ func runMatchesForProfile(ctx context.Context, g *globalOpts, args []string) err
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -739,7 +739,7 @@ func runMatchesReject(ctx context.Context, g *globalOpts, args []string) error {
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -751,6 +751,89 @@ func runMatchesReject(ctx context.Context, g *globalOpts, args []string) error {
 		"source": sourceGuid,
 		"match":  matchGuid,
 	})
+}
+
+// runProfileDetachUnion handles
+//
+//	geni profile detach-union [-yes] <profile-id-or-guid> <union-id> [<union-id>…]
+//
+// It removes the profile's connection to one or more unions — the
+// "Удалить связь" / "remove relationships" action on the profile's
+// edit_relationships page — by POSTing to
+// /profile_actions/delete_relationships. Detaching does not delete the
+// union (an emptied union becomes a harmless orphan), and re-attaching
+// requires the web UI, so a y/N confirmation is required unless -yes is
+// passed. Like the other web commands it is gated by the one-time AJAX
+// consent prompt.
+//
+// The union arguments must be Geni web ids (the bare 6000000… numbers
+// shown as remove_connection_<id> on the edit_relationships page),
+// optionally "union-"-prefixed. The OAuth API exposes no union guid, so
+// a short union-NNN cannot be resolved to a web id here.
+func runProfileDetachUnion(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni profile detach-union", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() < 2 {
+		return errors.New("usage: geni profile detach-union [-yes] <profile-id-or-guid> <union-id> [<union-id>…]")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	profileGuid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	unionIDs := make([]string, 0, fs.NArg()-1)
+	for _, raw := range fs.Args()[1:] {
+		uid, err := normalizeUnionID(raw)
+		if err != nil {
+			return err
+		}
+		unionIDs = append(unionIDs, uid)
+	}
+
+	if !*yes {
+		_, _ = fmt.Fprintf(g.stderr,
+			"Detach profile %s from union(s) %s? [y/N]: ", profileGuid, strings.Join(unionIDs, ", "))
+		if !confirmed(g.stdin) {
+			return errors.New("detach aborted")
+		}
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+	if err := webunions.NewClient(wc).Detach(ctx, profileGuid, unionIDs); err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]any{
+		"status":  "detached",
+		"profile": profileGuid,
+		"unions":  unionIDs,
+	})
+}
+
+// normalizeUnionID accepts a union web id as a bare run of digits or in
+// "union-<digits>" form and returns the bare-digit form used by the
+// delete_relationships endpoint's uids parameter.
+func normalizeUnionID(id string) (string, error) {
+	bare := strings.TrimPrefix(id, "union-")
+	if !bareGuidPattern.MatchString(bare) {
+		return "", fmt.Errorf("invalid union id %q: expected a web union id (the digits in "+
+			"remove_connection_<id> on the edit_relationships page), optionally union- prefixed", id)
+	}
+	return bare, nil
 }
 
 // resolveProfileGuid returns id unchanged when it is already a bare guid,
@@ -802,7 +885,7 @@ func runConflictsList(ctx context.Context, g *globalOpts, args []string) error {
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -863,7 +946,7 @@ func runConflictsShow(ctx context.Context, g *globalOpts, args []string) error {
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
@@ -928,7 +1011,7 @@ func runConflictsResolve(ctx context.Context, g *globalOpts, args []string) erro
 	if err != nil {
 		return err
 	}
-	wc, err := web.NewClient(web.Options{Cookies: cookies})
+	wc, err := newWebClient(g, cookies)
 	if err != nil {
 		return err
 	}
