@@ -1,3 +1,27 @@
+## 1.21.0
+
+### NEW
+
+- New `geni profile detach-union [-yes] <profile-id|guid> <union-id> [<union-id>…]`
+  command and `web/unions.Client.Detach`. Detaches a profile from one or more
+  unions — the "Удалить связь" / "remove relationships" action on the profile's
+  edit_relationships page — by POSTing to
+  `/profile_actions/delete_relationships?id=<profile>&uids=<union,…>`. This is
+  the only way to break a profile↔union connection: the OAuth API can neither
+  remove a relationship nor delete a union. The profile argument accepts a
+  `profile-NNN` id (resolved to a guid via the OAuth API) or a bare guid; each
+  union argument is a Geni **web union id** (the digits in a
+  `remove_connection_<id>` checkbox on the edit_relationships page), accepted
+  bare or `union-` prefixed. Detaching does not delete the union (an emptied
+  union becomes a harmless orphan) and re-attaching requires the web UI, so a
+  y/N confirmation is required unless `-yes` is passed. Like the other web
+  commands it is gated by the one-time AJAX consent prompt and reuses the
+  CSRF + 422-retry pattern from `web/matches`.
+- The global `-sandbox` flag (and `GENI_USE_SANDBOX=true`) now also applies to
+  the web/AJAX commands (`matches`, `conflicts`, `document text`, `revision`,
+  and the new `profile detach-union`): they target `sandbox.geni.com` instead of
+  always hitting `www.geni.com`, matching the OAuth client's existing behavior.
+
 ## 1.20.0
 
 ### NEW

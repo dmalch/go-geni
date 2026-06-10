@@ -26,6 +26,23 @@ This consent is one-time. To revoke it later, delete
 
 Accept and continue? [y/N]: `
 
+// webBaseURL returns the geni.com host the web/AJAX commands target,
+// honoring the global -sandbox flag (and GENI_USE_SANDBOX) the same way
+// the OAuth client does. The web package defaults to www.geni.com when
+// BaseURL is empty, so this only diverges for sandbox.
+func webBaseURL(g *globalOpts) string {
+	if g != nil && g.sandbox {
+		return "https://sandbox.geni.com"
+	}
+	return "https://www.geni.com"
+}
+
+// newWebClient builds a *web.Client for the AJAX commands with the base
+// URL pinned to the active environment (production or sandbox).
+func newWebClient(g *globalOpts, cookies []*http.Cookie) (*web.Client, error) {
+	return web.NewClient(web.Options{Cookies: cookies, BaseURL: webBaseURL(g)})
+}
+
 // browserCookieFetcher is the source for cookies when GENI_WEB_COOKIES
 // is unset. Indirected so tests can stub it without touching the host's
 // real browser stores. The variadic argument forwards to

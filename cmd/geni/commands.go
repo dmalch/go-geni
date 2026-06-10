@@ -34,10 +34,11 @@ func commandTree() map[string]*command {
 				func(c *geni.Client, ctx context.Context, ids []string) (any, error) {
 					return c.Profile().GetBulk(ctx, ids)
 				})},
-			"search":  {summary: "search profiles by name", run: runProfileSearch},
-			"open":    {summary: "open a profile's web page in the browser", run: runProfileOpen},
-			"merge":   {summary: "merge one profile into another (destructive)", run: runProfileMerge},
-			"compare": {summary: "compare two profiles field by field", run: runProfileCompare},
+			"search":       {summary: "search profiles by name", run: runProfileSearch},
+			"open":         {summary: "open a profile's web page in the browser", run: runProfileOpen},
+			"merge":        {summary: "merge one profile into another (destructive)", run: runProfileMerge},
+			"compare":      {summary: "compare two profiles field by field", run: runProfileCompare},
+			"detach-union": {summary: "detach a profile from one or more unions (AJAX, mutating)", run: runProfileDetachUnion},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
 			"get": {summary: "fetch a union by id", run: resourceGet("union-", false,

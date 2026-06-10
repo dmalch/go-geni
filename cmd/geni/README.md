@@ -57,6 +57,7 @@ Run `geni help` for the full list.
 | `geni profile open <id\|guid>` | Open the profile's web page in the browser |
 | `geni profile compare <id1> <id2>` | Field-by-field diff of two profiles |
 | `geni profile merge [-yes] <keep-id> <dup-id>` | Merge one profile into another (destructive; prompts for confirmation) |
+| `geni profile detach-union [-yes] <id\|guid> <union-id…>` | Detach a profile from one or more unions (AJAX, mutating — see [Web (AJAX) commands](#web-ajax-commands)) |
 | `geni union get <id>` | Fetch a union |
 | `geni union get-bulk <id...>` | Fetch multiple unions by id |
 | `geni document for-profile [-page N] <profile-id>` | List documents attached to a profile |
@@ -102,6 +103,7 @@ Terms of Service.
 | `geni conflicts list [-page N \| -all] [-limit N]` | List profiles that still carry an **unresolved merge data conflict** — the field disagreements (names, dates, residence) Geni leaves after merging two profiles (the OAuth API has no equivalent). Output is a JSON array of `{profile_guid, name, profile_url, resolve_url, manager_name, updated_at_text}`. `-all` paginates until exhausted; `-limit` caps total rows. |
 | `geni conflicts show <id\|guid>` | Show the conflicting fields for one profile. JSON `{profile_guid, has_conflict, fields}`; each `fields[]` entry is `{field, subject, primary_value, other_values}` — the surviving (primary) profile's value vs. the merged-in profiles' values. A profile with no outstanding conflict prints `has_conflict:false`. |
 | `geni conflicts resolve [-yes] [-prefer-nonempty] [-pick field=col]… [-dry-run] <id\|guid>` | **Mutating.** Clear a profile's merge data conflict. The default keeps the surviving (primary) profile's value for every field (correct when the survivor is canonical). `-prefer-nonempty` instead keeps a merged-in value for any field the survivor left **blank** (preserves data an external contributor added). `-pick field=col` (repeatable) resolves a named field to an explicit column (`0` = primary, `1+` = a merged profile's value). `-dry-run` prints the choices that would be submitted without changing anything. JSON output `{"status":"resolved","profile":"…"}`. Prompts for a `y/N` confirmation unless `-yes` (or `-dry-run`) is passed; resolving an already-clean profile is a no-op. |
+| `geni profile detach-union [-yes] <profile-id\|guid> <union-id> [<union-id>…]` | **Mutating.** Detach a profile from one or more unions (the "Удалить связь" / "remove relationships" action on the profile's edit_relationships page) by POSTing to `/profile_actions/delete_relationships`. Each `<union-id>` is a Geni **web union id** — the digits in a `remove_connection_<id>` checkbox on that page — accepted bare or `union-` prefixed. This detaches the profile; it does **not** delete the union (an emptied union becomes a harmless orphan), and re-attaching requires the web UI, so it is only weakly reversible. JSON output `{"status":"detached","profile":"…","unions":["…"]}`. Prompts for a `y/N` confirmation unless `-yes` is passed. |
 
 ### One-time consent
 
