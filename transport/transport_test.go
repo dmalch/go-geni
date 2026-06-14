@@ -163,6 +163,59 @@ func TestTranslateTransportError(t *testing.T) {
 	})
 }
 
+func TestTranslateStatusError(t *testing.T) {
+	t.Run("Transient server error is retryable", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, statusCode := range []int{
+			http.StatusBadGateway,         // 502 — Geni "Will Be Right Back!" page
+			http.StatusServiceUnavailable, // 503
+			http.StatusGatewayTimeout,     // 504
+		} {
+			got := translateStatusError(statusCode, 1, []byte("<h1>Geni will be right back!</h1>"))
+
+			var er errRetry
+			Expect(errors.As(got, &er)).To(BeTrue(), "expected errRetry for %d, got %T: %v", statusCode, got, got)
+		}
+	})
+
+	t.Run("Rate-limit and auth stay retryable", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, statusCode := range []int{http.StatusTooManyRequests, http.StatusUnauthorized} {
+			got := translateStatusError(statusCode, 1, nil)
+
+			var er errRetry
+			Expect(errors.As(got, &er)).To(BeTrue(), "expected errRetry for %d, got %T: %v", statusCode, got, got)
+		}
+	})
+
+	t.Run("Client errors map to sentinels", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(translateStatusError(http.StatusForbidden, 0, nil)).To(MatchError(ErrAccessDenied))
+		Expect(translateStatusError(http.StatusNotFound, 0, nil)).To(MatchError(ErrResourceNotFound))
+	})
+
+	t.Run("Oversized error body is summarized", func(t *testing.T) {
+		RegisterTestingT(t)
+		body := []byte("<!DOCTYPE html>" + strings.Repeat("x", 4000) + "</html>")
+
+		got := translateStatusError(http.StatusInternalServerError, 0, body)
+
+		var er errRetry
+		Expect(errors.As(got, &er)).To(BeFalse(), "500 should not be retryable")
+		Expect(got.Error()).To(ContainSubstring("… (truncated)"))
+		Expect(len(got.Error())).To(BeNumerically("<", len(body)))
+	})
+
+	t.Run("Incapsula block is still detected", func(t *testing.T) {
+		RegisterTestingT(t)
+		body := []byte("Request unsuccessful. Incapsula incident ID: 1234-5678")
+
+		got := translateStatusError(http.StatusInternalServerError, 0, body)
+
+		Expect(got).To(MatchError(ContainSubstring("incapsula blocked request")))
+	})
+}
+
 func TestEscapeStringToUTF(t *testing.T) {
 	t.Run("ASCII characters pass through unchanged", func(t *testing.T) {
 		RegisterTestingT(t)

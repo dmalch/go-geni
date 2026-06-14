@@ -253,7 +253,8 @@ func translateTransportError(err error) error {
 
 // translateStatusError maps non-200 statuses to the public error
 // sentinels (ErrAccessDenied / ErrResourceNotFound), to errRetry for
-// retryable codes (429/401), or to Incapsula / generic errors.
+// retryable codes (429/401 and transient 5xx), or to Incapsula /
+// generic errors.
 func translateStatusError(statusCode, secondsUntilRetry int, body []byte) error {
 	switch statusCode {
 	case http.StatusTooManyRequests:
@@ -262,6 +263,14 @@ func translateStatusError(statusCode, secondsUntilRetry int, body []byte) error 
 	case http.StatusUnauthorized:
 		slog.Warn("Received 401 Unauthorized, retrying...")
 		return newErrRetry(statusCode, 1)
+	case http.StatusBadGateway, // 502 — Geni "Will Be Right Back!" maintenance page
+		http.StatusServiceUnavailable, // 503
+		http.StatusGatewayTimeout:     // 504
+		// Transient server errors from Geni's frontend during brief
+		// instability windows. Retry with backoff, same family as 429/401,
+		// so a maintenance blip doesn't abort the whole operation.
+		slog.Warn("Received transient server error, retrying...", "status", statusCode)
+		return newErrRetry(statusCode, secondsUntilRetry)
 	case http.StatusForbidden:
 		slog.Warn("Received 403 Forbidden.")
 		return ErrAccessDenied
@@ -279,5 +288,16 @@ func translateStatusError(statusCode, secondsUntilRetry int, body []byte) error 
 	}
 
 	slog.Error("Non-OK HTTP status", "status", statusCode, "body", string(body))
-	return fmt.Errorf("non-OK HTTP status: %d, body: %s", statusCode, string(body))
+	return fmt.Errorf("non-OK HTTP status: %d, body: %s", statusCode, summarizeErrorBody(body))
+}
+
+// summarizeErrorBody bounds a non-OK response body so a large HTML page
+// (e.g. a Geni maintenance screen) cannot flood error output.
+func summarizeErrorBody(body []byte) string {
+	const maxLen = 512
+	s := strings.TrimSpace(string(body))
+	if len(s) > maxLen {
+		return s[:maxLen] + "… (truncated)"
+	}
+	return s
 }

@@ -1,3 +1,20 @@
+## 1.21.1
+
+### FIXED
+
+- `transport`: transient server errors from Geni's frontend — `502 Bad
+  Gateway`, `503 Service Unavailable`, and `504 Gateway Timeout` (the
+  "Geni will be right back!" maintenance page) — are now retried with
+  backoff like `429`/`401` instead of failing immediately. Previously
+  `translateStatusError` mapped these to a generic non-retryable error,
+  so a brief Geni maintenance/instability window aborted the whole
+  operation on the first attempt (`All attempts fail: #1`). Surfaced via
+  terraform-provider-genealogy #136, where a single 502 during refresh
+  failed a plan over thousands of profiles.
+- `transport`: the generic non-OK fallback error now truncates the
+  response body (first 512 bytes) instead of inlining the entire page, so
+  an HTML maintenance screen no longer floods error output.
+
 ## 1.21.0
 
 ### NEW
