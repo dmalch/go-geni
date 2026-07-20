@@ -1,3 +1,25 @@
+## 1.22.0
+
+### NEW
+
+- New `geni tree-conflicts list [-collection C] [-page N | -all] [-limit N]`
+  command and `web/treeconflicts.Client.List`. Enumerates the Merge Center's
+  **Tree Conflicts** tab (`/list/tree_conflicts`) — the sibling of the data
+  conflicts list — which flags profiles that may have gained duplicate close
+  relatives after a merge. The OAuth API has no equivalent, so the package
+  GETs the server-rendered HTML page and parses the `<tr data-profile-id>`
+  rows, mirroring `web/conflicts` and `web/matches`. Each row yields
+  `{profile_id, name, profile_url, updated_by_name, updated_at_text,
+  manager_name, tree_url}`. Unlike data conflicts, a tree conflict has **no
+  programmatic resolution**: the web UI's only per-row action is "Open tree",
+  so the feature is list-only (no `show`/`resolve`) and `tree_url` is the
+  `/family-tree/index/<id>?resolve=<id>` link to review it by hand.
+  `-collection` selects the viewing mode
+  (`managed` (default)|`relatives`|`followed`|`collaborators`); `-all`
+  paginates until exhausted; `-limit` caps total rows. Like the other web
+  commands it is gated by the one-time AJAX consent prompt and honors the
+  global `-sandbox` flag and `-browser`/`GENI_WEB_BROWSER` cookie source.
+
 ## 1.21.1
 
 ### FIXED
