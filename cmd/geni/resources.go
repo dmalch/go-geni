@@ -18,6 +18,7 @@ import (
 	webdocument "github.com/dmalch/go-geni/web/document"
 	webmatches "github.com/dmalch/go-geni/web/matches"
 	webrevision "github.com/dmalch/go-geni/web/revision"
+	webtreeconflicts "github.com/dmalch/go-geni/web/treeconflicts"
 	webunions "github.com/dmalch/go-geni/web/unions"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -899,6 +900,68 @@ func runConflictsList(ctx context.Context, g *globalOpts, args []string) error {
 	var out []webconflicts.Conflict
 	for p := startPage; ; p++ {
 		res, err := cc.List(ctx, webconflicts.ListOptions{Page: p})
+		if err != nil {
+			return err
+		}
+		out = append(out, res.Conflicts...)
+		if !*all || !res.HasNext {
+			break
+		}
+		if *limit > 0 && len(out) >= *limit {
+			break
+		}
+	}
+
+	if *limit > 0 && len(out) > *limit {
+		out = out[:*limit]
+	}
+	return render(g.stdout, out)
+}
+
+// runTreeConflictsList handles
+//
+//	geni tree-conflicts list [-collection C] [-page N | -all] [-limit N]
+//
+// It paginates the merge-center tree-conflicts list via the Web AJAX
+// client. Output is a JSON array of tree-conflict entries, each with a
+// tree_url ("Open tree") link — the list is read-only, as tree conflicts
+// have no programmatic resolution. Gated by ensureWebConsent.
+func runTreeConflictsList(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni tree-conflicts list", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	collection := fs.String("collection", "managed",
+		"viewing mode: managed|relatives|followed|collaborators (empty for server default)")
+	page := fs.Int("page", 0, "1-based page number; ignored with -all")
+	all := fs.Bool("all", false, "paginate until no next page")
+	limit := fs.Int("limit", 0, "cap output rows after pagination (0 = no cap)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: geni tree-conflicts list [flags] (no positional args)")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+	cc := webtreeconflicts.NewClient(wc)
+
+	startPage := *page
+	if startPage <= 0 {
+		startPage = 1
+	}
+
+	var out []webtreeconflicts.TreeConflict
+	for p := startPage; ; p++ {
+		res, err := cc.List(ctx, webtreeconflicts.ListOptions{Collection: *collection, Page: p})
 		if err != nil {
 			return err
 		}

@@ -103,7 +103,7 @@ to `geni.NewClient`.
 ## Web (AJAX) client
 
 Works around documented gaps in Geni's OAuth API (revision list, document text
-r/w, merge-center matches list, merge data conflicts) for personal genealogy tooling. The `web/` sub-tree is a **separate**
+r/w, merge-center matches list, merge data conflicts, tree conflicts) for personal genealogy tooling. The `web/` sub-tree is a **separate**
 client that talks to the same private AJAX endpoints geni.com itself uses from
 a logged-in browser — cookie auth, per-form CSRF token, HTML responses.
 
@@ -120,6 +120,7 @@ import (
     "github.com/dmalch/go-geni/web/document"
     "github.com/dmalch/go-geni/web/matches"
     "github.com/dmalch/go-geni/web/conflicts"
+    "github.com/dmalch/go-geni/web/treeconflicts"
 )
 
 c, _ := web.NewClient(web.Options{
@@ -147,6 +148,12 @@ fp, _ := matches.NewClient(c).ForProfile(context.Background(), "<profile-guid>",
 // keeping the surviving (primary) profile's values.
 cl, _ := conflicts.NewClient(c).List(context.Background(), conflicts.ListOptions{})
 err = conflicts.NewClient(c).Resolve(context.Background(), "<profile-guid>", nil)
+
+// List profiles with unresolved tree conflicts (post-merge duplicate close
+// relatives). Read-only — each row's TreeURL is the "Open tree" link to
+// review and resolve the conflict by hand.
+tc, _ := treeconflicts.NewClient(c).List(context.Background(),
+    treeconflicts.ListOptions{Collection: "managed"})
 ```
 
 Cookies can also be pulled directly from a logged-in browser on the host via
