@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -124,4 +125,136 @@ func TestList_NonOkStatusReturnsError(t *testing.T) {
 	defer srv.Close()
 	_, err := newClient(t, srv).List(context.Background(), treeconflicts.ListOptions{})
 	Expect(err).To(HaveOccurred())
+}
+
+// showServer routes the two (or three) requests Show makes: the tree page
+// (treeSessionId source), fetch_immediate_family (the conflict JSON), and
+// fetch_prune_counts (subtree sizes). immediateFamily/pruneCounts bodies
+// are provided by the caller.
+func showServer(t *testing.T, immediateFamily, pruneCounts string, captured *map[string]*http.Request) *httptest.Server {
+	t.Helper()
+	index, err := os.ReadFile("testdata/tree_index.html")
+	if err != nil {
+		t.Fatalf("read index fixture: %v", err)
+	}
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if captured != nil {
+			(*captured)[r.URL.Path] = r.Clone(r.Context())
+		}
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/family-tree/index/"):
+			_, _ = w.Write(index)
+		case r.URL.Path == "/flash/fetch_immediate_family":
+			_, _ = io.WriteString(w, immediateFamily)
+		case r.URL.Path == "/flash/fetch_prune_counts":
+			_, _ = io.WriteString(w, pruneCounts)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+}
+
+func TestShow_ParsesConflict(t *testing.T) {
+	RegisterTestingT(t)
+	fixture, err := os.ReadFile("testdata/fetch_immediate_family.json")
+	Expect(err).ToNot(HaveOccurred())
+
+	pruneCounts := `{"prune_counts":[
+		{"pid":401078841,"p":"+110"},{"pid":401078391,"p":"+1"},
+		{"pid":401211169,"p":"+38"},{"pid":402225494,"p":"+2"}]}`
+
+	captured := map[string]*http.Request{}
+	srv := showServer(t, string(fixture), pruneCounts, &captured)
+	defer srv.Close()
+
+	d, err := newClient(t, srv).Show(context.Background(), "6000000218702606843")
+	Expect(err).ToNot(HaveOccurred())
+
+	// The immediate-family request carries the conflict probes + AJAX header.
+	imm := captured["/flash/fetch_immediate_family"]
+	Expect(imm).ToNot(BeNil())
+	Expect(imm.Header.Get("X-Requested-With")).To(Equal("XMLHttpRequest"))
+	Expect(imm.URL.Query().Get("resolve_duplicates")).To(Equal("true"))
+	Expect(imm.URL.Query().Get("check_partner_conflicts")).To(Equal("true"))
+	Expect(imm.URL.Query().Get("profile")).To(Equal("6000000218702606843"))
+	// treeSessionId came from the tree page fixture.
+	Expect(imm.URL.Query().Get("treeSessionId")).To(Equal(
+		"d9f2cbaf3850c4c3ae098d777dfdefa277822c11cbecc60002041238477a0c5b"))
+
+	Expect(d.HasConflict).To(BeTrue())
+	Expect(d.ConflictTypes).To(Equal([]string{"duplicate_parents"}))
+	Expect(d.ParentUnionCount).To(Equal(2))
+	Expect(d.PartnerConflict).To(BeTrue())
+	Expect(d.Focus.ProfileID).To(Equal("6000000218702606843"))
+	Expect(d.Focus.Name).To(Equal("Акилина Григорьевна Бармина"))
+	Expect(d.ParentUnions).To(HaveLen(2))
+
+	// A father duplicate-candidate holding the two "Григорий" profiles.
+	var father *treeconflicts.DuplicateCandidate
+	for i := range d.DuplicateCandidates {
+		if d.DuplicateCandidates[i].Role == "father" {
+			father = &d.DuplicateCandidates[i]
+		}
+	}
+	Expect(father).ToNot(BeNil())
+	Expect(father.Profiles).To(HaveLen(2))
+	guids := []string{father.Profiles[0].ProfileID, father.Profiles[1].ProfileID}
+	Expect(guids).To(ConsistOf("6000000217733708841", "6000000217733583911"))
+	// Subtree sizes were merged in from fetch_prune_counts.
+	for _, p := range father.Profiles {
+		Expect(p.SubtreeSize).ToNot(BeEmpty())
+	}
+}
+
+func TestShow_SuggestedActions(t *testing.T) {
+	RegisterTestingT(t)
+	fixture, err := os.ReadFile("testdata/fetch_immediate_family.json")
+	Expect(err).ToNot(HaveOccurred())
+
+	// Father 708841 has the larger subtree (+110) than 583911 (+1), so it is
+	// kept and the suggestion merges the smaller into it.
+	pruneCounts := `{"prune_counts":[
+		{"pid":401078841,"p":"+110"},{"pid":401078391,"p":"+1"},
+		{"pid":401211169,"p":"+38"},{"pid":402225494,"p":"+2"}]}`
+
+	srv := showServer(t, string(fixture), pruneCounts, nil)
+	defer srv.Close()
+
+	d, err := newClient(t, srv).Show(context.Background(), "6000000218702606843")
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(d.SuggestedActions).To(ContainElement(
+		"geni profile compare profile-g6000000217733708841 profile-g6000000217733583911"))
+	Expect(d.SuggestedActions).To(ContainElement(HavePrefix(
+		"geni profile merge profile-g6000000217733708841 profile-g6000000217733583911")))
+}
+
+func TestShow_NoConflict(t *testing.T) {
+	RegisterTestingT(t)
+	// A focus with a single parent union → no conflict.
+	single := `{"tree":{
+		"unions":[{"u":1,"p":[10,11],"c":[20]}],
+		"nodes":[
+			{"n":20,"pid":"p20","pr_id":"g20","g":"f","nm":"Child","focus":1,"npu":"1"},
+			{"n":10,"pid":"p10","pr_id":"g10","g":"m","nm":"Father"},
+			{"n":11,"pid":"p11","pr_id":"g11","g":"f","nm":"Mother"}]}}`
+	srv := showServer(t, single, "", nil)
+	defer srv.Close()
+
+	d, err := newClient(t, srv).Show(context.Background(), "g20")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(d.HasConflict).To(BeFalse())
+	Expect(d.ConflictTypes).To(BeEmpty())
+	Expect(d.DuplicateCandidates).To(BeEmpty())
+	Expect(d.SuggestedActions).To(BeEmpty())
+}
+
+func TestShow_LoginRedirectMapsToErrNotLoggedIn(t *testing.T) {
+	RegisterTestingT(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	defer srv.Close()
+	_, err := newClient(t, srv).Show(context.Background(), "6000000218702606843")
+	Expect(errors.Is(err, web.ErrNotLoggedIn)).To(BeTrue(), "expected ErrNotLoggedIn, got %v", err)
 }

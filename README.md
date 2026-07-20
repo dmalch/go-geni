@@ -154,6 +154,10 @@ err = conflicts.NewClient(c).Resolve(context.Background(), "<profile-guid>", nil
 // review and resolve the conflict by hand.
 tc, _ := treeconflicts.NewClient(c).List(context.Background(),
     treeconflicts.ListOptions{Collection: "managed"})
+
+// Inspect one tree conflict: its parent unions, the suspected duplicate
+// relatives (with subtree sizes), and ready-to-run compare/merge commands.
+detail, _ := treeconflicts.NewClient(c).Show(context.Background(), "<profile-id>")
 ```
 
 Cookies can also be pulled directly from a logged-in browser on the host via

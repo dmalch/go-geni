@@ -980,6 +980,44 @@ func runTreeConflictsList(ctx context.Context, g *globalOpts, args []string) err
 	return render(g.stdout, out)
 }
 
+// runTreeConflictsShow handles
+//
+//	geni tree-conflicts show <profile-id>
+//
+// It inspects one profile's tree conflict via the Merge Center tree view
+// (the /flash/fetch_immediate_family AJAX endpoint) and renders the parsed
+// conflict: the focus, the parent unions, the suspected duplicate relatives,
+// and runnable `geni profile compare`/`merge` suggestions. The argument is
+// the bare id/guid from `tree-conflicts list`. Gated by ensureWebConsent.
+func runTreeConflictsShow(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni tree-conflicts show", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni tree-conflicts show <profile-id>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+
+	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, detail)
+}
+
 // runConflictsShow handles
 //
 //	geni conflicts show <profile-id-or-guid>

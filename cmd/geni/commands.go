@@ -132,6 +132,7 @@ func commandTree() map[string]*command {
 		}},
 		"tree-conflicts": {summary: "merge tree-conflicts (AJAX, one-time consent)", sub: map[string]*command{
 			"list": {summary: "list profiles with unresolved tree conflicts", run: runTreeConflictsList},
+			"show": {summary: "inspect one profile's tree conflict and suggest fixes", run: runTreeConflictsShow},
 		}},
 		"tree": {summary: "family-graph queries", sub: map[string]*command{
 			"family":    {summary: "immediate family of a profile", run: runTreeFamily},
