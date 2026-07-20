@@ -10,15 +10,29 @@
   GETs the server-rendered HTML page and parses the `<tr data-profile-id>`
   rows, mirroring `web/conflicts` and `web/matches`. Each row yields
   `{profile_id, name, profile_url, updated_by_name, updated_at_text,
-  manager_name, tree_url}`. Unlike data conflicts, a tree conflict has **no
-  programmatic resolution**: the web UI's only per-row action is "Open tree",
-  so the feature is list-only (no `show`/`resolve`) and `tree_url` is the
-  `/family-tree/index/<id>?resolve=<id>` link to review it by hand.
+  manager_name, tree_url}`, where `tree_url` is the
+  `/family-tree/index/<id>?resolve=<id>` "Open tree" link.
   `-collection` selects the viewing mode
   (`managed` (default)|`relatives`|`followed`|`collaborators`); `-all`
   paginates until exhausted; `-limit` caps total rows. Like the other web
   commands it is gated by the one-time AJAX consent prompt and honors the
   global `-sandbox` flag and `-browser`/`GENI_WEB_BROWSER` cookie source.
+- New `geni tree-conflicts show <profile-id>` command and
+  `web/treeconflicts.Client.Show` — inspects **one** profile's tree conflict
+  and produces the information to resolve it. A tree conflict has no
+  single-call resolution endpoint, so `Show` reproduces Geni's own tree-view
+  analysis: it bootstraps a `treeSessionId` from the tree page and GETs
+  `/flash/fetch_immediate_family?...&resolve_duplicates=true&check_partner_conflicts=true`,
+  then classifies the conflict. Output is
+  `{profile_id, focus, conflict_types, parent_union_count, partner_conflict,
+  parent_unions[], duplicate_candidates[], suggested_actions[], has_conflict}`.
+  The common case is **duplicate parents** — two parent unions whose
+  fathers/mothers are the same person duplicated by a merge;
+  `duplicate_candidates[]` groups them by role with each profile's
+  `subtree_size` (from `/flash/fetch_prune_counts`), and `suggested_actions[]`
+  are ready-to-run `geni profile compare`/`merge` commands that keep the
+  profile carrying the larger subtree. Same one-time AJAX consent /
+  `-sandbox` / `-browser` handling as the other web commands.
 
 ## 1.21.1
 
