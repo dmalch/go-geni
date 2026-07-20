@@ -1018,6 +1018,96 @@ func runTreeConflictsShow(ctx context.Context, g *globalOpts, args []string) err
 	return render(g.stdout, detail)
 }
 
+// runTreeConflictsResolve handles
+//
+//	geni tree-conflicts resolve [-yes] [-dry-run] <profile-id>
+//
+// It resolves the "empty parent slot" variant of a duplicate_parents tree
+// conflict: the focus child has one real parent union and one union whose
+// second parent is a synthetic «Mother/Father of X» placeholder (minted for a
+// record that named a single parent). The placeholder is not a real profile —
+// a `profile merge` against it 404s — so the conflict is resolved by detaching
+// the focus from the placeholder union (delete_relationships), leaving the real
+// family union intact. Other duplicate_parents (two real parents) and
+// duplicate_spouse conflicts are not auto-resolvable here; resolve reports the
+// merge commands from `show` for those. Mutating, so a y/N confirmation is
+// required unless -yes; -dry-run reports the plan without detaching. Gated by
+// the one-time AJAX consent prompt.
+func runTreeConflictsResolve(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni tree-conflicts resolve", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	dryRun := fs.Bool("dry-run", false, "report the plan without detaching")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("usage: geni tree-conflicts resolve [-yes] [-dry-run] <profile-id>")
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+
+	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	if !detail.HasConflict {
+		return render(g.stdout, map[string]any{
+			"status":  "no_conflict",
+			"profile": detail.Focus.ProfileID,
+		})
+	}
+
+	unionIDs := detail.EmptyParentUnions()
+	if len(unionIDs) == 0 {
+		// Not the empty-slot case — two real parents (or a spouse conflict).
+		return render(g.stdout, map[string]any{
+			"status":            "manual",
+			"profile":           detail.Focus.ProfileID,
+			"message":           "not an empty-parent-slot conflict — resolve by merging the duplicate relatives (see suggested_actions)",
+			"suggested_actions": detail.SuggestedActions,
+		})
+	}
+
+	if *dryRun {
+		return render(g.stdout, map[string]any{
+			"status":                   "dry_run",
+			"profile":                  detail.Focus.ProfileID,
+			"action":                   "detach_empty_parent_union",
+			"would_detach_from_unions": unionIDs,
+		})
+	}
+
+	if !*yes {
+		_, _ = fmt.Fprintf(g.stderr,
+			"Resolve tree conflict: detach %s from empty-parent union(s) %s? [y/N]: ",
+			detail.Focus.ProfileID, strings.Join(unionIDs, ", "))
+		if !confirmed(g.stdin) {
+			return errors.New("resolve aborted")
+		}
+	}
+
+	if err := webunions.NewClient(wc).Detach(ctx, detail.Focus.ProfileID, unionIDs); err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]any{
+		"status":               "resolved",
+		"profile":              detail.Focus.ProfileID,
+		"action":               "detach_empty_parent_union",
+		"detached_from_unions": unionIDs,
+	})
+}
+
 // runConflictsShow handles
 //
 //	geni conflicts show <profile-id-or-guid>

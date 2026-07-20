@@ -229,6 +229,88 @@ func TestShow_SuggestedActions(t *testing.T) {
 		"geni profile merge profile-g6000000217733708841 profile-g6000000217733583911")))
 }
 
+// A duplicate_parents conflict where the focus child has a real family union
+// (father+mother) and an "empty slot" union (father + synthetic «Mother of X»),
+// mirroring the live НВ Гусев shape. The synthetic node has no pid and a
+// negative pseudo-guid; each union carries its web id in the flash `m` field.
+const emptySlotTree = `{"tree":{
+	"unions":[
+		{"u":735,"m":"6000000226076931917","p":[737,745],"c":[734]},
+		{"u":736,"m":"6000000226076793070","p":[738,739],"c":[740,734]}],
+	"nodes":[
+		{"n":734,"pid":"418204708","pr_id":"6000000226076538937","g":"f","nm":"Александра","focus":1,"npu":"2"},
+		{"n":737,"pid":"418204718","pr_id":"6000000226076418930","g":"m","nm":"Василий"},
+		{"n":745,"pid":"","pr_id":"-129053048f","g":"f","nm":"Mother of Александра"},
+		{"n":738,"pid":"418204718","pr_id":"6000000226076418930","g":"m","nm":"Василий"},
+		{"n":739,"pid":"418205120","pr_id":"6000000226076758909","g":"f","nm":"Елена"},
+		{"n":740,"pid":"418205679","pr_id":"6000000226076822919","g":"f","nm":"Прасковья"}]}}`
+
+func TestShow_EmptySlotParentUnion(t *testing.T) {
+	RegisterTestingT(t)
+	srv := showServer(t, emptySlotTree, "", nil)
+	defer srv.Close()
+
+	d, err := newClient(t, srv).Show(context.Background(), "6000000226076538937")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(d.HasConflict).To(BeTrue())
+	Expect(d.ParentUnions).To(HaveLen(2))
+
+	// Each parent union carries its web id (the flash `m` field).
+	byWeb := map[string]treeconflicts.ParentUnion{}
+	for _, pu := range d.ParentUnions {
+		byWeb[pu.WebUnionID] = pu
+	}
+	Expect(byWeb).To(HaveKey("6000000226076931917")) // empty-slot union
+	Expect(byWeb).To(HaveKey("6000000226076793070")) // real family union
+
+	// The synthetic parent is flagged as a placeholder; the real ones are not.
+	empty := byWeb["6000000226076931917"]
+	var sawPlaceholder bool
+	for _, p := range empty.Parents {
+		if p.Name == "Mother of Александра" {
+			sawPlaceholder = p.Placeholder
+		}
+	}
+	Expect(sawPlaceholder).To(BeTrue())
+
+	// EmptyParentUnions surfaces exactly the empty-slot union's web id.
+	Expect(d.EmptyParentUnions()).To(Equal([]string{"6000000226076931917"}))
+
+	// The suggestion is a detach/resolve, never a merge of the placeholder.
+	Expect(d.SuggestedActions).To(ContainElement(HavePrefix(
+		"geni tree-conflicts resolve profile-g6000000226076538937")))
+	for _, a := range d.SuggestedActions {
+		Expect(a).ToNot(ContainSubstring("profile-g-129053048f"))
+	}
+}
+
+func TestEmptyParentUnions_RequiresARealUnion(t *testing.T) {
+	RegisterTestingT(t)
+	ph := treeconflicts.ConflictProfile{Name: "Mother of X", Placeholder: true}
+	realParent := treeconflicts.ConflictProfile{Name: "Father", ProfileID: "600F"}
+
+	// One empty + one realParent → detach the empty one.
+	d := &treeconflicts.ConflictDetail{ParentUnions: []treeconflicts.ParentUnion{
+		{WebUnionID: "u_empty", Parents: []treeconflicts.ConflictProfile{realParent, ph}},
+		{WebUnionID: "u_real", Parents: []treeconflicts.ConflictProfile{realParent, {Name: "Mother", ProfileID: "600M"}}},
+	}}
+	Expect(d.EmptyParentUnions()).To(Equal([]string{"u_empty"}))
+
+	// Every union has a placeholder → nothing safe to detach (would orphan).
+	allEmpty := &treeconflicts.ConflictDetail{ParentUnions: []treeconflicts.ParentUnion{
+		{WebUnionID: "a", Parents: []treeconflicts.ConflictProfile{realParent, ph}},
+		{WebUnionID: "b", Parents: []treeconflicts.ConflictProfile{realParent, ph}},
+	}}
+	Expect(allEmpty.EmptyParentUnions()).To(BeNil())
+
+	// Two realParent parents (no placeholder) → not an empty-slot case.
+	twoReal := &treeconflicts.ConflictDetail{ParentUnions: []treeconflicts.ParentUnion{
+		{WebUnionID: "a", Parents: []treeconflicts.ConflictProfile{realParent, {Name: "Mother"}}},
+		{WebUnionID: "b", Parents: []treeconflicts.ConflictProfile{{Name: "Father2"}, {Name: "Mother2"}}},
+	}}
+	Expect(twoReal.EmptyParentUnions()).To(BeNil())
+}
+
 func TestShow_NoConflict(t *testing.T) {
 	RegisterTestingT(t)
 	// A focus with a single parent union → no conflict.

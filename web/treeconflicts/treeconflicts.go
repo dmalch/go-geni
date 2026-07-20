@@ -7,12 +7,18 @@
 // mirroring web/conflicts and web/matches. See the parent package doc for
 // legal caveats.
 //
-// Unlike data conflicts, a tree conflict has no single-call resolution
-// endpoint — the web UI resolves it by having a human merge the duplicate
-// relatives in the tree view. List enumerates the conflicts; Show inspects
-// one, reproducing Geni's own tree-view analysis
-// (/flash/fetch_immediate_family) to surface the parent unions, the
-// suspected duplicate relatives, and ready-to-run compare/merge commands.
+// Most tree conflicts are resolved by merging the duplicate relatives (two
+// father profiles, two mother profiles) — Show emits those merge commands.
+// The one variant this package can resolve directly is the "empty parent
+// slot": a duplicate_parents conflict where one parent union's second parent
+// is a synthetic «Mother/Father of X» placeholder (minted for a record that
+// named a single parent). That placeholder is not a real profile — a merge
+// 404s — so EmptyParentUnions surfaces the placeholder union's web id and the
+// focus is detached from it (via web/unions), leaving the real family union.
+// List enumerates the conflicts; Show inspects one, reproducing Geni's own
+// tree-view analysis (/flash/fetch_immediate_family) to surface the parent
+// unions (each with its web id), the suspected duplicate relatives, and
+// ready-to-run compare/merge/resolve commands.
 //
 // The data is per-user and not reproducible without an account that owns
 // merged profiles with pending tree conflicts, so there is no acceptance
@@ -118,13 +124,32 @@ type ConflictProfile struct {
 	BirthYear   string `json:"birth_year,omitempty"`
 	DeathYear   string `json:"death_year,omitempty"`
 	SubtreeSize string `json:"subtree_size,omitempty"` // e.g. "+110", from fetch_prune_counts
+	// Placeholder marks a synthetic empty-parent-slot node — «Mother/Father of
+	// X», minted for a record that named a single parent. It is NOT a real
+	// profile (it has no short id and a negative pseudo-guid), so a
+	// `profile merge` against it 404s; the fix is a detach (see Resolve).
+	Placeholder bool `json:"placeholder,omitempty"`
 }
 
 // ParentUnion is one of the focus profile's parent unions (a union in
 // which the focus is a child). A tree conflict typically has two of these.
 type ParentUnion struct {
-	UnionID string            `json:"union_id"`
-	Parents []ConflictProfile `json:"parents"`
+	UnionID string `json:"union_id"` // tree-session-local label ("union-<u>")
+	// WebUnionID is the union's Geni web id (bare 6000000…, from the flash
+	// `m` field) — the id `profile detach-union` / delete_relationships take.
+	WebUnionID string            `json:"web_union_id,omitempty"`
+	Parents    []ConflictProfile `json:"parents"`
+}
+
+// hasPlaceholderParent reports whether any partner of the union is a synthetic
+// empty slot (so the union is a duplicate "empty-parent" union, not a real one).
+func (pu ParentUnion) hasPlaceholderParent() bool {
+	for _, p := range pu.Parents {
+		if p.Placeholder {
+			return true
+		}
+	}
+	return false
 }
 
 // DuplicateCandidate groups two or more same-role relatives that look like
@@ -158,9 +183,10 @@ type flashTree struct {
 }
 
 type flashUnion struct {
-	U int   `json:"u"`
-	P []int `json:"p"` // partner node ids
-	C []int `json:"c"` // child node ids
+	U int    `json:"u"` // union id local to this response
+	M string `json:"m"` // the union's Geni web id (bare 6000000… — the delete_relationships uid)
+	P []int  `json:"p"` // partner node ids
+	C []int  `json:"c"` // child node ids
 }
 
 type flashNode struct {
@@ -354,7 +380,7 @@ func analyzeConflict(profileID string, t *flashTree) *ConflictDetail {
 	}
 
 	for _, u := range parentUnions {
-		pu := ParentUnion{UnionID: fmt.Sprintf("union-%d", u.U)}
+		pu := ParentUnion{UnionID: fmt.Sprintf("union-%d", u.U), WebUnionID: u.M}
 		for _, pn := range u.P {
 			if n := byN[pn]; n != nil {
 				pu.Parents = append(pu.Parents, toConflictProfile(n))
@@ -435,11 +461,53 @@ func (d *ConflictDetail) applySubtreeSizes(sizes map[string]string) {
 	}
 }
 
+// EmptyParentUnions returns the web ids of the focus's parent unions whose
+// second parent is a synthetic empty slot — the duplicate "empty-parent" unions
+// to detach the focus from, resolving a placeholder duplicate_parents conflict.
+// It returns nil unless at least one FULLY-REAL parent union remains (so the
+// focus stays parented) — never detaching the focus from every parent union.
+func (d *ConflictDetail) EmptyParentUnions() []string {
+	var empty []string
+	realCount := 0
+	for _, pu := range d.ParentUnions {
+		if pu.hasPlaceholderParent() {
+			if pu.WebUnionID != "" {
+				empty = append(empty, pu.WebUnionID)
+			}
+		} else {
+			realCount++
+		}
+	}
+	if realCount == 0 {
+		return nil
+	}
+	return empty
+}
+
+// candidateHasPlaceholder reports whether a duplicate candidate includes a
+// synthetic empty-slot node (so it cannot be resolved by a profile merge).
+func candidateHasPlaceholder(ps []ConflictProfile) bool {
+	for _, p := range ps {
+		if p.Placeholder {
+			return true
+		}
+	}
+	return false
+}
+
 // buildSuggestedActions emits runnable geni commands for each duplicate
-// candidate, keeping the profile with the larger attached subtree.
+// candidate, keeping the profile with the larger attached subtree. A candidate
+// that includes a synthetic empty slot is not mergeable (a merge 404s), so it
+// suggests `tree-conflicts resolve` (a detach) instead.
 func (d *ConflictDetail) buildSuggestedActions() {
 	for _, cand := range d.DuplicateCandidates {
 		if len(cand.Profiles) < 2 {
+			continue
+		}
+		if candidateHasPlaceholder(cand.Profiles) {
+			d.SuggestedActions = append(d.SuggestedActions,
+				fmt.Sprintf("geni tree-conflicts resolve profile-g%s  # %s: detach the empty %s slot (placeholder is not a mergeable profile)",
+					d.Focus.ProfileID, cand.Role, cand.Role))
 			continue
 		}
 		ps := make([]ConflictProfile, len(cand.Profiles))
@@ -478,13 +546,20 @@ func parseTreeSessionID(r io.Reader) (string, error) {
 
 func toConflictProfile(n *flashNode) ConflictProfile {
 	return ConflictProfile{
-		ProfileID: n.PrID,
-		ShortID:   n.PID,
-		Name:      trimText(n.NM),
-		Gender:    genderName(n.G),
-		BirthYear: n.DobY,
-		DeathYear: n.DodY,
+		ProfileID:   n.PrID,
+		ShortID:     n.PID,
+		Name:        trimText(n.NM),
+		Gender:      genderName(n.G),
+		BirthYear:   n.DobY,
+		DeathYear:   n.DodY,
+		Placeholder: isPlaceholderNode(n),
 	}
+}
+
+// isPlaceholderNode reports whether a node is a synthetic empty-parent slot:
+// Geni gives it no short id (pid) and a negative pseudo-guid (pr_id "-<n>f").
+func isPlaceholderNode(n *flashNode) bool {
+	return n.PID == "" || strings.HasPrefix(n.PrID, "-")
 }
 
 func genderName(g string) string {
