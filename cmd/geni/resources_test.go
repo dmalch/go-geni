@@ -520,3 +520,45 @@ func TestRunDocumentForProfile_ArgValidation(t *testing.T) {
 		Expect(runDocumentForProfile(context.Background(), g, []string{"-unknown", "profile-1"})).To(HaveOccurred())
 	})
 }
+
+func TestRunRelationshipSetParentModifier_ArgValidation(t *testing.T) {
+	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+
+	t.Run("no args is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runRelationshipSetParentModifier(context.Background(), g, nil)).To(HaveOccurred())
+	})
+
+	t.Run("one arg is an error", func(t *testing.T) {
+		RegisterTestingT(t)
+		Expect(runRelationshipSetParentModifier(context.Background(), g, []string{"6000000218702637822"})).To(HaveOccurred())
+	})
+
+	t.Run("invalid modifier is rejected before any network", func(t *testing.T) {
+		RegisterTestingT(t)
+		err := runRelationshipSetParentModifier(context.Background(), g,
+			[]string{"6000000218702637822", "sibling"})
+		Expect(err).To(MatchError(ContainSubstring("modifier")))
+	})
+}
+
+func TestRunRelationshipSetParentModifier_AbortsWithoutConfirmation(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("GENI_WEB_CONSENT", "accepted")
+	// A bare guid avoids the OAuth guid lookup; "n" declines the mutation.
+	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+	err := runRelationshipSetParentModifier(context.Background(), g,
+		[]string{"6000000218702637822", "foster"})
+	Expect(err).To(MatchError(ContainSubstring("aborted")))
+}
+
+func TestRunRelationshipSetParentModifier_AbortsWhenConsentDeclined(t *testing.T) {
+	RegisterTestingT(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GENI_WEB_CONSENT", "")
+	g := &globalOpts{stdin: strings.NewReader("n\n"), stderr: io.Discard}
+	err := runRelationshipSetParentModifier(context.Background(), g,
+		[]string{"6000000218702637822", "foster"})
+	Expect(err).To(MatchError(ContainSubstring("declined")))
+}

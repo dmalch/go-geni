@@ -51,6 +51,9 @@ func commandTree() map[string]*command {
 				})},
 			"intersect": {summary: "find unions two profiles share", run: runUnionIntersect},
 		}},
+		"relationship": {summary: "parent/child relationship edits (AJAX, one-time consent)", sub: map[string]*command{
+			"set-parent-modifier": {summary: "set a child's parent relationship modifier bio/adopt/foster (AJAX, mutating)", run: runRelationshipSetParentModifier},
+		}},
 		"document": {summary: "document resource", sub: map[string]*command{
 			"for-profile": {summary: "list documents attached to a profile", run: runDocumentForProfile},
 			"get": {summary: "fetch a document by id", run: resourceGet("document-", false,
