@@ -17,6 +17,7 @@ import (
 	webconflicts "github.com/dmalch/go-geni/web/conflicts"
 	webdocument "github.com/dmalch/go-geni/web/document"
 	webmatches "github.com/dmalch/go-geni/web/matches"
+	webrelationships "github.com/dmalch/go-geni/web/relationships"
 	webrevision "github.com/dmalch/go-geni/web/revision"
 	webtreeconflicts "github.com/dmalch/go-geni/web/treeconflicts"
 	webunions "github.com/dmalch/go-geni/web/unions"
@@ -822,6 +823,93 @@ func runProfileDetachUnion(ctx context.Context, g *globalOpts, args []string) er
 		"status":  "detached",
 		"profile": profileGuid,
 		"unions":  unionIDs,
+	})
+}
+
+// runRelationshipSetParentModifier handles
+//
+//	geni relationship set-parent-modifier [-parent-union <id>] [-yes] <child-id-or-guid> <bio|adopt|foster>
+//
+// It changes the relationship modifier of the child's edge to one of its
+// parent unions — the parent_modifiers[…] control on the child's
+// edit_relationships page — by refetching the form, flipping the one
+// field, and POSTing the whole form back the way the browser's Save does.
+// The OAuth API can attach a child with a modifier but cannot re-tag an
+// existing biological edge, so this is the only path to move a live
+// parent↔child edge to foster/adopted. Mutating, so a y/N confirmation is
+// required unless -yes; gated by the one-time AJAX consent prompt.
+//
+// -parent-union is a Geni web union id (the bare 6000000… number,
+// optionally union- prefixed); omit it to target the child's sole parent
+// union (an error when the child has more than one). A short OAuth
+// union-NNN has no web guid and will not resolve.
+func runRelationshipSetParentModifier(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni relationship set-parent-modifier", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	yes := fs.Bool("yes", false, "skip the confirmation prompt")
+	parentUnion := fs.String("parent-union", "", "web union id to re-tag (default: the child's sole parent union)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 2 {
+		return errors.New("usage: geni relationship set-parent-modifier [-parent-union <id>] [-yes] " +
+			"<child-id-or-guid> <bio|adopt|foster>")
+	}
+	modifier := fs.Arg(1)
+	if !webrelationships.ValidModifier(modifier) {
+		return fmt.Errorf("invalid modifier %q: want %s, %s or %s", modifier,
+			webrelationships.ModifierBiological, webrelationships.ModifierAdopted, webrelationships.ModifierFoster)
+	}
+
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+
+	childGuid, err := resolveProfileGuid(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	var unionWebID string
+	if *parentUnion != "" {
+		unionWebID, err = normalizeUnionID(*parentUnion)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !*yes {
+		via := ""
+		if unionWebID != "" {
+			via = " via union " + unionWebID
+		}
+		_, _ = fmt.Fprintf(g.stderr,
+			"Set parent relationship of %s%s to %q? [y/N]: ", childGuid, via, modifier)
+		if !confirmed(g.stdin) {
+			return errors.New("set-parent-modifier aborted")
+		}
+	}
+
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+	res, err := webrelationships.NewClient(wc).SetParentModifier(ctx, childGuid, unionWebID, modifier)
+	if err != nil {
+		return err
+	}
+	status := "updated"
+	if !res.Changed {
+		status = "unchanged"
+	}
+	return render(g.stdout, map[string]any{
+		"status":   status,
+		"profile":  childGuid,
+		"union":    res.Union,
+		"modifier": res.Modifier,
 	})
 }
 

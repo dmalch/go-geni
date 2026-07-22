@@ -1,3 +1,29 @@
+## 1.24.0
+
+### NEW
+
+- New `geni relationship set-parent-modifier [-parent-union <id>] [-yes]
+  <child-id-or-guid> <bio|adopt|foster>` command and
+  `web/relationships.Client.SetParentModifier`. Changes the relationship
+  modifier of a parent↔child edge — biological / adopted («Приёмные») /
+  foster («Патронатные»). The OAuth API can attach a child to a union
+  *with* a modifier but cannot **re-tag an existing** edge (the
+  `geni_union` Terraform resource surfaces this as a "Cannot change
+  relationship modifier" warning), so this is the only programmatic path
+  to move a live edge to foster/adopted. It drives the child's
+  `edit_relationships` page the way the browser's Save does: GET the
+  `#edit_form`, flip the one `parent_modifiers[<union>]` field, and POST
+  the whole form back — preserving every other relationship. Omit
+  `-parent-union` to target the child's sole parent union (an error when
+  there is more than one). No-op when the edge already carries the
+  requested modifier (`{"status":"unchanged"}`). A `422` (stale
+  `authenticity_token`) refetches the form and retries once. Mutating, so
+  it prompts `y/N` unless `-yes`; gated by the one-time AJAX consent
+  prompt and honors `-sandbox` and the `-browser`/`GENI_WEB_BROWSER`
+  cookie source like the other web commands. The parent-union argument is
+  a Geni **web** union id (the bare 6000000… number); a short OAuth
+  `union-NNN` has no web guid and will not resolve.
+
 ## 1.22.0
 
 ### NEW
