@@ -16,6 +16,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// openBrowser is a seam so the login flow can be exercised without launching a
+// real browser. Production code always uses open.Start.
+var openBrowser = open.Start
+
 // authTokenSource implements oauth2.TokenSource.
 type authTokenSource struct {
 	config *oauth2.Config
@@ -61,10 +65,19 @@ func (a *authTokenSource) Token() (*oauth2.Token, error) {
 		oauth2.SetAuthURLParam("display", "mobile"),
 	)
 
-	// Open the URL in the default browser
-	err := open.Start(authURL)
-	if err != nil {
-		return nil, err
+	// Print the URL before handing it to the browser. `open.Start` gives the
+	// caller no way to recover it, and the URL cannot be rebuilt afterwards:
+	// `state` is random, single-use and lives only in this process. Without
+	// this line there is nothing to fall back on when the default browser is
+	// not the one holding the Geni session — a remote shell, a second Chrome
+	// profile, or an agent driving a browser it does not own.
+	_, _ = fmt.Fprintf(os.Stderr, "Open this URL to authorize:\n%s\n", authURL)
+
+	// Opening a browser is a convenience, not a precondition: the callback
+	// server is already listening and the URL is on screen, so a failure here
+	// leaves the flow perfectly usable by hand.
+	if err := openBrowser(authURL); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not open a browser automatically (%v) — open the URL above\n", err)
 	}
 
 	// Wait for the token to be set by the callback handler, for SIGINT to be
