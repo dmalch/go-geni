@@ -788,3 +788,89 @@ func hasClass(n *html.Node, want string) bool {
 	}
 	return false
 }
+
+// WebUnion is one union a profile belongs to, as the tree view reports it.
+//
+// The `WebID` is the only place the Geni web id of a union is obtainable: the
+// OAuth API exposes no union guid, so a short `union-NNN` from `union get`
+// cannot be turned into the id `/profile_actions/delete_relationships` (and
+// therefore `geni profile detach-union`) requires.
+//
+// Partners and Children are member **guids**, not the flash payload's `pid`.
+// The tree view numbers profiles in its own id space (`pid` 418204615) which
+// shares nothing with the OAuth short id (`profile-34859260261`); the guid
+// (`pr_id`) is the only identifier both sides agree on, so it is the one worth
+// exposing — matching an OAuth union by `pid` silently never matches.
+type WebUnion struct {
+	WebID    string   `json:"web_id"`
+	Partners []string `json:"partners"`
+	Children []string `json:"children"`
+}
+
+// UnionsFor returns every union `profileID` participates in, each carrying the
+// web id that the detach action needs. profileID is a short id or guid; a
+// leading "profile-"/"profile-g" is tolerated.
+//
+// Callers map an OAuth `union-NNN` onto one of these by comparing membership —
+// see `Members`. A union the tree view does not report is not detachable.
+func (c *Client) UnionsFor(ctx context.Context, profileID string) ([]WebUnion, error) {
+	profileID = normalizeFlashProfileID(profileID)
+
+	sid, err := c.fetchTreeSessionID(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+	tree, err := c.fetchImmediateFamily(ctx, sid, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Node ids in `u.p` / `u.c` are local to this response; resolve them to
+	// profile ids through the node table.
+	// Key on the guid: the flash `pid` lives in the tree view's own id space
+	// and cannot be compared with anything the OAuth API returns.
+	byNode := make(map[int]string, len(tree.Nodes))
+	for _, n := range tree.Nodes {
+		byNode[n.N] = normalizeFlashProfileID(n.PrID)
+	}
+	resolve := func(nodes []int) []string {
+		out := make([]string, 0, len(nodes))
+		for _, n := range nodes {
+			if pid := byNode[n]; pid != "" {
+				out = append(out, pid)
+			}
+		}
+		sort.Strings(out)
+		return out
+	}
+
+	out := make([]WebUnion, 0, len(tree.Unions))
+	for _, u := range tree.Unions {
+		if u.M == "" {
+			continue // no web id → not addressable by the detach action
+		}
+		out = append(out, WebUnion{
+			WebID:    u.M,
+			Partners: resolve(u.P),
+			Children: resolve(u.C),
+		})
+	}
+	return out, nil
+}
+
+// Members is the union's full membership (partners + children) as a sorted,
+// de-duplicated slice of short profile ids — the key for matching a WebUnion
+// against an OAuth union's membership.
+func (w WebUnion) Members() []string {
+	seen := make(map[string]struct{}, len(w.Partners)+len(w.Children))
+	out := make([]string, 0, len(w.Partners)+len(w.Children))
+	for _, id := range append(append([]string{}, w.Partners...), w.Children...) {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}

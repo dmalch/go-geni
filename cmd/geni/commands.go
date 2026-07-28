@@ -39,6 +39,7 @@ func commandTree() map[string]*command {
 			"merge":        {summary: "merge one profile into another (destructive)", run: runProfileMerge},
 			"compare":      {summary: "compare two profiles field by field", run: runProfileCompare},
 			"detach-union": {summary: "detach a profile from one or more unions (AJAX, mutating)", run: runProfileDetachUnion},
+			"unions":       {summary: "list a profile's unions with their web ids", run: runProfileUnions},
 		}},
 		"union": {summary: "union resource", sub: map[string]*command{
 			"get": {summary: "fetch a union by id", run: resourceGet("union-", false,

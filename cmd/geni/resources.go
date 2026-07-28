@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -768,10 +769,18 @@ func runMatchesReject(ctx context.Context, g *globalOpts, args []string) error {
 // passed. Like the other web commands it is gated by the one-time AJAX
 // consent prompt.
 //
-// The union arguments must be Geni web ids (the bare 6000000… numbers
-// shown as remove_connection_<id> on the edit_relationships page),
-// optionally "union-"-prefixed. The OAuth API exposes no union guid, so
-// a short union-NNN cannot be resolved to a web id here.
+// The union arguments may be either Geni web ids (the bare 6000000…
+// numbers shown as remove_connection_<id> on the edit_relationships
+// page) or the short OAuth "union-NNN" ids that `geni union get` and the
+// Terraform provider use. The OAuth API exposes no union guid, so a
+// short id is resolved by membership: the profile's unions are read off
+// the tree view (which is the only source of the web id) and matched
+// against the OAuth union's partners+children.
+//
+// Every id is validated against that list before anything is POSTed. An
+// id the profile does not actually belong to is a hard error — Geni
+// silently ignores an unknown union and would otherwise let this command
+// report a detach that never happened.
 func runProfileDetachUnion(ctx context.Context, g *globalOpts, args []string) error {
 	fs := flag.NewFlagSet("geni profile detach-union", flag.ContinueOnError)
 	fs.SetOutput(g.stderr)
@@ -798,6 +807,10 @@ func runProfileDetachUnion(ctx context.Context, g *globalOpts, args []string) er
 			return err
 		}
 		unionIDs = append(unionIDs, uid)
+	}
+	unionIDs, err = resolveDetachUnionIDs(ctx, g, fs.Arg(0), profileGuid, unionIDs)
+	if err != nil {
+		return err
 	}
 
 	if !*yes {
@@ -923,6 +936,172 @@ func normalizeUnionID(id string) (string, error) {
 			"remove_connection_<id> on the edit_relationships page), optionally union- prefixed", id)
 	}
 	return bare, nil
+}
+
+// runProfileUnions handles
+//
+//	geni profile unions <profile-id-or-guid>
+//
+// It prints every union the profile belongs to as the tree view reports it,
+// each with the Geni WEB id. That id is what `profile detach-union` and the
+// edit_relationships page speak, and the OAuth API never exposes it — so
+// without this there is no way to go from a `union-NNN` (which `union get`
+// and the Terraform provider use) to something detachable. Read-only.
+func runProfileUnions(ctx context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: geni profile unions <profile-id-or-guid>")
+	}
+	if err := ensureWebConsent(g); err != nil {
+		return err
+	}
+	profileGuid, err := resolveProfileGuid(ctx, g, args[0])
+	if err != nil {
+		return err
+	}
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return err
+	}
+	us, err := webtreeconflicts.NewClient(wc).UnionsFor(ctx, profileGuid)
+	if err != nil {
+		return err
+	}
+	return render(g.stdout, map[string]any{"profile": profileGuid, "unions": us})
+}
+
+// resolveDetachUnionIDs turns each requested union id into the web id that
+// /profile_actions/delete_relationships understands, and rejects any id the
+// profile does not belong to.
+//
+// Two forms are accepted. A web id (6000000…) is passed through once it is
+// confirmed to be one of the profile's unions. A short OAuth id (union-NNN,
+// which is what `geni union get` and the Terraform provider speak) carries no
+// web counterpart in the API, so it is matched by MEMBERSHIP: the OAuth union's
+// partners+children must equal one tree-view union's. Containment is not enough
+// — a person's two unions routinely share a partner, and picking the wrong one
+// would detach the wrong family.
+func resolveDetachUnionIDs(ctx context.Context, g *globalOpts, profileArg, profileGuid string,
+	requested []string) ([]string, error) {
+	cookies, err := loadWebCookies(g)
+	if err != nil {
+		return nil, err
+	}
+	wc, err := newWebClient(g, cookies)
+	if err != nil {
+		return nil, err
+	}
+	webUnions, err := webtreeconflicts.NewClient(wc).UnionsFor(ctx, profileGuid)
+	if err != nil {
+		return nil, fmt.Errorf("looking up the profile's unions: %w", err)
+	}
+	if len(webUnions) == 0 {
+		return nil, fmt.Errorf("profile %s belongs to no unions the tree view reports; nothing to detach", profileArg)
+	}
+
+	byWebID := make(map[string]webtreeconflicts.WebUnion, len(webUnions))
+	known := make([]string, 0, len(webUnions))
+	for _, wu := range webUnions {
+		byWebID[wu.WebID] = wu
+		known = append(known, wu.WebID)
+	}
+
+	out := make([]string, 0, len(requested))
+	for _, id := range requested {
+		if _, ok := byWebID[id]; ok {
+			out = append(out, id)
+			continue
+		}
+		webID, err := matchOAuthUnion(ctx, g, id, profileArg, webUnions, known)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, webID)
+	}
+	return out, nil
+}
+
+// matchOAuthUnion resolves a short OAuth union id to a web id by comparing the
+// union's membership with each of the profile's tree-view unions.
+func matchOAuthUnion(ctx context.Context, g *globalOpts, id, profileArg string,
+	webUnions []webtreeconflicts.WebUnion, known []string) (string, error) {
+	c, err := newClient(g)
+	if err != nil {
+		return "", err
+	}
+	u, err := c.Union().Get(ctx, "union-"+id)
+	if err != nil {
+		return "", fmt.Errorf("union id %q is not one of profile %s's unions (%s) and does not "+
+			"resolve as an OAuth union-%s: %w", id, profileArg, strings.Join(known, ", "), id, err)
+	}
+
+	// Compare GUIDS: the tree view's member ids live in its own space, so the
+	// union's OAuth member ids have to be resolved to guids first.
+	members := append(append([]string{}, u.Partners...), u.Children...)
+	guids := make([]string, 0, len(members))
+	profiles, err := c.Profile().GetBulk(ctx, members)
+	if err != nil {
+		return "", fmt.Errorf("resolving union-%s's members to guids: %w", id, err)
+	}
+	for _, pr := range profiles.Results {
+		if pr.Guid != "" {
+			guids = append(guids, pr.Guid)
+		}
+	}
+	want := normalizeMembers(guids)
+	var matches []string
+	for _, wu := range webUnions {
+		if equalMembers(wu.Members(), want) {
+			matches = append(matches, wu.WebID)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return "", fmt.Errorf("union-%s does not match any union of profile %s by membership "+
+			"(its unions are %s) — the tree view and the API disagree, so refusing to guess",
+			id, profileArg, strings.Join(known, ", "))
+	default:
+		return "", fmt.Errorf("union-%s matches %d unions of profile %s by membership (%s) — "+
+			"refusing to guess; pass the web id explicitly",
+			id, len(matches), profileArg, strings.Join(matches, ", "))
+	}
+}
+
+// normalizeMembers strips the "profile-" prefix, de-duplicates and sorts, so
+// OAuth and tree-view membership lists are comparable.
+func normalizeMembers(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimPrefix(strings.TrimPrefix(id, "profile-g"), "profile-")
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func equalMembers(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // resolveProfileGuid returns id unchanged when it is already a bare guid,

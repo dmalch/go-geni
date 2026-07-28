@@ -340,3 +340,97 @@ func TestShow_LoginRedirectMapsToErrNotLoggedIn(t *testing.T) {
 	_, err := newClient(t, srv).Show(context.Background(), "6000000218702606843")
 	Expect(errors.Is(err, web.ErrNotLoggedIn)).To(BeTrue(), "expected ErrNotLoggedIn, got %v", err)
 }
+
+// unionsFamily mirrors the shape /flash/fetch_immediate_family returns for a
+// man in two unions — the situation `profile detach-union` has to disambiguate.
+// Node ids (n) are local to the response; `m` is the union's Geni web id.
+//
+// Note `pid` and `pr_id` deliberately differ, as they do in production: the
+// tree view numbers profiles in its OWN id space, so only the guid (`pr_id`)
+// can be matched against anything the OAuth API returns.
+const unionsFamily = `{"tree":{
+  "unions":[
+    {"u":1,"m":"6000000111111111111","p":[1,2],"c":[3,4]},
+    {"u":2,"m":"6000000222222222222","p":[1,5],"c":[6]}
+  ],
+  "nodes":[
+    {"n":1,"pid":"profile-100","pr_id":"6000000000000000001","g":"m","nm":"Отец","focus":1},
+    {"n":2,"pid":"profile-200","pr_id":"6000000000000000002","g":"f","nm":"Первая жена"},
+    {"n":3,"pid":"profile-300","pr_id":"6000000000000000003","g":"m","nm":"Сын"},
+    {"n":4,"pid":"profile-400","pr_id":"6000000000000000004","g":"f","nm":"Дочь"},
+    {"n":5,"pid":"profile-500","pr_id":"6000000000000000005","g":"f","nm":"Вторая жена"},
+    {"n":6,"pid":"profile-600","pr_id":"6000000000000000006","g":"m","nm":"Поздний сын"}
+  ]}}`
+
+func TestUnionsFor_ExposesTheWebIdAndMembership(t *testing.T) {
+	// The web id is the whole point: the OAuth API has no union guid, so this
+	// is the only place `union-NNN` can be mapped onto the id that
+	// /profile_actions/delete_relationships accepts.
+	RegisterTestingT(t)
+
+	srv := showServer(t, unionsFamily, "", nil)
+	defer srv.Close()
+
+	us, err := newClient(t, srv).UnionsFor(context.Background(), "profile-100")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(us).To(HaveLen(2))
+
+	Expect(us[0].WebID).To(Equal("6000000111111111111"))
+	Expect(us[0].Partners).To(Equal([]string{"6000000000000000001", "6000000000000000002"}))
+	Expect(us[0].Children).To(Equal([]string{"6000000000000000003", "6000000000000000004"}))
+	Expect(us[0].Members()).To(Equal([]string{
+		"6000000000000000001", "6000000000000000002",
+		"6000000000000000003", "6000000000000000004"}))
+
+	Expect(us[1].WebID).To(Equal("6000000222222222222"))
+	Expect(us[1].Members()).To(Equal([]string{
+		"6000000000000000001", "6000000000000000005", "6000000000000000006"}))
+}
+
+func TestUnionsFor_MembershipSeparatesUnionsSharingAPartner(t *testing.T) {
+	// Both unions contain profile 100. Matching an OAuth union by containment
+	// would be ambiguous; full membership tells them apart, which is what the
+	// detach resolution relies on to avoid detaching the wrong family.
+	RegisterTestingT(t)
+
+	srv := showServer(t, unionsFamily, "", nil)
+	defer srv.Close()
+
+	us, err := newClient(t, srv).UnionsFor(context.Background(), "profile-100")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(us[0].Members()).ToNot(Equal(us[1].Members()))
+	for _, u := range us {
+		Expect(u.Partners).To(ContainElement("6000000000000000001"))
+	}
+}
+
+func TestUnionsFor_SkipsUnionsWithoutAWebId(t *testing.T) {
+	// A union the tree view reports without `m` cannot be addressed by the
+	// detach action at all, so it must not be offered as a candidate.
+	RegisterTestingT(t)
+
+	body := `{"tree":{"unions":[{"u":1,"m":"","p":[1],"c":[]},
+	                            {"u":2,"m":"6000000333333333333","p":[1],"c":[]}],
+	          "nodes":[{"n":1,"pid":"profile-100","pr_id":"6000000000000000001",
+	                    "g":"m","nm":"Отец","focus":1}]}}`
+	srv := showServer(t, body, "", nil)
+	defer srv.Close()
+
+	us, err := newClient(t, srv).UnionsFor(context.Background(), "profile-100")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(us).To(HaveLen(1))
+	Expect(us[0].WebID).To(Equal("6000000333333333333"))
+}
+
+func TestUnionsFor_ToleratesPrefixedProfileIds(t *testing.T) {
+	RegisterTestingT(t)
+
+	captured := map[string]*http.Request{}
+	srv := showServer(t, unionsFamily, "", &captured)
+	defer srv.Close()
+
+	_, err := newClient(t, srv).UnionsFor(context.Background(), "profile-g6000000000000000001")
+	Expect(err).ToNot(HaveOccurred())
+	Expect(captured["/flash/fetch_immediate_family"].URL.Query().Get("profile")).
+		To(Equal("6000000000000000001"))
+}
