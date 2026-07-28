@@ -1,3 +1,28 @@
+## 1.26.0
+
+### FIXED
+
+- `geni profile detach-union` accepted only a Geni web union id (6000000…)
+  and silently reported success for anything else. `normalizeUnionID`
+  stripped the `union-` prefix and POSTed the short OAuth id as if it were
+  a web id; Geni ignores an unknown union, so the command printed
+  `{"status":"detached"}` for a detach that never happened. Every id is
+  now validated against the profile's actual unions, and a short
+  `union-NNN` (what `union get` and the Terraform provider speak) is
+  resolved by membership — the union's partners+children must equal
+  exactly one tree-view union's, compared on full membership and keyed on
+  GUIDs. (The tree view's `pid` lives in its own id space and shares
+  nothing with the OAuth short id; only `pr_id` is common.) Ambiguous,
+  unknown and non-matching ids are hard errors listing the real unions.
+
+### NEW
+
+- `treeconflicts.Client.UnionsFor(ctx, profileID)` returns `[]WebUnion`
+  (`WebID`, `Partners`, `Children`, plus `Members()`), exposing union web
+  ids — which the OAuth API never provides — outside the conflict flow.
+- `geni profile unions <profile-id-or-guid>` lists a profile's unions with
+  their web ids. Read-only; the manual counterpart to the resolution above.
+
 ## 1.25.0
 
 ### CHANGED
