@@ -1,3 +1,21 @@
+## 1.25.0
+
+### CHANGED
+
+- `auth.NewAuthTokenSource(...).Token()` now prints the authorization URL
+  to stderr before handing it to the browser, and no longer treats a
+  failure to open a browser as fatal. `open.Start` gives the caller no way
+  to recover the URL, and it cannot be rebuilt afterwards because `state`
+  is random, single-use and lives only in the process — so when the
+  default browser is not the one holding the Geni session (a remote
+  shell, a second Chrome profile, an agent driving a browser it does not
+  own), `geni login` had nothing to fall back on and simply hung until
+  the five-minute timeout. The URL is now on screen and the callback
+  server is already listening, so the flow can always be finished by
+  hand; a browser that refuses to launch only logs a warning. The browser
+  call sits behind an `openBrowser` seam so the flow is testable without
+  launching one.
+
 ## 1.24.0
 
 ### NEW
