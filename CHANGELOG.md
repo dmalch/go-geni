@@ -1,3 +1,21 @@
+## 1.27.0
+
+### FIXED
+
+- `geni profile detach-union` could not resolve a short `union-NNN` when the
+  profile had two unions holding the SAME people in different roles — after
+  splitting a wrongly-merged family, a man and a woman are partners in one
+  union and parent-and-child in another. Matching compared a flat member set,
+  which is identical for both, so the command refused to resolve and the web
+  id had to be looked up by hand. It now compares the CHILDREN set exactly and
+  requires the partner sets merely to overlap: partner equality is unusable
+  because the tree view reports slots the OAuth API omits (an unresolved
+  partner appears as a placeholder such as `-123725231f`).
+- The same command counted one union as several when the tree view returned it
+  more than once, reporting `matches 2 unions (X, X)` and refusing a
+  resolution that was in fact unambiguous. Candidates and the union list shown
+  in errors are now de-duplicated by web id.
+
 ## 1.26.0
 
 ### FIXED
