@@ -30,8 +30,11 @@ const (
 	// callbackPath is the path the callback listener serves.
 	callbackPath = "/callback"
 
-	// displayMobile asks Geni for the phone-sized authorization screen.
-	displayMobile = "mobile"
+	// displayWeb asks Geni for the full-size, desktop-sized authorization
+	// screen. Geni also accepts "mobile" (phone-sized), "desktop" (which
+	// ignores redirect_uri and lands the token on an internal Geni page,
+	// unreachable from a loopback listener) and "iframe" (canvas apps).
+	displayWeb = "web"
 
 	// defaultLoginTimeout bounds how long the flow waits for the user to
 	// finish authorizing in the browser.
