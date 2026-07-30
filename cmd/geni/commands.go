@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
 	"os"
 	"sort"
+	"time"
 
 	geni "github.com/dmalch/go-geni"
+	"github.com/dmalch/go-geni/auth"
 )
 
 // commandTree returns the CLI command tree. Top-level entries are
@@ -121,8 +125,14 @@ func commandTree() map[string]*command {
 				})},
 		}},
 		"config": {summary: "persisted CLI configuration (~/.genealogy/config.json)", sub: map[string]*command{
-			"show":    {summary: "print the stored config as JSON", run: runConfigShow},
-			"browser": {summary: "set or clear the default cookie-source browser", run: runConfigBrowser},
+			"show":          {summary: "print the stored config as JSON (secrets redacted)", run: runConfigShow},
+			"browser":       {summary: "set or clear the default cookie-source browser", run: runConfigBrowser},
+			"client-id":     {summary: "set or clear the OAuth client id of your own Geni application", run: runConfigClientID},
+			"client-secret": {summary: "set or clear the OAuth client secret, enabling refreshable logins", run: runConfigClientSecret},
+		}},
+		"token": {summary: "the cached OAuth access token", sub: map[string]*command{
+			"print":  {summary: "print the access token, refreshing it if needed", run: runToken},
+			"status": {summary: "report on the cached token without revealing it", run: runTokenStatus},
 		}},
 		"matches": {summary: "merge-center matches (AJAX, one-time consent)", sub: map[string]*command{
 			"list":        {summary: "list profiles with pending tree/record/smart matches", run: runMatchesList},
@@ -181,23 +191,123 @@ func printCommands(w io.Writer, prefix string, sub map[string]*command) {
 
 // runLogin performs the interactive OAuth handshake and caches the
 // resulting token.
-func runLogin(_ context.Context, g *globalOpts, _ []string) error {
+//
+//	geni login [-port N]
+//
+// -port must match the Callback URL registered with the Geni
+// application; it exists for callers running their own registration, not
+// as a free choice.
+func runLogin(ctx context.Context, g *globalOpts, args []string) error {
+	fs := flag.NewFlagSet("geni login", flag.ContinueOnError)
+	fs.SetOutput(g.stderr)
+	port := fs.Int("port", -1, "port of the OAuth callback listener; must match the registered Callback URL")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	// Validate before the token check below, so a typo is reported the
+	// same way whether or not GENI_ACCESS_TOKEN happens to be set.
+	if *port < -1 || *port > 65535 {
+		return fmt.Errorf("invalid -port %d", *port)
+	}
+
 	if os.Getenv("GENI_ACCESS_TOKEN") != "" {
 		return errors.New("GENI_ACCESS_TOKEN is set; unset it to use cached browser auth")
 	}
-	ts, err := authChain(g.sandbox)
+
+	opts := []auth.Option{auth.WithContext(ctx)}
+	if *port >= 0 {
+		opts = append(opts, auth.WithPort(*port))
+	}
+
+	_, refresher, _, err := authParts(g.sandbox, opts...)
+	if err != nil {
+		return err
+	}
+	ts, err := authChain(g.sandbox, opts...)
 	if err != nil {
 		return err
 	}
 	if _, err := ts.Token(); err != nil {
 		return err
 	}
-	slog.Info("login successful", "sandbox", g.sandbox)
+
+	slog.Info("login successful", "sandbox", g.sandbox, "refreshable", refresher != nil)
+	if refresher == nil {
+		_, _ = fmt.Fprintln(g.stderr,
+			"This token expires in a day and cannot be renewed. Store your application's\n"+
+				"client secret with \"geni config client-secret <secret>\" to log in once and\n"+
+				"let the CLI refresh in the background.")
+	}
 	return nil
+}
+
+// runToken prints the active access token, refreshing it first if it can.
+// It makes the cached credential usable from a shell:
+//
+//	export GENI_ACCESS_TOKEN=$(geni token)
+func runToken(_ context.Context, g *globalOpts, _ []string) error {
+	ts, err := authChain(g.sandbox)
+	if err != nil {
+		return err
+	}
+	token, err := ts.Token()
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(g.stdout, token.AccessToken)
+	return nil
+}
+
+// runTokenStatus reports on the cached token without revealing it.
+func runTokenStatus(_ context.Context, g *globalOpts, _ []string) error {
+	cachePath, refresher, _, err := authParts(g.sandbox)
+	if err != nil {
+		return err
+	}
+
+	status := map[string]any{
+		"environment": map[bool]string{true: "sandbox", false: "production"}[g.sandbox],
+		"cache_path":  cachePath,
+		"refreshable": refresher != nil,
+	}
+
+	if t := os.Getenv("GENI_ACCESS_TOKEN"); t != "" {
+		status["source"] = "GENI_ACCESS_TOKEN"
+		return render(g.stdout, status)
+	}
+	status["source"] = "cache"
+
+	body, err := os.ReadFile(cachePath)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		status["logged_in"] = false
+		return render(g.stdout, status)
+	}
+
+	var cached struct {
+		Expiry       time.Time `json:"expiry"`
+		RefreshToken string    `json:"refresh_token"`
+	}
+	if err := json.Unmarshal(body, &cached); err != nil {
+		return fmt.Errorf("parse %s: %w", cachePath, err)
+	}
+
+	status["logged_in"] = true
+	status["expires_at"] = cached.Expiry
+	status["expired"] = !cached.Expiry.IsZero() && time.Now().After(cached.Expiry)
+	status["has_refresh_token"] = cached.RefreshToken != ""
+	return render(g.stdout, status)
 }
 
 // runLogout deletes the cached token file. It is a no-op when the file
 // is already absent.
+//
+// It deliberately does not call /platform/oauth/invalidate_token: Geni
+// issues one access token per application and user, so revoking it would
+// also sign out every other tool sharing this application — the
+// terraform-provider-genealogy that reads the same cache, for one.
 func runLogout(_ context.Context, g *globalOpts, _ []string) error {
 	path, err := tokenCacheFilePath(g.sandbox)
 	if err != nil {

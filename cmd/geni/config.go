@@ -20,6 +20,19 @@ import (
 type userConfig struct {
 	Browser string `json:"browser,omitempty"`
 	Version int    `json:"version,omitempty"`
+
+	// Prod and Sandbox hold the OAuth application to authenticate as.
+	// A client secret unlocks Geni's server-side flow, which returns a
+	// refresh token and spares a browser round trip every day.
+	Prod    oauthApp `json:"prod,omitzero"`
+	Sandbox oauthApp `json:"sandbox,omitzero"`
+}
+
+// oauthApp is a registered Geni application. It stays comparable so the
+// zero-config check in saveUserConfig keeps working.
+type oauthApp struct {
+	ClientID     string `json:"client_id,omitempty"`
+	ClientSecret string `json:"client_secret,omitempty"`
 }
 
 // userConfigPath returns the path of the persisted CLI config file.
@@ -82,13 +95,86 @@ func saveUserConfig(c userConfig) error {
 	return nil
 }
 
-// runConfigShow prints the current persisted config as JSON.
+// runConfigShow prints the current persisted config as JSON, with the
+// client secrets replaced by a placeholder: this output ends up in
+// terminals, pipes and bug reports.
 func runConfigShow(_ context.Context, g *globalOpts, _ []string) error {
 	c, err := loadUserConfig()
 	if err != nil {
 		return err
 	}
+	c.Prod.ClientSecret = redactSecret(c.Prod.ClientSecret)
+	c.Sandbox.ClientSecret = redactSecret(c.Sandbox.ClientSecret)
 	return render(g.stdout, c)
+}
+
+// redactSecret reports whether a secret is stored without revealing it.
+func redactSecret(secret string) string {
+	if secret == "" {
+		return ""
+	}
+	return "(set)"
+}
+
+// runConfigClientSecret stores (or clears) the OAuth client secret for
+// the selected environment, which is what enables refreshable logins.
+//
+//	geni config client-secret <secret>        # store it
+//	geni config client-secret ""              # clear it
+//	geni -sandbox config client-secret <s>    # same, for sandbox
+func runConfigClientSecret(_ context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: geni config client-secret <secret|\"\">")
+	}
+
+	c, err := loadUserConfig()
+	if err != nil {
+		return err
+	}
+
+	app := &c.Prod
+	if g.sandbox {
+		app = &c.Sandbox
+	}
+	app.ClientSecret = args[0]
+
+	if err := saveUserConfig(c); err != nil {
+		return err
+	}
+	if args[0] == "" {
+		_, _ = fmt.Fprintln(g.stderr, "client secret cleared; logins fall back to the client-side flow")
+	} else {
+		_, _ = fmt.Fprintln(g.stderr, "client secret stored; run \"geni login\" to get a refreshable token")
+	}
+	return nil
+}
+
+// runConfigClientID stores (or clears) the OAuth client id, for callers
+// running against their own registered Geni application.
+//
+//	geni config client-id <id>
+//	geni config client-id ""
+func runConfigClientID(_ context.Context, g *globalOpts, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: geni config client-id <id|\"\">")
+	}
+
+	c, err := loadUserConfig()
+	if err != nil {
+		return err
+	}
+
+	app := &c.Prod
+	if g.sandbox {
+		app = &c.Sandbox
+	}
+	app.ClientID = args[0]
+
+	if err := saveUserConfig(c); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(g.stderr, "client id set to %q\n", args[0])
+	return nil
 }
 
 // runConfigBrowser sets (or clears) the persisted browser preference.
