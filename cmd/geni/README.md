@@ -26,17 +26,44 @@ geni profile open profile-122248213   # open the profile's web page
 ## Authentication
 
 `geni login` opens your browser for Geni's OAuth flow and caches the token at
-`~/.genealogy/geni_token.json` (`geni_sandbox_token.json` for sandbox). Read
-commands also trigger this flow automatically on a cache miss, so an explicit
-`login` is optional. `geni logout` deletes the cached token.
+`~/.genealogy/geni_token.json` (`geni_sandbox_token.json` for sandbox), mode
+`0600`. Read commands also trigger this flow automatically on a cache miss, so
+an explicit `login` is optional. `geni logout` deletes the cached token.
 
 Auth resolution order:
 
 1. `GENI_ACCESS_TOKEN` — if set, used directly (no browser, good for CI).
 2. The cached token file, if present and unexpired.
-3. The interactive browser flow.
+3. The cached refresh token, if there is one (see below) — no browser.
+4. The interactive browser flow.
 
 The token cache is shared with the `terraform-provider-genealogy` provider.
+
+### Logging in once instead of daily
+
+Geni's tokens last 24 hours, and the default flow cannot renew them. Storing
+your application's client secret switches `geni` to Geni's server-side flow,
+which returns a refresh token and renews in the background:
+
+```bash
+geni config client-secret <secret>   # or export GENI_CLIENT_SECRET
+geni login
+geni token status                    # "refreshable": true
+```
+
+Running against your own registered application instead of the built-in one
+needs both halves — `geni config client-id <id>` and the matching secret. The
+secret is stored in `~/.genealogy/config.json` (mode `0600`) and `geni config
+show` prints it as `(set)`.
+
+`geni logout` only deletes the local cache; it does not revoke the token,
+because Geni issues one access token per application and user, so revoking
+would also sign out the Terraform provider sharing this cache.
+
+`geni login -port N` moves the callback listener. It must match the Callback
+URL registered with your Geni application — Geni answers an authorization
+request that carries an explicit `redirect_uri` with 403, so the port cannot
+be chosen freely from the client side.
 
 ## Commands
 
@@ -44,13 +71,17 @@ Run `geni help` for the full list.
 
 | Command | Description |
 | --- | --- |
-| `geni login` | Authenticate and cache an OAuth token |
+| `geni login [-port N]` | Authenticate and cache an OAuth token |
 | `geni logout` | Delete the cached OAuth token |
+| `geni token print` | Print the access token, refreshing it if possible |
+| `geni token status` | Report on the cached token without revealing it |
 | `geni whoami` | Show the authenticated user |
 | `geni stats` | Show platform-wide statistics |
 | `geni help` | Show usage |
-| `geni config show` | Print the persisted CLI config (`~/.genealogy/config.json`) as JSON |
+| `geni config show` | Print the persisted CLI config (`~/.genealogy/config.json`) as JSON, secrets redacted |
 | `geni config browser <name\|"">` | Set or clear the persisted default for `-browser` (see [Cookie source](#cookie-source)) |
+| `geni config client-id <id\|"">` | Set or clear the OAuth client id of your own Geni application |
+| `geni config client-secret <secret\|"">` | Set or clear the OAuth client secret, enabling refreshable logins |
 | `geni profile get <id>` / `geni profile get -guid <guid>` | Fetch a profile by `profile-NNN` id, or by bare guid with `-guid` (rewritten to the `profile-g<guid>` immutable-id form; the only API shape that resolves a guid). Single-get only — the bulk endpoint can't resolve guids. |
 | `geni profile get-bulk <id...>` | Fetch multiple profiles by id |
 | `geni profile search <name...>` | Search profiles by name (`-page N`) |
