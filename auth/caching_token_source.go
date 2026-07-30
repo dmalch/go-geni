@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,9 @@ import (
 const tokenFileMode = 0o600
 
 type cachingTokenSource struct {
-	filePath string
-	new      oauth2.TokenSource
+	filePath  string
+	refresher Refresher
+	new       oauth2.TokenSource
 
 	mu sync.Mutex
 }
@@ -31,6 +33,23 @@ func NewCachingTokenSource(filePath string, src oauth2.TokenSource) oauth2.Token
 	return &cachingTokenSource{
 		filePath: filePath,
 		new:      src,
+	}
+}
+
+// NewRefreshingCachingTokenSource caches like NewCachingTokenSource and,
+// when the cached token has expired but carries a refresh token, renews
+// it through r and writes the result back before falling back to the
+// interactive flow in src.
+//
+// Refreshing has to happen here, below any oauth2.ReuseTokenSource: a
+// refresher wrapped around the cache renews into memory only, and the
+// rotated refresh token Geni returns would be lost the moment the process
+// exits.
+func NewRefreshingCachingTokenSource(filePath string, r Refresher, src oauth2.TokenSource) oauth2.TokenSource {
+	return &cachingTokenSource{
+		filePath:  filePath,
+		refresher: r,
+		new:       src,
 	}
 }
 
@@ -48,6 +67,12 @@ func (s *cachingTokenSource) Token() (*oauth2.Token, error) {
 		slog.Warn("ignoring an unreadable OAuth token cache", "path", s.filePath, "error", err)
 	}
 
+	if t, ok, err := s.refresh(cached); err != nil {
+		return nil, err
+	} else if ok {
+		return t, nil
+	}
+
 	t, err := s.new.Token()
 	if err != nil {
 		return nil, err
@@ -61,6 +86,42 @@ func (s *cachingTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	return t, nil
+}
+
+// refresh renews the cached token. It reports ok=false when there is
+// nothing to refresh with, or when the grant is dead and only a new
+// interactive login can help.
+//
+// A refresh that fails for any other reason — Geni is down, the network
+// is not there — is returned as an error rather than answered with a
+// browser window: nothing about it says the user needs to log in again.
+func (s *cachingTokenSource) refresh(cached *oauth2.Token) (*oauth2.Token, bool, error) {
+	if s.refresher == nil || cached == nil || cached.RefreshToken == "" {
+		return nil, false, nil
+	}
+
+	t, err := s.refresher.Refresh(context.Background(), cached.RefreshToken)
+	switch {
+	case errors.Is(err, ErrRefreshRejected):
+		slog.Info("the stored refresh token is no longer valid; logging in again", "error", err)
+		return nil, false, nil
+	case err != nil:
+		return nil, false, err
+	}
+
+	// Belt and braces: oauth2 already carries the old refresh token
+	// forward, but losing it would cost a browser round trip a day.
+	if t.RefreshToken == "" {
+		t.RefreshToken = cached.RefreshToken
+	}
+
+	if err := saveTokenToDisk(s.filePath, t); err != nil {
+		// Geni rotates the refresh token on every refresh, so a cache
+		// that cannot be written has already lost the new one.
+		slog.Warn("the refreshed OAuth token could not be cached; the next command will ask you to log in again",
+			"path", s.filePath, "error", err)
+	}
+	return t, true, nil
 }
 
 func loadTokenFromDisk(path string) (*oauth2.Token, error) {
