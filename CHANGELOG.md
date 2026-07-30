@@ -1,3 +1,97 @@
+## 1.28.0
+
+### NEW
+
+- Geni's **server-side OAuth flow**, which is the only one that yields a
+  refresh token. Store your application's client secret — `geni config
+  client-secret <secret>` or `GENI_CLIENT_SECRET` — and `geni login` switches
+  from `response_type=token` to `response_type=code`, exchanges the code, and
+  renews the token in the background instead of opening a browser every 24
+  hours. Without a secret nothing changes. In the library:
+  `auth.NewCodeTokenSource` and `auth.NewRefreshingCachingTokenSource`.
+  Refreshing deliberately happens *inside* the caching source, below any
+  `oauth2.ReuseTokenSource`: Geni rotates the refresh token on every renewal,
+  so a refresher wrapped around the cache would renew into memory and lose the
+  new token when the process exits.
+- `geni token print` (the access token on stdout, refreshed first, for
+  `export GENI_ACCESS_TOKEN=$(geni token print)`) and `geni token status`
+  (expiry, whether a refresh token is stored, whether the flow is refreshable
+  — never the token itself).
+- `geni config client-id` / `geni config client-secret`, for running against
+  your own registered Geni application. `geni config show` now prints a stored
+  secret as `(set)`.
+- `auth.GeniEndpoint`, and the `auth.WithPort`, `auth.WithContext`,
+  `auth.WithTimeout` and `auth.WithTokenLifetime` options.
+  `NewAuthTokenSource` takes them variadically, so existing calls compile
+  unchanged.
+- `geni login -port N`, for callers whose application registers a different
+  Callback URL.
+
+### CHANGED
+
+- The authorization screen is requested with `display=web` instead of
+  `display=mobile`. The flow was written against Geni's *Mobile App Flow*,
+  which is specified around a `YOUR_APP_ID://authorize` custom scheme; on a
+  desktop browser it rendered the phone-sized consent page. `web` is Geni's
+  documented default and what the server-side flow uses.
+- The token cache is written with mode `0600` instead of `0644`, and through a
+  temporary file plus a rename, so a second process never reads a half-written
+  cache. An existing world-readable cache is replaced on the next login.
+- The callback listener binds `127.0.0.1` rather than every interface. It was
+  reachable from the local network, and the callback carries an access token
+  in its query string.
+- Cached tokens now record `token_type`.
+
+### FIXED
+
+- The callback listener and its goroutine leaked whenever the login did not
+  succeed. `Shutdown` only ran on the success path, so Ctrl-C, the five-minute
+  timeout and a state mismatch all left port 8080 held for the life of the
+  process — and a second login then failed. Every exit path now releases it.
+- A busy port was reported only after the browser had already been opened,
+  because `ListenAndServe` surfaces `EADDRINUSE` asynchronously. The listener
+  is now bound before anything is printed.
+- A login was rejected outright when Geni's callback carried no `expires_in`,
+  discarding a perfectly good access token. The default 24-hour lifetime is
+  assumed instead, with a warning. (Leaving the expiry unset was not an
+  option: `oauth2.Token` reads a zero `Expiry` as "never expires", so the
+  cache would have served a dead token forever.)
+- A failure to write the token cache was silently discarded, which looked like
+  a successful login and then re-prompted on every command. It is now logged.
+- A corrupt cache file is reported before being replaced, and is no longer
+  confused with the ordinary "no cache yet" of a first run.
+- A reloaded or prefetched callback could block a goroutine forever on an
+  unbuffered channel. Only the first callback is delivered now.
+- `saveTokenToDisk` used `path.Dir` instead of `filepath.Dir`, which is wrong
+  on Windows.
+
+### REMOVED
+
+- `examples/refreshtoken`. It documented a flow that does not exist for this
+  application — the token arrives as query parameters, not a URL fragment, so
+  its JavaScript bridge never ran — and its reason to exist (printing the
+  authorization URL) was overtaken by 1.25.0. Use `geni login [-port N]`.
+
+### NOTES
+
+Three things about Geni's OAuth, established against the live API, that the
+documentation does not say:
+
+- An authorization request carrying an explicit `redirect_uri` is answered
+  with **403**, even when the value is exactly the registered Callback URL.
+  The redirect target is whatever the application registers, so the callback
+  port cannot be chosen from the client side.
+- Client credentials must travel in the request body; HTTP Basic is rejected
+  with "client_id must be provided". `auth.GeniEndpoint` sets
+  `AuthStyleInParams` accordingly.
+- Every token-endpoint rejection is labelled `invalid_request` rather than
+  RFC 6749's `invalid_grant`, so the HTTP status is the only usable signal:
+  4xx means log in again, 5xx means try later.
+
+`geni logout` still only deletes the local cache. Geni issues one access token
+per application and user, so revoking it would also sign out the
+`terraform-provider-genealogy` that shares the same cache.
+
 ## 1.27.0
 
 ### FIXED
