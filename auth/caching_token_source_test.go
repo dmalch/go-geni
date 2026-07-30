@@ -1,11 +1,14 @@
 package auth
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -149,6 +152,187 @@ func TestCachingTokenSourceToken(t *testing.T) {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(token.AccessToken).To(Equal("fresh"))
 		Expect(logs).To(ContainSubstring("could not be cached"))
+	})
+}
+
+// fakeRefresher stands in for the token endpoint.
+type fakeRefresher struct {
+	token *oauth2.Token
+	err   error
+	seen  []string
+}
+
+func (r *fakeRefresher) Refresh(_ context.Context, refreshToken string) (*oauth2.Token, error) {
+	r.seen = append(r.seen, refreshToken)
+	if r.err != nil {
+		return nil, r.err
+	}
+	return r.token, nil
+}
+
+// storedRefreshToken is the refresh token seedExpired plants in the
+// cache, and so the one a refresh is expected to present.
+const storedRefreshToken = "old-rt"
+
+// seedExpired writes an expired token carrying a refresh token and
+// returns the cache path.
+func seedExpired(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "token.json")
+	expired := &oauth2.Token{
+		AccessToken:  "stale",
+		RefreshToken: storedRefreshToken,
+		Expiry:       time.Now().Add(-time.Hour),
+	}
+	if err := saveTokenToDisk(path, expired); err != nil {
+		t.Fatalf("failed to seed the token cache: %v", err)
+	}
+	return path
+}
+
+func TestRefreshingCachingTokenSource(t *testing.T) {
+	// The whole point: renewing has to reach the disk, because Geni
+	// rotates the refresh token on every refresh.
+	t.Run("Persists the refreshed token instead of logging in again", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		refresher := &fakeRefresher{token: &oauth2.Token{
+			AccessToken:  "new-at",
+			RefreshToken: "new-rt",
+			Expiry:       time.Now().Add(time.Hour),
+		}}
+		inner := &countingTokenSource{token: freshToken("interactive")}
+
+		token, err := NewRefreshingCachingTokenSource(path, refresher, inner).Token()
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(token.AccessToken).To(Equal("new-at"))
+		Expect(inner.calls).To(Equal(0))
+		Expect(refresher.seen).To(Equal([]string{"old-rt"}))
+
+		stored, err := loadTokenFromDisk(path)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.AccessToken).To(Equal("new-at"))
+		Expect(stored.RefreshToken).To(Equal("new-rt"))
+	})
+
+	t.Run("Keeps the old refresh token when the response omits one", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		refresher := &fakeRefresher{token: &oauth2.Token{
+			AccessToken: "new-at",
+			Expiry:      time.Now().Add(time.Hour),
+		}}
+
+		_, err := NewRefreshingCachingTokenSource(path, refresher, &countingTokenSource{}).Token()
+
+		Expect(err).ToNot(HaveOccurred())
+		stored, err := loadTokenFromDisk(path)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.RefreshToken).To(Equal("old-rt"))
+	})
+
+	t.Run("Logs in again when the refresh token is rejected", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		refresher := &fakeRefresher{err: fmt.Errorf("%w: Invalid refresh token", ErrRefreshRejected)}
+		inner := &countingTokenSource{token: freshToken("interactive")}
+
+		token, err := NewRefreshingCachingTokenSource(path, refresher, inner).Token()
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(token.AccessToken).To(Equal("interactive"))
+		Expect(inner.calls).To(Equal(1))
+	})
+
+	// Geni being down is not a reason to open a browser.
+	t.Run("Reports a transient refresh failure without logging in", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		before, err := os.ReadFile(path)
+		Expect(err).ToNot(HaveOccurred())
+
+		refresher := &fakeRefresher{err: errors.New("503 Service Unavailable")}
+		inner := &countingTokenSource{token: freshToken("interactive")}
+
+		_, err = NewRefreshingCachingTokenSource(path, refresher, inner).Token()
+
+		Expect(err).To(MatchError(ContainSubstring("503")))
+		Expect(inner.calls).To(Equal(0))
+
+		after, err := os.ReadFile(path)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(after).To(Equal(before))
+	})
+
+	// A cache written before refresh tokens existed has to keep working.
+	t.Run("Logs in again when the cached token predates refresh tokens", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := filepath.Join(t.TempDir(), "token.json")
+		writeCache(t, path, `{"access_token":"legacy","expiry":"2000-01-01T00:00:00Z","expires_in":86400}`)
+
+		refresher := &fakeRefresher{}
+		inner := &countingTokenSource{token: freshToken("interactive")}
+
+		token, err := NewRefreshingCachingTokenSource(path, refresher, inner).Token()
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(token.AccessToken).To(Equal("interactive"))
+		Expect(inner.calls).To(Equal(1))
+		Expect(refresher.seen).To(BeEmpty())
+	})
+
+	t.Run("Refreshes once under concurrent callers", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		refresher := &fakeRefresher{token: &oauth2.Token{
+			AccessToken:  "new-at",
+			RefreshToken: "new-rt",
+			Expiry:       time.Now().Add(time.Hour),
+		}}
+		src := NewRefreshingCachingTokenSource(path, refresher, &countingTokenSource{})
+
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = src.Token()
+			}()
+		}
+		wg.Wait()
+
+		Expect(refresher.seen).To(HaveLen(1))
+	})
+
+	// The regression test for the layering: oauth2.ReuseTokenSource
+	// memoizes in memory, so a refresher above it would never reach disk.
+	t.Run("Reaches the disk through oauth2.ReuseTokenSource", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		path := seedExpired(t)
+		refresher := &fakeRefresher{token: &oauth2.Token{
+			AccessToken:  "new-at",
+			RefreshToken: "new-rt",
+			Expiry:       time.Now().Add(time.Hour),
+		}}
+		src := oauth2.ReuseTokenSource(nil,
+			NewRefreshingCachingTokenSource(path, refresher, &countingTokenSource{}))
+
+		_, err := src.Token()
+		Expect(err).ToNot(HaveOccurred())
+
+		stored, err := loadTokenFromDisk(path)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stored.AccessToken).To(Equal("new-at"))
+		Expect(stored.RefreshToken).To(Equal("new-rt"))
 	})
 }
 
