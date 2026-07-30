@@ -11,7 +11,9 @@ import (
 )
 
 // authTokenSource implements oauth2.TokenSource using Geni's client-side
-// flow: the access token comes straight back on the callback.
+// flow: the access token comes straight back on the callback, and no
+// refresh token is issued. See NewCodeTokenSource for the refreshable
+// alternative.
 type authTokenSource struct {
 	config *oauth2.Config
 	loopbackFlow
@@ -46,7 +48,7 @@ func (a *authTokenSource) authCodeURL(state string) string {
 	return a.config.AuthCodeURL(state,
 		oauth2.AccessTypeOffline,
 		oauth2.SetAuthURLParam("response_type", "token"),
-		oauth2.SetAuthURLParam("display", displayMobile),
+		oauth2.SetAuthURLParam("display", displayWeb),
 	)
 }
 

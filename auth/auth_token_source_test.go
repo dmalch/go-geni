@@ -194,11 +194,13 @@ func TestAuthCodeURL(t *testing.T) {
 		}, opts...)
 	}
 
-	t.Run("Carries the parameters Geni's client-side flow needs", func(t *testing.T) {
+	// Geni's mobile layout renders the phone-sized consent screen in a
+	// desktop browser; "web" is the documented default for this flow.
+	t.Run("Asks for the desktop-sized authorization screen", func(t *testing.T) {
 		RegisterTestingT(t)
 
 		q := queryOf(t, newSource().authCodeURL("some-state"))
-		Expect(q.Get("display")).To(Equal("mobile"))
+		Expect(q.Get("display")).To(Equal("web"))
 		Expect(q.Get("response_type")).To(Equal("token"))
 		Expect(q.Get("client_id")).To(Equal("1855"))
 		Expect(q.Get("state")).To(Equal("some-state"))
