@@ -60,10 +60,14 @@ show` prints it as `(set)`.
 because Geni issues one access token per application and user, so revoking
 would also sign out the Terraform provider sharing this cache.
 
-`geni login -port N` moves the callback listener. It must match the Callback
-URL registered with your Geni application — Geni answers an authorization
-request that carries an explicit `redirect_uri` with 403, so the port cannot
-be chosen freely from the client side.
+`geni login -port N` moves the callback listener, but it is not a free choice:
+it must match the Callback URL registered with your Geni application. That one
+URL is the only thing deciding where Geni redirects — an application may
+register exactly one, and the authorization request cannot carry a
+`redirect_uri` of its own (Geni's WAF blocks any query parameter holding a
+URL, and Geni rejects anything that gets past it as pointing to "a different
+server"). So changing the port means editing the registration, and `-port` is
+only useful to someone running their own.
 
 ## Commands
 

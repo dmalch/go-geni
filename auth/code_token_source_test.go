@@ -92,8 +92,8 @@ func TestCodeTokenSourceToken(t *testing.T) {
 		Expect(endpoint.form.Get("client_id")).To(Equal("1855"))
 		Expect(endpoint.form.Get("client_secret")).To(Equal("app-secret"))
 		Expect(endpoint.authHeader).To(BeEmpty())
-		// Geni answers an authorization request carrying a redirect_uri
-		// with 403, so none is registered on the config and none is sent.
+		// No redirect_uri can be sent on the authorization request, so
+		// none is registered on the config and none reaches the exchange.
 		Expect(endpoint.form.Has("redirect_uri")).To(BeFalse())
 	})
 

@@ -41,9 +41,14 @@ func (a *authTokenSource) Token() (*oauth2.Token, error) {
 // authCodeURL builds the authorization URL. It is kept free of any
 // listener state so the shape of the URL can be asserted on its own.
 //
-// No redirect_uri is sent: Geni answers an authorization request that
-// carries one with 403, so the redirect target is always the Callback URL
-// registered with the application.
+// No redirect_uri is sent, and none can usefully be: Geni's WAF answers
+// any query parameter holding a scheme-prefixed URL with an empty 403
+// (the parameter name is irrelevant — foo=http://… is blocked too), and
+// a value crafted to slip past it is then rejected by Geni itself with
+// "redirect_uri cannot point to a different server than the one
+// configured in the application" — including the protocol-relative form
+// of the exact registered URL. The redirect target is therefore always
+// the Callback URL registered with the application.
 func (a *authTokenSource) authCodeURL(state string) string {
 	return a.config.AuthCodeURL(state,
 		oauth2.AccessTypeOffline,

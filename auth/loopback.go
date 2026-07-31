@@ -20,11 +20,10 @@ import (
 
 const (
 	// defaultCallbackPort is the port the OAuth callback listener binds
-	// when the caller does not pick one. It has to match the callback URL
-	// registered with the Geni application: Geni answers an authorization
-	// request that carries an explicit redirect_uri with 403 — even when
-	// the value is exactly the registered one — so the redirect target
-	// cannot be chosen from here.
+	// when the caller does not pick one. It has to match the Callback URL
+	// registered with the Geni application, which is the only thing that
+	// decides where Geni redirects — see authCodeURL for why the request
+	// cannot carry a redirect_uri of its own.
 	defaultCallbackPort = 8080
 
 	// callbackPath is the path the callback listener serves.
@@ -74,10 +73,10 @@ type Option func(*options)
 // WithPort pins the port the OAuth callback listener binds; 0 asks the
 // operating system for a free one.
 //
-// It must match the Callback URL registered with the Geni application,
-// which is the only thing that decides where Geni redirects: passing an
-// explicit redirect_uri is not an option, because Geni answers any
-// authorization request carrying one with 403. A port of 0 is therefore
+// It must match the Callback URL registered with the Geni application:
+// that single URL is the only thing deciding where Geni redirects, an
+// application may register exactly one, and the request cannot carry a
+// redirect_uri of its own (see authCodeURL). A port of 0 is therefore
 // only useful in tests.
 func WithPort(port int) Option {
 	return func(o *options) { o.port = port }
