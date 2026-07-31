@@ -206,10 +206,10 @@ func TestAuthCodeURL(t *testing.T) {
 		Expect(q.Get("state")).To(Equal("some-state"))
 	})
 
-	// Geni answers an authorization request that carries an explicit
-	// redirect_uri with 403, even when the value is exactly the one
-	// registered with the application. The redirect target is always the
-	// registered Callback URL.
+	// A redirect_uri cannot survive the trip: Geni's WAF rejects any
+	// query parameter holding a scheme-prefixed URL, and anything that
+	// slips past it is rejected by Geni as pointing at "a different
+	// server". The redirect target is always the registered Callback URL.
 	t.Run("Never sends a redirect_uri", func(t *testing.T) {
 		RegisterTestingT(t)
 

@@ -75,12 +75,22 @@
 ### NOTES
 
 Three things about Geni's OAuth, established against the live API, that the
-documentation does not say:
+documentation does not say (the first was described imprecisely when 1.28.0
+was published, and is corrected here):
 
-- An authorization request carrying an explicit `redirect_uri` is answered
-  with **403**, even when the value is exactly the registered Callback URL.
-  The redirect target is whatever the application registers, so the callback
-  port cannot be chosen from the client side.
+- The callback address cannot be chosen per request. An application registers
+  exactly one Callback URL — the settings form has a single field — and that
+  is the only thing deciding where Geni redirects. Two independent mechanisms
+  stop you overriding it: Geni's WAF answers any query parameter holding a
+  scheme-prefixed URL with an empty **403**, whatever the parameter is called
+  (`foo=http://…` is blocked identically), so the OAuth layer never sees the
+  request; and a value crafted to slip past the WAF is then rejected by Geni
+  with *"redirect_uri cannot point to a different server than the one
+  configured in the application"*, including the protocol-relative form of the
+  exact registered URL. The application's type, Web or Native/Desktop, makes
+  no difference. Consequently `geni login -port` / `auth.WithPort` only helps
+  someone running their own registration, and changing the port there means
+  editing that registration.
 - Client credentials must travel in the request body; HTTP Basic is rejected
   with "client_id must be provided". `auth.GeniEndpoint` sets
   `AuthStyleInParams` accordingly.

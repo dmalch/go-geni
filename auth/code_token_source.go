@@ -89,8 +89,8 @@ func (c *codeTokenSource) Refresh(ctx context.Context, refreshToken string) (*oa
 }
 
 // authCodeURL builds the authorization URL for the server-side flow. As
-// in the client-side flow, no redirect_uri is sent: Geni answers an
-// authorization request carrying one with 403.
+// in the client-side flow, no redirect_uri is sent; see
+// authTokenSource.authCodeURL for the two separate reasons none can be.
 func (c *codeTokenSource) authCodeURL(state string) string {
 	return c.config.AuthCodeURL(state,
 		oauth2.AccessTypeOffline,

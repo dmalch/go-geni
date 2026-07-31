@@ -119,12 +119,22 @@ Refreshing has to sit *below* `oauth2.ReuseTokenSource`, which is why
 every renewal, and a refresher wrapped around the cache would renew into
 memory and lose the new token when the process exits.
 
-Two Geni quirks are worth knowing if you build the config yourself. Geni
-answers an authorization request carrying an explicit `redirect_uri` with
-**403**, even when the value is exactly the one registered — so the callback
-port is whatever the application's Callback URL says, and `auth.WithPort` has
-to match it. And Geni rejects HTTP Basic client authentication, hence the
-`AuthStyleInParams` that `auth.GeniEndpoint` sets.
+Two Geni quirks are worth knowing if you build the config yourself.
+
+**The callback address is not yours to choose.** It is whatever the
+application's single registered Callback URL says — a Geni application accepts
+exactly one — so `auth.WithPort` has to match that, and the authorization
+request carries no `redirect_uri`. Two independent mechanisms stop you sending
+one: Geni's WAF answers any query parameter holding a scheme-prefixed URL with
+an empty **403** (the parameter name is irrelevant — `foo=http://…` is blocked
+just the same, and Geni's OAuth layer never sees the request), and a value
+crafted to slip past the WAF is then rejected by Geni itself with *"redirect_uri
+cannot point to a different server than the one configured in the
+application"* — including the protocol-relative form of the exact registered
+URL. The application's type, Web or Native/Desktop, makes no difference.
+
+**Geni rejects HTTP Basic client authentication** with `client_id must be
+provided`, hence the `AuthStyleInParams` that `auth.GeniEndpoint` sets.
 
 Headless callers can skip `auth` entirely and supply any `oauth2.TokenSource`
 to `geni.NewClient`.
