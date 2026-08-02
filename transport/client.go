@@ -133,8 +133,7 @@ var incapsulaRetryDelay = 45 * time.Second
 // limiter, re-tuned from each response's X-API-Rate-* headers, is what governs
 // those, not this delay.
 func retryDelay(n uint, err error, config *retry.Config) time.Duration {
-	var ei errIncapsula
-	if errors.As(err, &ei) {
+	if _, ok := errors.AsType[errIncapsula](err); ok {
 		return incapsulaRetryDelay
 	}
 	return retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)(n, err, config)
@@ -225,13 +224,12 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 			// bot-protection block risks prolonging it, so it may never consume
 			// the whole ladder. The counter lives in this do() call, so it is
 			// per-request and needs no locking.
-			var ei errIncapsula
-			if errors.As(err, &ei) {
+			if _, ok := errors.AsType[errIncapsula](err); ok {
 				incapsulaTries++
 				return incapsulaTries <= maxIncapsulaRetries
 			}
-			var er errRetry
-			return errors.As(err, &er)
+			_, retryable := errors.AsType[errRetry](err)
+			return retryable
 		}),
 		retry.Context(ctx),
 		retry.Attempts(4),
