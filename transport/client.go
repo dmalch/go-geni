@@ -115,10 +115,37 @@ func (c *Client) DoWithResponse(ctx context.Context, req *http.Request) (*Respon
 	return c.do(ctx, req, nil)
 }
 
+// maxIncapsulaRetries caps how many of the four attempts an Incapsula block
+// may consume. Deliberately small: Incapsula is bot protection, and retrying
+// into a block can prolong it, so this buys recovery from a one-off block
+// without applying sustained pressure.
+const maxIncapsulaRetries = 2
+
+// incapsulaRetryDelay is how long to wait after a block. The normal ladder
+// waits two to four seconds, which a bot-protection block comfortably
+// outlives. A var, not a const, purely so tests can shorten it — nothing in
+// the library reassigns it.
+var incapsulaRetryDelay = 45 * time.Second
+
+// retryDelay picks the wait before the next attempt. Only Incapsula is special
+// cased; every other error keeps the previous behaviour exactly, so 429s and
+// transient transport failures pace as they always have — the shared rate
+// limiter, re-tuned from each response's X-API-Rate-* headers, is what governs
+// those, not this delay.
+func retryDelay(n uint, err error, config *retry.Config) time.Duration {
+	var ei errIncapsula
+	if errors.As(err, &ei) {
+		return incapsulaRetryDelay
+	}
+	return retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)(n, err, config)
+}
+
 func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer) (*Response, error) {
 	if err := c.addStandardHeadersAndQueryParams(req); err != nil {
 		return nil, err
 	}
+
+	incapsulaTries := 0
 
 	return retry.DoWithData(
 		func() (*Response, error) {
@@ -194,6 +221,15 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 			return &Response{Body: body, Header: res.Header}, nil
 		},
 		retry.RetryIf(func(err error) bool {
+			// Incapsula gets its own, much smaller budget: retrying into a
+			// bot-protection block risks prolonging it, so it may never consume
+			// the whole ladder. The counter lives in this do() call, so it is
+			// per-request and needs no locking.
+			var ei errIncapsula
+			if errors.As(err, &ei) {
+				incapsulaTries++
+				return incapsulaTries <= maxIncapsulaRetries
+			}
 			var er errRetry
 			return errors.As(err, &er)
 		}),
@@ -201,7 +237,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 		retry.Attempts(4),
 		retry.Delay(2*time.Second),
 		retry.MaxJitter(2*time.Second),
-		retry.DelayType(retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)),
+		retry.DelayType(retryDelay),
 		retry.OnRetry(func(n uint, err error) {
 			slog.Debug("Retrying request", "attempt", n+1, "error", err)
 		}),
@@ -284,7 +320,7 @@ func translateStatusError(statusCode, secondsUntilRetry int, body []byte) error 
 		// get a response with this message, it means that the request
 		// was blocked by Incapsula.
 		slog.Warn("Incapsula blocked request.")
-		return fmt.Errorf("incapsula blocked request")
+		return errIncapsula{}
 	}
 
 	slog.Error("Non-OK HTTP status", "status", statusCode, "body", string(body))

@@ -23,3 +23,19 @@ func (e errRetry) Error() string {
 func newErrRetry(statusCode int, secondsUntilRetry int) error {
 	return errRetry{statusCode: statusCode, secondsUntilRetry: secondsUntilRetry}
 }
+
+// errIncapsula signals that Incapsula, the DDoS protection service in front
+// of Geni, blocked the request. It is retryable — but on its own terms, not
+// the errRetry ladder's: a bot-protection block does not clear in the two to
+// four seconds a 429 retry waits, so it gets a much longer delay
+// (incapsulaRetryDelay) and a far smaller attempt budget
+// (maxIncapsulaRetries), because retrying into a block risks prolonging it.
+//
+// Kept a distinct type rather than an errRetry with a big secondsUntilRetry:
+// the delay and the attempt cap both key off the type, and the message must
+// stay free of a "retry in N seconds" figure Incapsula never gave us.
+type errIncapsula struct{}
+
+func (errIncapsula) Error() string {
+	return "incapsula blocked request"
+}
