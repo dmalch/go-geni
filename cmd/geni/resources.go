@@ -1005,6 +1005,11 @@ func resolveDetachUnionIDs(ctx context.Context, g *globalOpts, profileArg, profi
 	byWebID := make(map[string]webtreeconflicts.WebUnion, len(webUnions))
 	known := make([]string, 0, len(webUnions))
 	for _, wu := range webUnions {
+		// Distinct ids only: the tree view repeats a union, and listing it
+		// twice in an error reads like the profile has two of them.
+		if _, dup := byWebID[wu.WebID]; dup {
+			continue
+		}
 		byWebID[wu.WebID] = wu
 		known = append(known, wu.WebID)
 	}
@@ -1025,7 +1030,16 @@ func resolveDetachUnionIDs(ctx context.Context, g *globalOpts, profileArg, profi
 }
 
 // matchOAuthUnion resolves a short OAuth union id to a web id by comparing the
-// union's membership with each of the profile's tree-view unions.
+// union with each of the profile's tree-view unions.
+//
+// Matching is on the CHILDREN set plus a shared partner, not on the flat
+// membership. Two unions of the same pair routinely hold the same people in
+// different roles — after splitting a wrongly-merged family, a man and a woman
+// can be partners in one union and parent-and-child in another — and a flat
+// member set cannot tell those apart. It also cannot be made to: the tree view
+// reports partners the OAuth API does not (an unresolved slot shows up as a
+// placeholder like "-123725231f"), so partner sets are compared for overlap
+// rather than equality, while children compare exactly.
 func matchOAuthUnion(ctx context.Context, g *globalOpts, id, profileArg string,
 	webUnions []webtreeconflicts.WebUnion, known []string) (string, error) {
 	c, err := newClient(g)
@@ -1040,36 +1054,103 @@ func matchOAuthUnion(ctx context.Context, g *globalOpts, id, profileArg string,
 
 	// Compare GUIDS: the tree view's member ids live in its own space, so the
 	// union's OAuth member ids have to be resolved to guids first.
-	members := append(append([]string{}, u.Partners...), u.Children...)
-	guids := make([]string, 0, len(members))
-	profiles, err := c.Profile().GetBulk(ctx, members)
+	guidOf, err := memberGuids(ctx, c, append(append([]string{}, u.Partners...), u.Children...))
 	if err != nil {
 		return "", fmt.Errorf("resolving union-%s's members to guids: %w", id, err)
 	}
-	for _, pr := range profiles.Results {
-		if pr.Guid != "" {
-			guids = append(guids, pr.Guid)
-		}
-	}
-	want := normalizeMembers(guids)
-	var matches []string
-	for _, wu := range webUnions {
-		if equalMembers(wu.Members(), want) {
-			matches = append(matches, wu.WebID)
-		}
-	}
+	wantPartners := normalizeMembers(mapGuids(u.Partners, guidOf))
+	wantChildren := normalizeMembers(mapGuids(u.Children, guidOf))
+
+	matches := pickWebUnions(webUnions, wantPartners, wantChildren)
 	switch len(matches) {
 	case 1:
 		return matches[0], nil
 	case 0:
-		return "", fmt.Errorf("union-%s does not match any union of profile %s by membership "+
-			"(its unions are %s) — the tree view and the API disagree, so refusing to guess",
+		return "", fmt.Errorf("union-%s does not match any union of profile %s by children and "+
+			"partners (its unions are %s) — the tree view and the API disagree, so refusing to guess",
 			id, profileArg, strings.Join(known, ", "))
 	default:
-		return "", fmt.Errorf("union-%s matches %d unions of profile %s by membership (%s) — "+
-			"refusing to guess; pass the web id explicitly",
+		return "", fmt.Errorf("union-%s matches %d distinct unions of profile %s (%s) — "+
+			"refusing to guess; pass the web id explicitly (see `geni profile unions`)",
 			id, len(matches), profileArg, strings.Join(matches, ", "))
 	}
+}
+
+// pickWebUnions returns the distinct web ids whose union can be the one
+// described by the given partner and child guids. Split out from
+// matchOAuthUnion so the matching rule is testable without an API client.
+func pickWebUnions(webUnions []webtreeconflicts.WebUnion,
+	wantPartners, wantChildren []string) []string {
+	seen := make(map[string]struct{}, len(webUnions))
+	var matches []string
+	for _, wu := range webUnions {
+		// The tree view can return the same union more than once; without this
+		// one union counts as several and the command refuses a resolution that
+		// is in fact unambiguous.
+		if _, dup := seen[wu.WebID]; dup {
+			continue
+		}
+		if !equalMembers(normalizeMembers(wu.Children), wantChildren) {
+			continue
+		}
+		if !partnersOverlap(normalizeMembers(wu.Partners), wantPartners) {
+			continue
+		}
+		seen[wu.WebID] = struct{}{}
+		matches = append(matches, wu.WebID)
+	}
+	return matches
+}
+
+// memberGuids resolves short profile ids to guids in one bulk call.
+func memberGuids(ctx context.Context, c *geni.Client, ids []string) (map[string]string, error) {
+	out := map[string]string{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	profiles, err := c.Profile().GetBulk(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, pr := range profiles.Results {
+		if pr.Guid != "" && pr.ID != "" {
+			out[pr.ID] = pr.Guid
+		}
+	}
+	return out, nil
+}
+
+// mapGuids projects short profile ids through the lookup, dropping unresolved.
+func mapGuids(ids []string, guidOf map[string]string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if g, ok := guidOf[id]; ok {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// partnersOverlap reports whether the two partner sets can describe the same
+// union. Equality is too strict: the tree view lists partner slots the OAuth
+// API omits, so a real union routinely shows an extra placeholder. Sharing one
+// real partner is the strongest claim the data supports; two empty sets (a
+// childless union with no resolvable partner) count as overlapping so the
+// children comparison decides.
+func partnersOverlap(a, b []string) bool {
+	if len(a) == 0 || len(b) == 0 {
+		return true
+	}
+	in := make(map[string]struct{}, len(a))
+	for _, x := range a {
+		in[x] = struct{}{}
+	}
+	for _, y := range b {
+		if _, ok := in[y]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizeMembers strips the "profile-" prefix, de-duplicates and sorts, so

@@ -78,24 +78,63 @@ auth, flags, and examples.
 
 ## OAuth
 
-The `auth` subpackage offers a browser-based OAuth implicit-flow helper and a
-token cache, suitable for interactive CLI tools:
+The `auth` subpackage offers browser-based OAuth helpers and a token cache,
+suitable for interactive CLI tools. Both flows serve their callback on
+`127.0.0.1` only and write the cache with mode `0600`.
+
+**Client-side flow** — no client secret, but the token lasts a day and cannot
+be renewed:
 
 ```go
 import (
     "golang.org/x/oauth2"
+    geni "github.com/dmalch/go-geni"
     "github.com/dmalch/go-geni/auth"
 )
 
 source := oauth2.ReuseTokenSource(nil,
-    auth.NewCachingTokenSource("~/.geni/token.json",
+    auth.NewCachingTokenSource(cachePath,
         auth.NewAuthTokenSource(&oauth2.Config{
             ClientID: "1855",
-            Endpoint: oauth2.Endpoint{
-                AuthURL: "https://www.geni.com/platform/oauth/authorize",
-            },
+            Endpoint: auth.GeniEndpoint(geni.BaseURL(false)),
         })))
 ```
+
+**Server-side flow** — needs the application's client secret and returns a
+refresh token, so the browser is only involved once:
+
+```go
+cfg := &oauth2.Config{
+    ClientID:     "1855",
+    ClientSecret: os.Getenv("GENI_CLIENT_SECRET"),
+    Endpoint:     auth.GeniEndpoint(geni.BaseURL(false)),
+}
+src := auth.NewCodeTokenSource(cfg)
+source := oauth2.ReuseTokenSource(nil,
+    auth.NewRefreshingCachingTokenSource(cachePath, src, src))
+```
+
+Refreshing has to sit *below* `oauth2.ReuseTokenSource`, which is why
+`NewRefreshingCachingTokenSource` owns it: Geni rotates the refresh token on
+every renewal, and a refresher wrapped around the cache would renew into
+memory and lose the new token when the process exits.
+
+Two Geni quirks are worth knowing if you build the config yourself.
+
+**The callback address is not yours to choose.** It is whatever the
+application's single registered Callback URL says — a Geni application accepts
+exactly one — so `auth.WithPort` has to match that, and the authorization
+request carries no `redirect_uri`. Two independent mechanisms stop you sending
+one: Geni's WAF answers any query parameter holding a scheme-prefixed URL with
+an empty **403** (the parameter name is irrelevant — `foo=http://…` is blocked
+just the same, and Geni's OAuth layer never sees the request), and a value
+crafted to slip past the WAF is then rejected by Geni itself with *"redirect_uri
+cannot point to a different server than the one configured in the
+application"* — including the protocol-relative form of the exact registered
+URL. The application's type, Web or Native/Desktop, makes no difference.
+
+**Geni rejects HTTP Basic client authentication** with `client_id must be
+provided`, hence the `AuthStyleInParams` that `auth.GeniEndpoint` sets.
 
 Headless callers can skip `auth` entirely and supply any `oauth2.TokenSource`
 to `geni.NewClient`.
