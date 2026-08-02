@@ -1,3 +1,34 @@
+## 1.29.0
+
+### FIXED
+
+- An Incapsula block ended the request instead of being retried. Incapsula is
+  the DDoS protection in front of Geni; `translateStatusError` returned a bare
+  `fmt.Errorf`, which is not an `errRetry`, so the `RetryIf` hook rejected it
+  and the operation failed on the first block — no retry, no backoff. It was
+  the only transient class that did not recover: 429, 401, 502/503/504, DNS
+  failures, broken pipes, connection resets, HTTP/2 `CANCEL`/`REFUSED_STREAM`
+  and network timeouts all already become `errRetry`. Seen in a terraform
+  apply over ~4900 profiles, where a single block cost a whole re-plan and
+  re-apply round.
+
+  Blocks are now retried on their own terms rather than the `errRetry`
+  ladder's: a 45-second delay, because a bot-protection block does not clear
+  in the two to four seconds a 429 retry waits, and at most 2 of the 4
+  attempts, capped by a per-request counter in the `RetryIf` closure
+  (`retry-go` has no per-error attempt cap). The small budget is deliberate —
+  retrying into a block can prolong it, so this buys recovery from a one-off
+  block without applying sustained pressure. The
+  `incapsula blocked request` message is unchanged; downstream tooling
+  classifies transient against permanent apply failures by matching on it.
+
+### NOTES
+
+- 429 pacing is deliberately untouched. It is the shared rate limiter's job,
+  re-tuned from every response's `X-API-Rate-Limit` / `X-API-Rate-Window`
+  headers, and the new delay function special-cases only Incapsula — every
+  other error keeps `CombineDelay(FixedDelay, RandomDelay)` exactly as before.
+
 ## 1.28.0
 
 ### NEW

@@ -9,10 +9,13 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
+	"golang.org/x/time/rate"
 )
 
 // headerEchoTransport is a fake http.RoundTripper that returns a
@@ -242,5 +245,114 @@ func TestEscapeStringToUTF(t *testing.T) {
 		RegisterTestingT(t)
 		result := EscapeStringToUTF("Привет")
 		Expect(result).To(Equal("\\u041f\\u0440\\u0438\\u0432\\u0435\\u0442"))
+	})
+}
+
+// scriptedTransport returns each queued response in turn, then repeats the
+// last one. Used to drive the retry ladder without a live server.
+type scriptedTransport struct {
+	responses []scriptedResponse
+	calls     int
+}
+
+type scriptedResponse struct {
+	status int
+	body   string
+}
+
+func (t *scriptedTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	r := t.responses[min(t.calls, len(t.responses)-1)]
+	t.calls++
+	return &http.Response{
+		StatusCode: r.status,
+		Body:       io.NopCloser(strings.NewReader(r.body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+const incapsulaBody = "Request unsuccessful. Incapsula incident ID: 1234-5678"
+
+// fastIncapsulaRetries shortens the 45s block delay so the retry ladder can be
+// exercised in milliseconds, and restores it afterwards.
+func fastIncapsulaRetries(t *testing.T) {
+	t.Helper()
+	original := incapsulaRetryDelay
+	incapsulaRetryDelay = time.Millisecond
+	t.Cleanup(func() { incapsulaRetryDelay = original })
+}
+
+func TestIncapsulaIsRetryable(t *testing.T) {
+	t.Run("recovers when a block clears", func(t *testing.T) {
+		RegisterTestingT(t)
+		fastIncapsulaRetries(t)
+		rt := &scriptedTransport{responses: []scriptedResponse{
+			{http.StatusInternalServerError, incapsulaBody},
+			{http.StatusInternalServerError, incapsulaBody},
+			{http.StatusOK, `{"ok":true}`},
+		}}
+		c := newClientWith(rt)
+		c.SetLimiter(rate.NewLimiter(rate.Inf, 1))
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		body, err := c.Do(context.Background(), req, nil)
+
+		// Before this change the FIRST block failed the whole operation.
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(body)).To(Equal(`{"ok":true}`))
+		Expect(rt.calls).To(Equal(3))
+	})
+
+	t.Run("gives up after maxIncapsulaRetries, keeping the message", func(t *testing.T) {
+		RegisterTestingT(t)
+		fastIncapsulaRetries(t)
+		rt := &scriptedTransport{responses: []scriptedResponse{
+			{http.StatusInternalServerError, incapsulaBody},
+		}}
+		c := newClientWith(rt)
+		c.SetLimiter(rate.NewLimiter(rate.Inf, 1))
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		_, err := c.Do(context.Background(), req, nil)
+
+		// The message is load-bearing: geni-tree-terraform's apply_converge
+		// classifies transient vs permanent failures by matching on it.
+		Expect(err).To(MatchError(ContainSubstring("incapsula blocked request")))
+		// One initial attempt plus maxIncapsulaRetries — never the full ladder.
+		Expect(rt.calls).To(Equal(1 + maxIncapsulaRetries))
+	})
+}
+
+func TestRetryDelay(t *testing.T) {
+	t.Run("an Incapsula block waits far longer than the normal ladder", func(t *testing.T) {
+		RegisterTestingT(t)
+		got := retryDelay(1, errIncapsula{}, &retry.Config{})
+
+		Expect(got).To(Equal(incapsulaRetryDelay))
+		Expect(got).To(BeNumerically(">", 10*time.Second))
+	})
+
+	t.Run("every other error keeps the previous behaviour", func(t *testing.T) {
+		RegisterTestingT(t)
+		// The delay is FixedDelay+RandomDelay, i.e. base..base+jitter. Asserting
+		// the range rather than an exact value because RandomDelay is random.
+		//
+		// Note what is deliberately NOT special-cased here: a 429 carrying
+		// secondsUntilRetry keeps the same ~2-4s wait it always had. Pacing for
+		// those is the shared rate limiter's job — it re-tunes from every
+		// response's X-API-Rate-* headers — and this delay must stay out of it.
+		cfg := &retry.Config{}
+		retry.Delay(2 * time.Second)(cfg)
+		retry.MaxJitter(2 * time.Second)(cfg)
+
+		for _, err := range []error{
+			errRetry{statusCode: 429, secondsUntilRetry: 30},
+			errRetry{statusCode: 401, secondsUntilRetry: 1},
+			fmt.Errorf("something else"),
+		} {
+			got := retryDelay(1, err, cfg)
+
+			Expect(got).To(BeNumerically(">=", 2*time.Second))
+			Expect(got).To(BeNumerically("<=", 4*time.Second))
+		}
 	})
 }
