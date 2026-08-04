@@ -40,6 +40,22 @@ type Client struct {
 	urlMap        *sync.Map
 }
 
+// requestTimeout bounds a single HTTP attempt.
+//
+// Every branch of the retry ladder below — errRetry (429/401), errIncapsula,
+// the transient 5xx list, the net.Error timeout case — is downstream of the
+// request RETURNING. A server that accepts a request and then never answers
+// bypasses all of it: the caller parks forever with no error to classify and
+// no attempt consumed. A terraform apply over thousands of profiles then
+// stalls indefinitely rather than failing and retrying.
+//
+// Note this does not cap the rate limiter's wait, which happens before the
+// request is issued and is legitimately long — only the round trip itself.
+//
+// A var, not a const, purely so tests can shorten it — nothing in the library
+// reassigns it. Same reasoning as incapsulaRetryDelay below.
+var requestTimeout = 60 * time.Second
+
 // New constructs a Client. useSandboxEnv toggles between
 // sandbox.geni.com and www.geni.com. The rate limiter starts at 1 rps
 // and is re-tuned dynamically from each response's X-API-Rate-*
@@ -48,7 +64,7 @@ func New(tokenSource oauth2.TokenSource, useSandboxEnv bool) *Client {
 	return &Client{
 		tokenSource:   tokenSource,
 		useSandboxEnv: useSandboxEnv,
-		client:        &http.Client{},
+		client:        &http.Client{Timeout: requestTimeout},
 		limiter:       rate.NewLimiter(rate.Every(1*time.Second), 1),
 		urlMap:        &sync.Map{},
 	}
