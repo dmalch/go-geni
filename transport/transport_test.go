@@ -356,3 +356,44 @@ func TestRetryDelay(t *testing.T) {
 		}
 	})
 }
+
+// timeoutError is a minimal net.Error reporting a timeout — what the HTTP
+// client's Timeout surfaces once a deadline lapses.
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "i/o timeout" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
+
+func TestRequestTimeout(t *testing.T) {
+	t.Run("New bounds every attempt with a deadline", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		c := New(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"}), true)
+
+		// A server that accepts a request and never answers would otherwise
+		// park the caller forever: the retry ladder below only ever sees
+		// errors from requests that RETURNED, so a silent hang consumes no
+		// attempt and raises no error. An apply over thousands of profiles
+		// then stalls indefinitely instead of failing and retrying.
+		Expect(c.client.Timeout).To(Equal(requestTimeout))
+		Expect(c.client.Timeout).To(BeNumerically(">", time.Duration(0)))
+	})
+
+	t.Run("a timed-out attempt is retryable, not fatal", func(t *testing.T) {
+		RegisterTestingT(t)
+
+		// The deadline is only useful if the resulting error re-enters the
+		// ladder; classified as fatal it would abort the whole apply on the
+		// first slow response.
+		err := translateTransportError(&url.Error{
+			Op:  http.MethodGet,
+			URL: "https://www.geni.com/api/profile-1",
+			Err: timeoutError{},
+		})
+
+		retryErr, ok := errors.AsType[errRetry](err)
+		Expect(ok).To(BeTrue())
+		Expect(retryErr.statusCode).To(Equal(http.StatusGatewayTimeout))
+	})
+}
