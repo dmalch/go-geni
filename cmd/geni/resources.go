@@ -645,7 +645,7 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	if *limit > 0 && len(out) > *limit {
 		out = out[:*limit]
 	}
-	return render(g.stdout, out)
+	return renderList(g.stdout, out)
 }
 
 // runMatchesForProfile handles
@@ -1189,6 +1189,32 @@ func equalMembers(a, b []string) bool {
 // or looks up the profile's guid via the OAuth API when given a
 // profile-NNN id. Shared by the matches web commands, which key off
 // guids but accept the friendlier profile-NNN form.
+// needsGuidLookup reports whether a CLI profile argument is an API short id that
+// must be resolved to a guid before it can be used against the Merge Center tree
+// endpoints (/family-tree/index, /flash/*), which are guid-only.
+//
+// normalizeFlashProfileID strips the "profile-"/"profile-g" prefix, so a guid
+// arrives intact either way — but an API short id ("profile-34848631209") merely
+// loses its prefix and yields /family-tree/index/34848631209, which 404s. Every
+// sibling command (profile get, conflicts show, profile compare, profile merge)
+// accepts that id, so the tree commands must too rather than fail opaquely.
+//
+// Geni exposes a THIRD id space these commands cannot take: the Merge Center's
+// own web id (`short_id`, e.g. 407703728), which is not an API resource id and
+// resolves to "resource not found".
+func needsGuidLookup(arg string) bool {
+	return strings.HasPrefix(arg, "profile-") && !strings.HasPrefix(arg, "profile-g")
+}
+
+// treeProfileArg converts a CLI profile argument into the guid the tree
+// endpoints require, looking the short form up through the API.
+func treeProfileArg(ctx context.Context, g *globalOpts, arg string) (string, error) {
+	if !needsGuidLookup(arg) {
+		return arg, nil
+	}
+	return resolveProfileGuid(ctx, g, arg)
+}
+
 func resolveProfileGuid(ctx context.Context, g *globalOpts, id string) (string, error) {
 	if !strings.HasPrefix(id, "profile-") {
 		return id, nil
@@ -1263,7 +1289,7 @@ func runConflictsList(ctx context.Context, g *globalOpts, args []string) error {
 	if *limit > 0 && len(out) > *limit {
 		out = out[:*limit]
 	}
-	return render(g.stdout, out)
+	return renderList(g.stdout, out)
 }
 
 // runTreeConflictsList handles
@@ -1325,7 +1351,7 @@ func runTreeConflictsList(ctx context.Context, g *globalOpts, args []string) err
 	if *limit > 0 && len(out) > *limit {
 		out = out[:*limit]
 	}
-	return render(g.stdout, out)
+	return renderList(g.stdout, out)
 }
 
 // runTreeConflictsShow handles
@@ -1359,7 +1385,11 @@ func runTreeConflictsShow(ctx context.Context, g *globalOpts, args []string) err
 		return err
 	}
 
-	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, fs.Arg(0))
+	showArg, err := treeProfileArg(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, showArg)
 	if err != nil {
 		return err
 	}
@@ -1405,7 +1435,11 @@ func runTreeConflictsResolve(ctx context.Context, g *globalOpts, args []string) 
 		return err
 	}
 
-	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, fs.Arg(0))
+	showArg, err := treeProfileArg(ctx, g, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	detail, err := webtreeconflicts.NewClient(wc).Show(ctx, showArg)
 	if err != nil {
 		return err
 	}
