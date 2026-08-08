@@ -1,3 +1,29 @@
+## 1.30.0
+
+### NEW
+
+- Merge-center rows now carry the **review link behind each match button**:
+  `Match.TreeMatchURL`, `RecordMatchURL` and `SmartMatchURL`, populated only
+  for the types whose count is non-zero (Geni renders a disabled button, href
+  and all, for the rest). This matters most for record matches, which are the
+  one type this package cannot follow: Geni computes them with MyHeritage and
+  the button is a `/fwd/myheritage` hand-off, so the count and this URL are
+  everything Geni holds. `geni matches list -filter=record` now emits a link
+  per row to open in a browser instead of leaving the caller to reconstruct it.
+- `-filter=free-record` (`matches.FilterFreeRecordMatches`), the merge
+  center's fourth tab — the record matches whose underlying record is free to
+  view. It was the only tab the CLI could not reach.
+
+### NOTES
+
+- `matches for-profile` is documented as tree-only, which it always was.
+  `/search/matches/<guid>` is a tree-match page: a profile whose pending
+  matches are record or smart ones returns an empty `matches` array, and that
+  reads as "no matches" when it means "no *tree* matches". There is no on-site
+  page to parse for the other two — every plausible record-match path
+  (`/search/record_matches/<guid>`, `/matches/records/<guid>`, …) 404s — so
+  this is a documentation fix, not a missing feature.
+
 ## 1.29.0
 
 ### FIXED

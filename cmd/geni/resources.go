@@ -528,10 +528,11 @@ var matchesCollections = map[string]webmatches.Collection{
 // query-string values. Shortened on the CLI side because the
 // "_matches" suffix is redundant under `geni matches list`.
 var matchesFilters = map[string]webmatches.Filter{
-	"":       "",
-	"tree":   webmatches.FilterTreeMatches,
-	"record": webmatches.FilterRecordMatches,
-	"smart":  webmatches.FilterSmartMatches,
+	"":            "",
+	"tree":        webmatches.FilterTreeMatches,
+	"record":      webmatches.FilterRecordMatches,
+	"smart":       webmatches.FilterSmartMatches,
+	"free-record": webmatches.FilterFreeRecordMatches,
 }
 
 // matchesOrders maps user-facing -order values to the Geni
@@ -573,7 +574,7 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	fs := flag.NewFlagSet("geni matches list", flag.ContinueOnError)
 	fs.SetOutput(g.stderr)
 	collection := fs.String("collection", "managed", "{managed,relatives,followed,collaborators}")
-	filter := fs.String("filter", "", "{tree,record,smart}")
+	filter := fs.String("filter", "", "{tree,record,smart,free-record}")
 	order := fs.String("order", "", "{name,relationship,manager,updated_at,matches}")
 	direction := fs.String("direction", "", "{asc,desc}")
 	page := fs.Int("page", 0, "1-based page number; ignored with -all")
@@ -592,7 +593,7 @@ func runMatchesList(ctx context.Context, g *globalOpts, args []string) error {
 	}
 	flt, ok := matchesFilters[*filter]
 	if !ok {
-		return fmt.Errorf("invalid -filter %q (want one of: tree, record, smart)", *filter)
+		return fmt.Errorf("invalid -filter %q (want one of: tree, record, smart, free-record)", *filter)
 	}
 	ord, ok := matchesOrders[*order]
 	if !ok {
