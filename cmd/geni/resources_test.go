@@ -314,6 +314,20 @@ func TestMatchesCollectionsContainsDefault(t *testing.T) {
 	Expect(matchesCollections["managed"]).To(Equal(webmatches.CollectionManaged))
 }
 
+func TestMatchesFiltersCoversEveryTab(t *testing.T) {
+	RegisterTestingT(t)
+	// One CLI key per merge-center tab, plus "" for the unfiltered
+	// default. The shortened keys are what -filter accepts, so a tab
+	// missing here is a tab the CLI cannot reach.
+	Expect(matchesFilters).To(Equal(map[string]webmatches.Filter{
+		"":            "",
+		"tree":        webmatches.FilterTreeMatches,
+		"record":      webmatches.FilterRecordMatches,
+		"smart":       webmatches.FilterSmartMatches,
+		"free-record": webmatches.FilterFreeRecordMatches,
+	}))
+}
+
 func TestRunMatchesForProfile_ArgValidation(t *testing.T) {
 	g := &globalOpts{stdin: strings.NewReader(""), stderr: io.Discard}
 	t.Setenv("GENI_WEB_CONSENT", "accepted")

@@ -75,6 +75,13 @@ func TestList_ParsesFixtureRows(t *testing.T) {
 	Expect(first.SmartMatchCount).To(Equal(1))
 	Expect(first.SmartMatchValue).To(Equal(70))
 
+	// Review links come from the buttons, but only for the types with
+	// matches behind them: this row has tree and smart matches and no
+	// record ones, so the record button's href is dropped.
+	Expect(first.TreeMatchURL).To(Equal("/search/matches?id=6000000225685438084&src=profile&cmp=btn&auto1=1"))
+	Expect(first.SmartMatchURL).To(Equal("/fwd/myheritage?profile_id=6000000225685438084&match_type=smart&src=profile&cmp=btn&trn=partner_Geni&trp=match_button_merge_center"))
+	Expect(first.RecordMatchURL).To(BeEmpty())
+
 	// Row with empty relationship cell still parses (#4 in the fixture).
 	idx := -1
 	for i, m := range res.Matches {
@@ -89,6 +96,40 @@ func TestList_ParsesFixtureRows(t *testing.T) {
 	Expect(row.ManagerName).To(Equal("Anna Polyanicheva"))
 	Expect(row.UpdatedAtText).To(Equal("15.5.2026"))
 	Expect(row.LifespanText).To(Equal("(1843 - 1850)"))
+}
+
+// A record match is the one match type this package cannot follow:
+// Geni computes it with MyHeritage and hands off through /fwd/myheritage
+// instead of hosting a review page. The URL is therefore the whole
+// payload, and has to survive parsing.
+func TestList_CapturesRecordMatchHandoffURL(t *testing.T) {
+	RegisterTestingT(t)
+	fixture, err := os.ReadFile("testdata/list_matches_record.html")
+	Expect(err).ToNot(HaveOccurred())
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	res, err := newClient(t, srv).List(context.Background(), matches.ListOptions{
+		Filter: matches.FilterRecordMatches,
+	})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(res.Matches).To(HaveLen(1))
+
+	row := res.Matches[0]
+	Expect(row.ProfileGuid).To(Equal("6000000225685330988"))
+	Expect(row.RecordMatchCount).To(Equal(27))
+	Expect(row.RecordMatchURL).To(Equal("/fwd/myheritage?profile_id=6000000225685330988&match_type=record&src=profile&cmp=btn&trn=partner_Geni&trp=match_button_merge_center"))
+
+	// The other two buttons are rendered but empty, so they contribute
+	// no link — otherwise every row would carry three URLs and the one
+	// that leads somewhere would be indistinguishable.
+	Expect(row.TreeMatchCount).To(BeZero())
+	Expect(row.TreeMatchURL).To(BeEmpty())
+	Expect(row.SmartMatchCount).To(BeZero())
+	Expect(row.SmartMatchURL).To(BeEmpty())
 }
 
 func TestList_QueryParamEncoding(t *testing.T) {

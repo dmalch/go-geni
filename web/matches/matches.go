@@ -40,6 +40,11 @@ const (
 	FilterTreeMatches   Filter = "tree_matches"
 	FilterRecordMatches Filter = "record_matches"
 	FilterSmartMatches  Filter = "smart_matches"
+	// FilterFreeRecordMatches is the merge center's fourth tab, the
+	// subset of record matches whose underlying record is free to
+	// view. Geni offers it alongside the other three; it is listed
+	// here for completeness rather than because it is often useful.
+	FilterFreeRecordMatches Filter = "free_record_matches"
 )
 
 // Order picks the sort column.
@@ -88,6 +93,21 @@ type Match struct {
 	RecordMatchCount  int    `json:"record_match_count"`
 	SmartMatchCount   int    `json:"smart_match_count"`
 	SmartMatchValue   int    `json:"smart_match_value,omitempty"`
+
+	// The review link behind each match button, captured only when
+	// that button's count is non-zero (Geni renders a disabled button,
+	// href and all, for the types a profile has no matches of).
+	//
+	// TreeMatchURL stays on geni.com and is the same page ForProfile
+	// parses. RecordMatchURL and SmartMatchURL are /fwd/myheritage
+	// forwards: those two match types are computed and reviewed by
+	// MyHeritage, and Geni holds nothing about them beyond the count
+	// and this hand-off link. They are the only handle this package
+	// can offer on a record or smart match — there is no on-site page
+	// to parse, so open them in a browser.
+	TreeMatchURL   string `json:"tree_match_url,omitempty"`
+	RecordMatchURL string `json:"record_match_url,omitempty"`
+	SmartMatchURL  string `json:"smart_match_url,omitempty"`
 }
 
 // ListResult is one page of matches plus pagination state.
@@ -302,17 +322,32 @@ func parseButtonsCell(td *html.Node, m *Match) {
 			return true
 		}
 		count, _ := strconv.Atoi(attr(n, "data-count"))
+		href := attr(n, "href")
 		switch {
 		case hasClass(n, "tree-match"):
 			m.TreeMatchCount = count
+			m.TreeMatchURL = hrefWhenCounted(href, count)
 		case hasClass(n, "record-match"):
 			m.RecordMatchCount = count
+			m.RecordMatchURL = hrefWhenCounted(href, count)
 		case hasClass(n, "smart-match"):
 			m.SmartMatchCount = count
 			m.SmartMatchValue, _ = strconv.Atoi(attr(n, "data-value"))
+			m.SmartMatchURL = hrefWhenCounted(href, count)
 		}
 		return true
 	})
+}
+
+// hrefWhenCounted returns href only for a button that actually has
+// matches behind it. Every row carries all three buttons, so keeping
+// the dead links would put a review URL on every match type of every
+// profile and drown the two that lead somewhere.
+func hrefWhenCounted(href string, count int) string {
+	if count <= 0 {
+		return ""
+	}
+	return href
 }
 
 // paginationHasNext returns true if the pagination block contains a
@@ -478,6 +513,13 @@ type ForProfileResult struct {
 // source-profile row plus the candidate matches. Never passes
 // `auto1=1` — that would cause a 302 to /merge/compare/… when the
 // profile has exactly one match.
+//
+// Tree matches only, because that is all the page holds. A profile
+// whose pending matches are record or smart ones comes back with an
+// empty Matches slice, which means "no tree matches", not "no matches":
+// those two types live on MyHeritage and Geni exposes only a count and
+// a hand-off link for them (see Match.RecordMatchURL). List with
+// FilterRecordMatches to find them and follow that URL in a browser.
 func (c *Client) ForProfile(ctx context.Context, sourceGuid string, opts ForProfileOptions) (*ForProfileResult, error) {
 	u := c.web.BaseURL() + "/search/matches/" + sourceGuid
 	if opts.Group != "" {
