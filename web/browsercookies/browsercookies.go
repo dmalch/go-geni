@@ -25,25 +25,24 @@ var (
 	ErrNoCookies = errors.New("browsercookies: no geni.com cookies found in any browser")
 
 	// ErrFullDiskAccessRequired wraps macOS "operation not permitted"
-	// failures reading a CHROMIUM-family browser cookie store. Grant
-	// it in System Settings → Privacy & Security → Full Disk Access
-	// for the binary running this code (e.g. your terminal); macOS
-	// grants the permission per binary, not per user.
+	// failures reading a browser cookie store. TCC denies the read with
+	// EPERM while still allowing stat, so the file looks present and
+	// merely refuses to open — Safari's container is the usual one hit,
+	// and Full Disk Access does cover it.
+	//
+	// The grant goes to the APPLICATION that runs the command, not to
+	// this binary: TCC attributes an access to the "responsible"
+	// process, and children of a terminal inherit its Full Disk Access.
+	// Adding a bare CLI binary to the list instead is the common wasted
+	// trip to System Settings — and either way the app must be
+	// restarted before the grant takes effect.
 	ErrFullDiskAccessRequired = errors.New(
-		"browsercookies: cannot read browser cookie store (on macOS, " +
-			"grant Full Disk Access in System Settings → Privacy & Security)")
-
-	// ErrSafariCookiesUnreadable is Safari's case, and it is NOT the
-	// one above: macOS reserves the Safari container to Safari itself,
-	// so Full Disk Access does not lift it. Verified 2026-09-19 on
-	// macOS 27 — a binary holding FDA (it reads Photos.sqlite) still
-	// gets EPERM on Cookies.binarycookies. Telling the user to grant
-	// FDA here sends them to a setting that cannot help.
-	ErrSafariCookiesUnreadable = errors.New(
-		"browsercookies: Safari's cookie store is unreadable — macOS reserves it " +
-			"to Safari itself and Full Disk Access does NOT lift that; copy the " +
-			"Cookie header from a logged-in page (Web Inspector → Network → any " +
-			"geni.com request) into GENI_WEB_COOKIES_FILE or GENI_WEB_COOKIES")
+		"browsercookies: the browser cookie store is present but macOS refused to " +
+			"open it — grant Full Disk Access to the APPLICATION that runs this " +
+			"command (your terminal: Terminal, iTerm, Warp, …) in System Settings → " +
+			"Privacy & Security → Full Disk Access and restart it; its child " +
+			"processes inherit the grant. Or skip TCC entirely and put the Cookie " +
+			"header from a logged-in page in GENI_WEB_COOKIES_FILE")
 )
 
 // SupportedBrowsers lists the browser names accepted by FromGeniCom.
@@ -134,9 +133,6 @@ func emptyResultError(warnings []string) error {
 	for _, w := range warnings {
 		if !isPermissionDeniedMsg(w) {
 			continue
-		}
-		if strings.Contains(strings.ToLower(w), "safari") {
-			return fmt.Errorf("%w: %s", ErrSafariCookiesUnreadable, w)
 		}
 		return fmt.Errorf("%w: %s", ErrFullDiskAccessRequired, w)
 	}

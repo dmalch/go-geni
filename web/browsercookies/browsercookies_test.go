@@ -143,7 +143,7 @@ func TestFromGeniCom_EmptyResultWarnings(t *testing.T) {
 		t.Cleanup(func() { readCookies = prev })
 	}
 
-	t.Run("Safari permission failure is not a Full-Disk-Access problem", func(t *testing.T) {
+	t.Run("a refused store is a permission problem, not an empty one", func(t *testing.T) {
 		RegisterTestingT(t)
 		stub(t, []string{"sweetcookie: Safari read failed: open " +
 			"/Users/x/Library/Containers/com.apple.Safari/Data/Library/Cookies/" +
@@ -151,13 +151,14 @@ func TestFromGeniCom_EmptyResultWarnings(t *testing.T) {
 
 		_, err := FromGeniCom()
 
-		Expect(err).To(MatchError(ErrSafariCookiesUnreadable))
+		Expect(err).To(MatchError(ErrFullDiskAccessRequired))
 		Expect(err).ToNot(MatchError(ErrNoCookies), "the store is unreadable, not empty")
-		Expect(err.Error()).To(ContainSubstring("GENI_WEB_COOKIES"),
-			"the message must name the only fallback that works")
+		Expect(err.Error()).To(ContainSubstring("APPLICATION"),
+			"the grant goes to the terminal, not to this binary — the trip people waste")
+		Expect(err.Error()).To(ContainSubstring("restart"))
 	})
 
-	t.Run("a Chromium store denied by TCC does point at Full Disk Access", func(t *testing.T) {
+	t.Run("the same holds for a Chromium store", func(t *testing.T) {
 		RegisterTestingT(t)
 		stub(t, []string{"sweetcookie: Chrome read failed: open /Users/x/Library/" +
 			"Application Support/Google/Chrome/Default/Cookies: permission denied"})
@@ -165,7 +166,6 @@ func TestFromGeniCom_EmptyResultWarnings(t *testing.T) {
 		_, err := FromGeniCom()
 
 		Expect(err).To(MatchError(ErrFullDiskAccessRequired))
-		Expect(err).ToNot(MatchError(ErrSafariCookiesUnreadable))
 	})
 
 	t.Run("stores merely absent stay ErrNoCookies but say which were tried", func(t *testing.T) {

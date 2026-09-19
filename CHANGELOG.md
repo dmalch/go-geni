@@ -17,11 +17,12 @@
   failure as a *warning* alongside `(Result{}, nil)`, and those warnings were
   dropped. They are now read: a permission failure surfaces as
   `ErrFullDiskAccessRequired`, and an empty read names the stores that were tried.
-- **Safari gets its own error**, `ErrSafariCookiesUnreadable`. macOS reserves the
-  Safari container to Safari itself and Full Disk Access does **not** lift it
-  (verified on macOS 27: a binary holding FDA reads `Photos.sqlite` and still gets
-  `EPERM` on `Cookies.binarycookies`), so the old advice to grant FDA pointed at a
-  setting that cannot help. The message now names the `Cookie`-header route.
+- `ErrFullDiskAccessRequired` now says **who** to grant the access to. TCC
+  attributes a file access to the "responsible" process, so the grant belongs to
+  the application that runs the command — the terminal, whose children inherit it —
+  and not to this binary; adding a bare CLI binary to the Full Disk Access list is
+  the wasted trip to System Settings, and either way the app must be restarted.
+  Safari's container is the store usually hit, and Full Disk Access does cover it.
 - The CLI no longer wraps a diagnosed cookie failure in the generic "could not
   read geni.com cookies from any browser", which contradicted the diagnosis and
   repeated its hint.

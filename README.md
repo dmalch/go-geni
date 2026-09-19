@@ -211,13 +211,18 @@ cookies, err := browsercookies.FromGeniCom()
 c, _ := web.NewClient(web.Options{Cookies: cookies})
 ```
 
-> **macOS, Safari:** this route cannot work. The OS reserves
-> `~/Library/Containers/com.apple.Safari/…/Cookies.binarycookies` to Safari
-> itself, and **Full Disk Access does not lift it** — a binary that holds FDA
-> still gets `operation not permitted`. `FromGeniCom` says so
-> (`ErrSafariCookiesUnreadable`) rather than reporting "no cookies found",
-> which would read as "you are not logged in". Copy the `Cookie` header
-> instead: Web Inspector → Network → any `geni.com` request → Headers.
+> **macOS:** a cookie store is readable only with **Full Disk Access**, and the
+> grant goes to the **application that runs the command** — your terminal — not
+> to this binary. TCC attributes a file access to the "responsible" process, and
+> a terminal's children inherit its grant; adding a bare CLI binary to the list
+> instead is the trip to System Settings that buys nothing. Restart the terminal
+> afterwards. Safari's container
+> (`~/Library/Containers/com.apple.Safari/…/Cookies.binarycookies`) is the usual
+> one hit, and Full Disk Access does cover it.
+>
+> `FromGeniCom` reports this as `ErrFullDiskAccessRequired` rather than "no
+> cookies found", which would read as "you are not logged in" — the opposite of
+> the truth, since the jar is full and merely refuses to open.
 
 The `geni` CLI takes that header from either of two environment variables,
 checked before any browser store:

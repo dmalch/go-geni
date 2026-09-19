@@ -259,7 +259,6 @@ func TestLoadWebCookies_DiagnosedFailuresArePassedThrough(t *testing.T) {
 		name string
 		err  error
 	}{
-		{"safari", browsercookies.ErrSafariCookiesUnreadable},
 		{"full disk access", browsercookies.ErrFullDiskAccessRequired},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

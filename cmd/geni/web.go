@@ -133,8 +133,7 @@ func loadWebCookies(g *globalOpts) ([]*http.Cookie, error) {
 		// A diagnosed failure already says why and how to fix it.
 		// Wrapping it in "no cookies in any browser" would contradict
 		// it — the store is unreadable, not empty — and repeat the hint.
-		if errors.Is(err, browsercookies.ErrSafariCookiesUnreadable) ||
-			errors.Is(err, browsercookies.ErrFullDiskAccessRequired) {
+		if errors.Is(err, browsercookies.ErrFullDiskAccessRequired) {
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not read geni.com cookies from any browser "+
