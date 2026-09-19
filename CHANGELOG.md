@@ -1,6 +1,19 @@
-## Unreleased
+## 1.30.0
 
 ### NEW
+
+- Merge-center rows now carry the **review link behind each match button**:
+  `Match.TreeMatchURL`, `RecordMatchURL` and `SmartMatchURL`, populated only
+  for the types whose count is non-zero (Geni renders a disabled button, href
+  and all, for the rest). This matters most for record matches, which are the
+  one type this package cannot follow: Geni computes them with MyHeritage and
+  the button is a `/fwd/myheritage` hand-off, so the count and this URL are
+  everything Geni holds. `geni matches list -filter=record` now emits a link
+  per row to open in a browser instead of leaving the caller to reconstruct it.
+- `-filter=free-record` (`matches.FilterFreeRecordMatches`), the merge
+  center's fourth tab — the record matches whose underlying record is free to
+  view. It was the only tab the CLI could not reach.
+
 
 - `GENI_WEB_COOKIES_FILE` — a path to a file holding the `Cookie` header, checked
   after `GENI_WEB_COOKIES` and before any browser store. A session cookie in an
@@ -26,22 +39,6 @@
 - The CLI no longer wraps a diagnosed cookie failure in the generic "could not
   read geni.com cookies from any browser", which contradicted the diagnosis and
   repeated its hint.
-
-## 1.30.0
-
-### NEW
-
-- Merge-center rows now carry the **review link behind each match button**:
-  `Match.TreeMatchURL`, `RecordMatchURL` and `SmartMatchURL`, populated only
-  for the types whose count is non-zero (Geni renders a disabled button, href
-  and all, for the rest). This matters most for record matches, which are the
-  one type this package cannot follow: Geni computes them with MyHeritage and
-  the button is a `/fwd/myheritage` hand-off, so the count and this URL are
-  everything Geni holds. `geni matches list -filter=record` now emits a link
-  per row to open in a browser instead of leaving the caller to reconstruct it.
-- `-filter=free-record` (`matches.FilterFreeRecordMatches`), the merge
-  center's fourth tab — the record matches whose underlying record is free to
-  view. It was the only tab the CLI could not reach.
 
 ### NOTES
 
