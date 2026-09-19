@@ -129,3 +129,63 @@ func TestFromGeniCom_RejectsUnknownBrowserBeforeNetwork(t *testing.T) {
 	Expect(err.Error()).To(ContainSubstring("not-a-browser"))
 	Expect(called).To(BeFalse(), "expected validation to short-circuit before readCookies")
 }
+
+// sweetcookie reports a store it could not OPEN as a warning and still
+// returns (Result{}, nil). Before these cases the caller saw only
+// ErrNoCookies — "log in to a browser first" — which is the opposite of
+// the truth when the store is full of cookies and merely unreadable.
+func TestFromGeniCom_EmptyResultWarnings(t *testing.T) {
+	stub := func(t *testing.T, warnings []string) {
+		prev := readCookies
+		readCookies = func([]sweetcookie.Browser) (sweetcookie.Result, error) {
+			return sweetcookie.Result{Warnings: warnings}, nil
+		}
+		t.Cleanup(func() { readCookies = prev })
+	}
+
+	t.Run("Safari permission failure is not a Full-Disk-Access problem", func(t *testing.T) {
+		RegisterTestingT(t)
+		stub(t, []string{"sweetcookie: Safari read failed: open " +
+			"/Users/x/Library/Containers/com.apple.Safari/Data/Library/Cookies/" +
+			"Cookies.binarycookies: operation not permitted"})
+
+		_, err := FromGeniCom()
+
+		Expect(err).To(MatchError(ErrSafariCookiesUnreadable))
+		Expect(err).ToNot(MatchError(ErrNoCookies), "the store is unreadable, not empty")
+		Expect(err.Error()).To(ContainSubstring("GENI_WEB_COOKIES"),
+			"the message must name the only fallback that works")
+	})
+
+	t.Run("a Chromium store denied by TCC does point at Full Disk Access", func(t *testing.T) {
+		RegisterTestingT(t)
+		stub(t, []string{"sweetcookie: Chrome read failed: open /Users/x/Library/" +
+			"Application Support/Google/Chrome/Default/Cookies: permission denied"})
+
+		_, err := FromGeniCom()
+
+		Expect(err).To(MatchError(ErrFullDiskAccessRequired))
+		Expect(err).ToNot(MatchError(ErrSafariCookiesUnreadable))
+	})
+
+	t.Run("stores merely absent stay ErrNoCookies but say which were tried", func(t *testing.T) {
+		RegisterTestingT(t)
+		stub(t, []string{"sweetcookie: Chrome cookie store not found",
+			"sweetcookie: Firefox cookie store not found"})
+
+		_, err := FromGeniCom()
+
+		Expect(err).To(MatchError(ErrNoCookies))
+		Expect(err.Error()).To(ContainSubstring("Chrome cookie store not found"))
+		Expect(err.Error()).To(ContainSubstring("Firefox cookie store not found"))
+	})
+
+	t.Run("no warnings at all is still the bare sentinel", func(t *testing.T) {
+		RegisterTestingT(t)
+		stub(t, nil)
+
+		_, err := FromGeniCom()
+
+		Expect(err).To(MatchError(ErrNoCookies))
+	})
+}

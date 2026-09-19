@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
+
+	"github.com/dmalch/go-geni/web/browsercookies"
 )
 
 // failOnReadReader makes any Read() call fail the test — used to prove
@@ -167,4 +169,127 @@ func TestLoadWebCookies_BrowserFailureWrappedWithHint(t *testing.T) {
 
 	Expect(err).To(HaveOccurred())
 	Expect(err.Error()).To(ContainSubstring("GENI_WEB_COOKIES"))
+}
+
+// A session cookie in GENI_WEB_COOKIES sits in the shell history and in
+// the process environment, where `ps -E` and a crash dump can read it.
+// The file form keeps it in one 0600 file instead.
+func TestLoadWebCookies_CookieFile(t *testing.T) {
+	noBrowser := func(t *testing.T) {
+		prev := browserCookieFetcher
+		browserCookieFetcher = func(...string) ([]*http.Cookie, error) {
+			t.Fatal("browser fallback must not be called when a cookie file is set")
+			return nil, nil
+		}
+		t.Cleanup(func() { browserCookieFetcher = prev })
+	}
+	write := func(t *testing.T, body string) string {
+		p := filepath.Join(t.TempDir(), "cookie.txt")
+		Expect(os.WriteFile(p, []byte(body), 0o600)).To(Succeed())
+		return p
+	}
+
+	t.Run("reads the header from the file", func(t *testing.T) {
+		RegisterTestingT(t)
+		noBrowser(t)
+		t.Setenv("GENI_WEB_COOKIES", "")
+		t.Setenv("GENI_WEB_COOKIES_FILE", write(t, "_geni_session=abc; remember_user_token=xyz"))
+
+		cookies, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cookies).To(HaveLen(2))
+	})
+
+	t.Run("trims the newline `pbpaste >` leaves behind", func(t *testing.T) {
+		RegisterTestingT(t)
+		noBrowser(t)
+		t.Setenv("GENI_WEB_COOKIES", "")
+		t.Setenv("GENI_WEB_COOKIES_FILE", write(t, "_geni_session=abc\n"))
+
+		cookies, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cookies).To(HaveLen(1))
+		Expect(cookies[0].Value).To(Equal("abc"), "a trailing newline would ride along in the value")
+	})
+
+	t.Run("the env var still wins over the file", func(t *testing.T) {
+		RegisterTestingT(t)
+		noBrowser(t)
+		t.Setenv("GENI_WEB_COOKIES", "_geni_session=from-env")
+		t.Setenv("GENI_WEB_COOKIES_FILE", write(t, "_geni_session=from-file"))
+
+		cookies, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(cookies[0].Value).To(Equal("from-env"))
+	})
+
+	t.Run("a missing file is an error, not a silent fall back to the browser", func(t *testing.T) {
+		RegisterTestingT(t)
+		noBrowser(t)
+		t.Setenv("GENI_WEB_COOKIES", "")
+		t.Setenv("GENI_WEB_COOKIES_FILE", filepath.Join(t.TempDir(), "absent.txt"))
+
+		_, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("GENI_WEB_COOKIES_FILE"))
+	})
+
+	t.Run("an empty file is an error too", func(t *testing.T) {
+		RegisterTestingT(t)
+		noBrowser(t)
+		t.Setenv("GENI_WEB_COOKIES", "")
+		t.Setenv("GENI_WEB_COOKIES_FILE", write(t, "   \n"))
+
+		_, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("empty"))
+	})
+}
+
+// The generic "no cookies in any browser" wrapper contradicts a
+// diagnosis that already says WHY, and repeats a hint the inner error
+// already gives. Pass those through instead of burying them.
+func TestLoadWebCookies_DiagnosedFailuresArePassedThrough(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"safari", browsercookies.ErrSafariCookiesUnreadable},
+		{"full disk access", browsercookies.ErrFullDiskAccessRequired},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			RegisterTestingT(t)
+			t.Setenv("GENI_WEB_COOKIES", "")
+			t.Setenv("GENI_WEB_COOKIES_FILE", "")
+			prev := browserCookieFetcher
+			browserCookieFetcher = func(...string) ([]*http.Cookie, error) { return nil, tc.err }
+			t.Cleanup(func() { browserCookieFetcher = prev })
+
+			_, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+			Expect(err).To(MatchError(tc.err))
+			Expect(err.Error()).ToNot(ContainSubstring("from any browser"),
+				"the specific diagnosis must not be wrapped in the generic one")
+		})
+	}
+
+	t.Run("an undiagnosed failure still gets the hint", func(t *testing.T) {
+		RegisterTestingT(t)
+		t.Setenv("GENI_WEB_COOKIES", "")
+		t.Setenv("GENI_WEB_COOKIES_FILE", "")
+		prev := browserCookieFetcher
+		browserCookieFetcher = func(...string) ([]*http.Cookie, error) {
+			return nil, browsercookies.ErrNoCookies
+		}
+		t.Cleanup(func() { browserCookieFetcher = prev })
+
+		_, err := loadWebCookies(&globalOpts{stderr: io.Discard})
+
+		Expect(err.Error()).To(ContainSubstring("GENI_WEB_COOKIES_FILE"))
+	})
 }

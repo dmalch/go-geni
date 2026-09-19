@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dmalch/go-geni/web"
@@ -99,12 +100,28 @@ func ensureWebConsent(g *globalOpts) error {
 	return nil
 }
 
+// cookieFileEnv names a file holding the Cookie header, as an
+// alternative to GENI_WEB_COOKIES. A session cookie in an environment
+// variable sits in the shell history and in the process environment,
+// where `ps -E` and a crash dump can read it; a 0600 file does not.
+// It is the only route left on a Safari-only macOS host, whose cookie
+// store no process but Safari may read.
+const cookieFileEnv = "GENI_WEB_COOKIES_FILE"
+
 // loadWebCookies returns cookies for web.Options.Cookies, preferring an
-// explicit GENI_WEB_COOKIES env var and falling back to the host's
-// browser stores. When g.browser is set, only that backend is read;
-// otherwise every browser is tried in sweetcookie's default order.
+// explicit GENI_WEB_COOKIES env var, then GENI_WEB_COOKIES_FILE, and
+// falling back to the host's browser stores. When g.browser is set,
+// only that backend is read; otherwise every browser is tried in
+// sweetcookie's default order.
 func loadWebCookies(g *globalOpts) ([]*http.Cookie, error) {
 	if header := os.Getenv("GENI_WEB_COOKIES"); header != "" {
+		return web.CookiesFromHeader(header), nil
+	}
+	if path := os.Getenv(cookieFileEnv); path != "" {
+		header, err := readCookieFile(path)
+		if err != nil {
+			return nil, err
+		}
 		return web.CookiesFromHeader(header), nil
 	}
 	var browsers []string
@@ -113,8 +130,34 @@ func loadWebCookies(g *globalOpts) ([]*http.Cookie, error) {
 	}
 	cookies, err := browserCookieFetcher(browsers...)
 	if err != nil {
+		// A diagnosed failure already says why and how to fix it.
+		// Wrapping it in "no cookies in any browser" would contradict
+		// it — the store is unreadable, not empty — and repeat the hint.
+		if errors.Is(err, browsercookies.ErrSafariCookiesUnreadable) ||
+			errors.Is(err, browsercookies.ErrFullDiskAccessRequired) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("could not read geni.com cookies from any browser "+
-			"(set GENI_WEB_COOKIES to the Cookie header from a logged-in browser as a fallback): %w", err)
+			"(set %s to a file holding the Cookie header from a logged-in browser, "+
+			"or GENI_WEB_COOKIES to the header itself): %w", cookieFileEnv, err)
 	}
 	return cookies, nil
+}
+
+// readCookieFile reads a Cookie header from disk. A pointed-at file
+// that cannot be read is an error rather than a fall-through to the
+// browser stores: the caller named the file, and silently reading
+// somewhere else would hide a typo behind a different failure. The
+// trailing newline `pbpaste > file` leaves is trimmed — kept, it would
+// ride along inside the last cookie's value.
+func readCookieFile(path string) (string, error) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("%s: read %s: %w", cookieFileEnv, path, err)
+	}
+	header := strings.TrimSpace(string(body))
+	if header == "" {
+		return "", fmt.Errorf("%s: %s is empty", cookieFileEnv, path)
+	}
+	return header, nil
 }

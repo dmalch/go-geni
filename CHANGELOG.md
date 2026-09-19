@@ -1,3 +1,31 @@
+## Unreleased
+
+### NEW
+
+- `GENI_WEB_COOKIES_FILE` — a path to a file holding the `Cookie` header, checked
+  after `GENI_WEB_COOKIES` and before any browser store. A session cookie in an
+  environment variable sits in the shell history and in the process environment,
+  where `ps -E` and a crash dump can read it. A named file that cannot be read is
+  an error rather than a fall-through to the browser stores, and the trailing
+  newline `pbpaste > file` leaves is trimmed.
+
+### FIXED
+
+- Cookie discovery reported **"no geni.com cookies found in any browser"** when a
+  store was present but the OS refused it — the opposite of the truth, and it
+  sends the reader hunting for a login problem. `sweetcookie` returns such a
+  failure as a *warning* alongside `(Result{}, nil)`, and those warnings were
+  dropped. They are now read: a permission failure surfaces as
+  `ErrFullDiskAccessRequired`, and an empty read names the stores that were tried.
+- **Safari gets its own error**, `ErrSafariCookiesUnreadable`. macOS reserves the
+  Safari container to Safari itself and Full Disk Access does **not** lift it
+  (verified on macOS 27: a binary holding FDA reads `Photos.sqlite` and still gets
+  `EPERM` on `Cookies.binarycookies`), so the old advice to grant FDA pointed at a
+  setting that cannot help. The message now names the `Cookie`-header route.
+- The CLI no longer wraps a diagnosed cookie failure in the generic "could not
+  read geni.com cookies from any browser", which contradicted the diagnosis and
+  repeated its hint.
+
 ## 1.30.0
 
 ### NEW

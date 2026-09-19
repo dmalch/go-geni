@@ -211,6 +211,27 @@ cookies, err := browsercookies.FromGeniCom()
 c, _ := web.NewClient(web.Options{Cookies: cookies})
 ```
 
+> **macOS, Safari:** this route cannot work. The OS reserves
+> `~/Library/Containers/com.apple.Safari/…/Cookies.binarycookies` to Safari
+> itself, and **Full Disk Access does not lift it** — a binary that holds FDA
+> still gets `operation not permitted`. `FromGeniCom` says so
+> (`ErrSafariCookiesUnreadable`) rather than reporting "no cookies found",
+> which would read as "you are not logged in". Copy the `Cookie` header
+> instead: Web Inspector → Network → any `geni.com` request → Headers.
+
+The `geni` CLI takes that header from either of two environment variables,
+checked before any browser store:
+
+| variable | holds |
+|---|---|
+| `GENI_WEB_COOKIES` | the header itself |
+| `GENI_WEB_COOKIES_FILE` | a path to a file holding it |
+
+Prefer the file: a session cookie in an environment variable sits in the shell
+history and in the process environment, where `ps -E` and a crash dump can read
+it. A named file that cannot be read is an error, never a silent fall-through
+to the browser stores, and its trailing newline is trimmed.
+
 The Web client ships with a conservative **1 req/sec** rate limit by default
 (`web.Options.RateLimit` overrides it on your own account). Runnable examples
 live in [`examples/webrevisions`](examples/webrevisions) and

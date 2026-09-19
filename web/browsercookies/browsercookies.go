@@ -25,13 +25,25 @@ var (
 	ErrNoCookies = errors.New("browsercookies: no geni.com cookies found in any browser")
 
 	// ErrFullDiskAccessRequired wraps macOS "operation not permitted"
-	// failures reading browser cookie stores — usually Safari's
-	// container, which requires Full Disk Access. Grant it in
-	// System Settings → Privacy & Security → Full Disk Access for
-	// the binary running this code (e.g. your terminal).
+	// failures reading a CHROMIUM-family browser cookie store. Grant
+	// it in System Settings → Privacy & Security → Full Disk Access
+	// for the binary running this code (e.g. your terminal); macOS
+	// grants the permission per binary, not per user.
 	ErrFullDiskAccessRequired = errors.New(
 		"browsercookies: cannot read browser cookie store (on macOS, " +
 			"grant Full Disk Access in System Settings → Privacy & Security)")
+
+	// ErrSafariCookiesUnreadable is Safari's case, and it is NOT the
+	// one above: macOS reserves the Safari container to Safari itself,
+	// so Full Disk Access does not lift it. Verified 2026-09-19 on
+	// macOS 27 — a binary holding FDA (it reads Photos.sqlite) still
+	// gets EPERM on Cookies.binarycookies. Telling the user to grant
+	// FDA here sends them to a setting that cannot help.
+	ErrSafariCookiesUnreadable = errors.New(
+		"browsercookies: Safari's cookie store is unreadable — macOS reserves it " +
+			"to Safari itself and Full Disk Access does NOT lift that; copy the " +
+			"Cookie header from a logged-in page (Web Inspector → Network → any " +
+			"geni.com request) into GENI_WEB_COOKIES_FILE or GENI_WEB_COOKIES")
 )
 
 // SupportedBrowsers lists the browser names accepted by FromGeniCom.
@@ -69,7 +81,7 @@ func FromGeniCom(browsers ...string) ([]*http.Cookie, error) {
 		return nil, err
 	}
 	if len(res.Cookies) == 0 {
-		return nil, ErrNoCookies
+		return nil, emptyResultError(res.Warnings)
 	}
 	return toHTTPCookies(res.Cookies), nil
 }
@@ -112,8 +124,33 @@ func toHTTPCookies(in []sweetcookie.Cookie) []*http.Cookie {
 	return out
 }
 
+// emptyResultError explains an empty read. sweetcookie reports a store
+// it could not OPEN as a warning and still returns (Result{}, nil), so
+// without this the caller cannot tell "you are not logged in" from "the
+// file is there and the OS refused it" — and reports the first, which
+// is the opposite of the truth and sends the reader hunting for a login
+// problem that does not exist.
+func emptyResultError(warnings []string) error {
+	for _, w := range warnings {
+		if !isPermissionDeniedMsg(w) {
+			continue
+		}
+		if strings.Contains(strings.ToLower(w), "safari") {
+			return fmt.Errorf("%w: %s", ErrSafariCookiesUnreadable, w)
+		}
+		return fmt.Errorf("%w: %s", ErrFullDiskAccessRequired, w)
+	}
+	if len(warnings) == 0 {
+		return ErrNoCookies
+	}
+	return fmt.Errorf("%w (%s)", ErrNoCookies, strings.Join(warnings, "; "))
+}
+
 func isPermissionDenied(err error) bool {
-	msg := err.Error()
+	return isPermissionDeniedMsg(err.Error())
+}
+
+func isPermissionDeniedMsg(msg string) bool {
 	return strings.Contains(msg, "operation not permitted") ||
 		strings.Contains(msg, "permission denied")
 }
