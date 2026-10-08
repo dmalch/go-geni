@@ -95,15 +95,16 @@ func (c *Client) SetLimiter(l *rate.Limiter) { c.limiter = l }
 // pre-consume tokens to force concurrent calls to queue together.
 func (c *Client) Limiter() *rate.Limiter { return c.limiter }
 
-// Response is the result of a request issued through DoWithResponse:
-// the decoded body together with the HTTP response headers. Most
-// callers only need the body and use Do; DoWithResponse exists for
-// the rare endpoint whose contract carries data in a header — e.g.
-// /user/add returns the new account's OAuth token in the
+// Response is the result of a request issued through DoWithResponse
+// or DoRaw: the decoded body together with the HTTP status and response
+// headers. Most callers only need the body and use Do; DoWithResponse
+// exists for the rare endpoint whose contract carries data in a header —
+// e.g. /user/add returns the new account's OAuth token in the
 // X-API-OAuth-access_token header.
 type Response struct {
-	Body   []byte
-	Header http.Header
+	Body       []byte
+	Header     http.Header
+	StatusCode int
 }
 
 // Do sends req and returns the response body. It handles auth header
@@ -115,7 +116,7 @@ type Response struct {
 // same resource type collapse into a single bulk request — see
 // BulkCoalescer.
 func (c *Client) Do(ctx context.Context, req *http.Request, coalescer Coalescer) ([]byte, error) {
-	resp, err := c.do(ctx, req, coalescer)
+	resp, err := c.do(ctx, req, coalescer, false)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +129,18 @@ func (c *Client) Do(ctx context.Context, req *http.Request, coalescer Coalescer)
 // coalescing. Use it for endpoints whose contract puts data in a
 // response header.
 func (c *Client) DoWithResponse(ctx context.Context, req *http.Request) (*Response, error) {
-	return c.do(ctx, req, nil)
+	return c.do(ctx, req, nil, false)
+}
+
+// DoRaw behaves like DoWithResponse, except that a final status the
+// retry ladder does not handle — a 400, 403, 404, 422, 500 and so on —
+// comes back as a Response carrying that StatusCode and the full body
+// rather than as an error. 429, 401, the transient 5xx and Incapsula
+// blocks are still retried, and still fail with an error once the
+// attempts run out. It exists for callers that show the server's answer
+// as is, such as a raw API console.
+func (c *Client) DoRaw(ctx context.Context, req *http.Request) (*Response, error) {
+	return c.do(ctx, req, nil, true)
 }
 
 // maxIncapsulaRetries caps how many of the four attempts an Incapsula block
@@ -155,7 +167,10 @@ func retryDelay(n uint, err error, config *retry.Config) time.Duration {
 	return retry.CombineDelay(retry.FixedDelay, retry.RandomDelay)(n, err, config)
 }
 
-func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer) (*Response, error) {
+// do sends req through the retry ladder. With passStatus, a non-200
+// status that is not retryable is returned as a Response instead of
+// being translated into an error — see DoRaw.
+func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer, passStatus bool) (*Response, error) {
 	if err := c.addStandardHeadersAndQueryParams(req); err != nil {
 		return nil, err
 	}
@@ -196,7 +211,7 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 				if cachedRes, ok := c.urlMap.LoadAndDelete(coalescer.RequestKey()); ok && cachedRes != nil {
 					if res, ok := cachedRes.([]byte); ok {
 						slog.Debug("Using cached response")
-						return &Response{Body: res}, nil
+						return &Response{Body: res, StatusCode: http.StatusOK}, nil
 					}
 				}
 				coalescer.PrepareBulkRequest(req, c.urlMap)
@@ -237,6 +252,9 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 			}
 
 			if res.StatusCode != http.StatusOK {
+				if passStatus && !isRetryableStatus(res.StatusCode, body) {
+					return &Response{Body: body, Header: res.Header, StatusCode: res.StatusCode}, nil
+				}
 				return nil, translateStatusError(res.StatusCode, secondsUntilRetry, body)
 			}
 
@@ -245,9 +263,9 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 				if err != nil {
 					return nil, err
 				}
-				return &Response{Body: parsed, Header: res.Header}, nil
+				return &Response{Body: parsed, Header: res.Header, StatusCode: res.StatusCode}, nil
 			}
-			return &Response{Body: body, Header: res.Header}, nil
+			return &Response{Body: body, Header: res.Header, StatusCode: res.StatusCode}, nil
 		},
 		retry.RetryIf(func(err error) bool {
 			// Incapsula gets its own, much smaller budget: retrying into a
@@ -315,6 +333,21 @@ func translateTransportError(err error) error {
 	return err
 }
 
+// isRetryableStatus reports whether translateStatusError would send a
+// response back round the retry ladder rather than fail it.
+func isRetryableStatus(statusCode int, body []byte) bool {
+	switch statusCode {
+	case http.StatusTooManyRequests, http.StatusUnauthorized,
+		http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return isIncapsulaBlock(body)
+}
+
+func isIncapsulaBlock(body []byte) bool {
+	return strings.Contains(string(body), "Request unsuccessful. Incapsula incident ID:")
+}
+
 // translateStatusError maps non-200 statuses to the public error
 // sentinels (ErrAccessDenied / ErrResourceNotFound), to errRetry for
 // retryable codes (429/401 and transient 5xx), or to Incapsula /
@@ -343,7 +376,7 @@ func translateStatusError(statusCode, secondsUntilRetry int, body []byte) error 
 		return ErrResourceNotFound
 	}
 
-	if strings.Contains(string(body), "Request unsuccessful. Incapsula incident ID:") {
+	if isIncapsulaBlock(body) {
 		// Incapsula is a DDoS protection service that Geni uses. If we
 		// get a response with this message, it means that the request
 		// was blocked by Incapsula.
