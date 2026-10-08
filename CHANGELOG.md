@@ -1,3 +1,49 @@
+## 1.31.0
+
+### NEW
+
+- **`geni api [flags] <endpoint>`** — call any Geni API endpoint and print the
+  raw response, the way `gh api` does for GitHub. It goes through the same
+  transport as every other command (cached token, self-tuning rate limiter,
+  retries) and takes `gh api`'s flags: `-X`, `-f`/`-F` (typed: `true`,
+  `false`, `null`, integers, `@file`, `@-`), `-H`, `-input`, `-i` and
+  `-paginate`, before or after the endpoint. Fields go in the query on a GET
+  and form a JSON object otherwise, `a[b]` nesting into objects and `a[]`
+  appending to arrays; a JSON body is `\uXXXX`-escaped like every other
+  mutation. A status other than 200 prints Geni's error body and exits 1.
+  The endpoint may be an id, a path, or a full URL as Geni prints it,
+  `next_page` links included; a URL on any other host is refused before a
+  request is made, and so is one for the other environment.
+- **`geni api -web <path>`** calls a geni.com page or AJAX endpoint with the
+  browser session, behind the same one-time consent as the other AJAX
+  commands. A state-changing request carries the CSRF token as the
+  `authenticity_token` form field and as `X-CSRF-Token`; a redirect is
+  reported, not followed, and counts as success.
+- `transport.Client.DoRaw` and `transport.Response.StatusCode`. `DoRaw` is
+  `DoWithResponse` for callers that show the server's answer as is: a final
+  status the retry ladder does not handle (400, 403, 404, 422, 500, …) comes
+  back as a `Response` with its status and full body rather than as
+  `ErrResourceNotFound`, `ErrAccessDenied` or an error truncated to 512 bytes.
+  Retryable statuses are still retried. `Do` and `DoWithResponse` are
+  unchanged.
+
+### CHANGED
+
+- The transport adds `api_version` and `only_ids` only when the request does
+  not carry them already. It appended a second value, and since Rails reads
+  the last, a caller could not opt out of `only_ids=true`. No caller in this
+  module sets either, so their requests are unchanged.
+
+### FIXED
+
+- **A retried request went out with an empty body.** Every attempt reuses the
+  same `*http.Request`, and the first one drains its body, so a POST that hit
+  a 429, a 401, a transient 5xx or an Incapsula block was resent empty —
+  failing with `ContentLength=N with Body length 0`, or reaching Geni as an
+  update with nothing in it. The body is now rewound through `GetBody` before
+  each retry. Every mutation in the module builds its body from an in-memory
+  buffer, which `http.NewRequest` makes replayable.
+
 ## 1.30.0
 
 ### NEW
