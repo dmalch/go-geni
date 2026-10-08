@@ -161,9 +161,23 @@ func (c *Client) do(ctx context.Context, req *http.Request, coalescer Coalescer)
 	}
 
 	incapsulaTries := 0
+	attempt := 0
 
 	return retry.DoWithData(
 		func() (*Response, error) {
+			// Every attempt reuses req, and the first one drained its body:
+			// without a rewind a retried POST goes out empty. GetBody is set
+			// by http.NewRequest for the in-memory readers every mutation
+			// here uses; a streamed body without it cannot be replayed.
+			attempt++
+			if attempt > 1 && req.GetBody != nil {
+				body, err := req.GetBody()
+				if err != nil {
+					return nil, err
+				}
+				req.Body = body
+			}
+
 			limiterCtx, limiterCtxCancelFunc := context.WithCancel(ctx)
 			defer limiterCtxCancelFunc()
 

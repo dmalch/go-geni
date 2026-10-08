@@ -397,3 +397,52 @@ func TestRequestTimeout(t *testing.T) {
 		Expect(retryErr.statusCode).To(Equal(http.StatusGatewayTimeout))
 	})
 }
+
+// bodyRecordingTransport records the request body and query of every
+// attempt, answering with the queued responses in turn (the last one
+// repeats).
+type bodyRecordingTransport struct {
+	responses []scriptedResponse
+	bodies    []string
+	queries   []url.Values
+}
+
+func (t *bodyRecordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	body := ""
+	if req.Body != nil {
+		b, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		body = string(b)
+	}
+	t.bodies = append(t.bodies, body)
+	t.queries = append(t.queries, req.URL.Query())
+	r := t.responses[min(len(t.bodies)-1, len(t.responses)-1)]
+	return &http.Response{
+		StatusCode: r.status,
+		Body:       io.NopCloser(strings.NewReader(r.body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func TestRetryResendsBody(t *testing.T) {
+	RegisterTestingT(t)
+	// An Incapsula block rather than a 429 only because its delay can be
+	// shortened; the body is consumed by the first attempt whatever the
+	// reason for the retry.
+	fastIncapsulaRetries(t)
+	rt := &bodyRecordingTransport{responses: []scriptedResponse{
+		{http.StatusInternalServerError, incapsulaBody},
+		{http.StatusOK, `{"ok":true}`},
+	}}
+	c := newClientWith(rt)
+	c.SetLimiter(rate.NewLimiter(rate.Inf, 1))
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost,
+		"https://www.geni.com/api/profile-1/update", strings.NewReader(`{"first_name":"Ivan"}`))
+	_, err := c.Do(context.Background(), req, nil)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(rt.bodies).To(Equal([]string{`{"first_name":"Ivan"}`, `{"first_name":"Ivan"}`}))
+}
