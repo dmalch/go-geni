@@ -28,6 +28,7 @@ func commandTree() map[string]*command {
 		"whoami": {summary: "show the authenticated user", run: runWhoami},
 		"stats":  {summary: "show platform-wide statistics", run: runStats},
 		"help":   {summary: "show this usage text", run: runHelp},
+		"api":    {summary: "call any Geni API endpoint, or a geni.com path with -web (like gh api)", run: runAPI},
 
 		"profile": {summary: "profile resource", sub: map[string]*command{
 			"get": {summary: "fetch a profile by id (or -guid <guid>)", run: resourceGet("profile-", true,
