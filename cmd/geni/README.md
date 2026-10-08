@@ -82,6 +82,7 @@ Run `geni help` for the full list.
 | `geni whoami` | Show the authenticated user |
 | `geni stats` | Show platform-wide statistics |
 | `geni help` | Show usage |
+| `geni api [flags] <endpoint>` | Call any API endpoint — or, with `-web`, any geni.com path — and print the raw response, like `gh api` (see [Raw calls](#raw-calls-geni-api)) |
 | `geni config show` | Print the persisted CLI config (`~/.genealogy/config.json`) as JSON, secrets redacted |
 | `geni config browser <name\|"">` | Set or clear the persisted default for `-browser` (see [Cookie source](#cookie-source)) |
 | `geni config client-id <id\|"">` | Set or clear the OAuth client id of your own Geni application |
@@ -117,7 +118,8 @@ Run `geni help` for the full list.
 
 Every command is read-only except **`geni profile merge`**, which mutates
 data. It prompts for a `y/N` confirmation before merging; pass `-yes` to skip
-the prompt in scripts.
+the prompt in scripts. `geni api` sends whatever request you give it, so a
+non-GET call can change data too, and it does not ask first.
 
 ## Web (AJAX) commands
 
@@ -180,6 +182,81 @@ On macOS, reading Safari's cookies requires Full Disk Access for your
 terminal in System Settings → Privacy & Security. If neither source yields
 cookies, the error message tells you which step failed.
 
+## Raw calls (`geni api`)
+
+`geni api <endpoint>` sends an arbitrary request and prints the response, for
+the endpoints no command wraps yet or to see exactly what Geni returns. It
+goes through the same layer as every other command: the cached token, the
+rate limiter that re-tunes itself from Geni's `X-API-Rate-*` headers, and the
+retries on 429, 401, transient 5xx and Incapsula blocks. The flags are
+`gh api`'s.
+
+| Flag | Meaning |
+| --- | --- |
+| `-X`, `-method <verb>` | HTTP method. Defaults to `GET`, or `POST` when fields or `-input` are given |
+| `-f`, `-raw-field key=value` | A string parameter (repeatable) |
+| `-F`, `-field key=value` | A typed parameter (repeatable): `true`, `false`, `null` and integers become JSON literals, `@file` reads a file, `@-` reads stdin |
+| `-H`, `-header 'Name: value'` | A request header (repeatable) |
+| `-input <file>` | Read the request body from a file, `-` for stdin. The fields then go in the query string |
+| `-i`, `-include` | Print the status line and the response headers before the body |
+| `-paginate` | Follow `next_page` and print every page, one JSON document after another (API `GET`s only) |
+| `-web` | Call a geni.com path with the browser session instead of the OAuth API (see below) |
+
+Flags may come before or after the endpoint.
+
+**Endpoint.** Any of `profile-123`, `/profile-123/immediate-family`,
+`api/profile/search?names=Smith`, or a full URL as Geni prints it —
+`https://www.geni.com/api/…`, `https://sandbox.geni.com/api/…`, or the
+`https://api.sandbox.geni.com/…` form of the sandbox's `next_page` links. A
+URL on any other host is refused before anything is sent, so the token never
+leaves geni.com; so is a production URL under `-sandbox` and the reverse,
+rather than switching environments silently. An `access_token` already in the
+URL is dropped and the current one added. `api_version=1` and `only_ids=true`
+are added unless the endpoint sets them — `?only_ids=false` returns full URLs
+instead of ids.
+
+**Fields.** On a `GET`, or when `-input` supplies the body, fields go in the
+query string as given — `names[first_name]=Ivan` is nested by Rails on Geni's
+side. Otherwise they form a JSON object: `birth[date][year]=1900` nests into
+objects and `nicknames[]=Vanya` appends to an array. A JSON body, from fields
+or from `-input`, has every non-ASCII character written as a `\uXXXX` escape,
+because Geni mishandles raw UTF-8 in request bodies.
+
+**Output.** The body is printed as is, re-indented when it is JSON. A status
+other than 200 prints the body too (Geni's error message is in it), then
+`geni api: HTTP 404 Not Found` on stderr and exit code `1`.
+
+### `-web`
+
+With `-web` the endpoint is a geni.com path — `/list/data_conflicts`,
+`merge/resolve/<guid>`, or a full `https://www.geni.com/…` URL — sent with the
+browser session, exactly as the [Web (AJAX) commands](#web-ajax-commands)
+are: the same [one-time consent](#one-time-consent), the same
+[cookie source](#cookie-source), the same 1 request per second. The caveats
+there apply in full.
+
+- A non-GET request carries the page's CSRF token, both as the
+  `authenticity_token` form field (unless you pass your own) and as the
+  `X-CSRF-Token` header. Fields form a URL-encoded form, keys as given
+  (`-f 'resolve[name]=__unchanged__'`).
+- Redirects are not followed. A 3xx is success — geni.com answers a form POST
+  with one — and the target is printed on stderr. A redirect to `/login` means
+  the session has expired.
+- Pages are HTML and are printed as is. Endpoints the site calls over AJAX
+  often answer JSON only to `-H 'X-Requested-With: XMLHttpRequest'`.
+- `-paginate` is not available: web pages have no `next_page`.
+
+### Examples
+
+```bash
+geni api user                                   # who am I, raw
+geni api -i profile-g6000000012102785219        # with status and rate-limit headers
+geni api -X GET profile/search -f names="John Smith" -paginate | jq -s 'map(.results[]) | length'
+geni api 'profile-1?only_ids=false'             # full URLs instead of ids
+geni api profile-1/update -f occupation=Blacksmith -F 'birth[date][year]=1850'
+geni api -web /list/data_conflicts | head       # an HTML page, with the browser session
+```
+
 ## Flags
 
 - **`-sandbox`** — global flag, placed **before** the command
@@ -194,9 +271,11 @@ cookies, the error message tells you which step failed.
 
 ## Output
 
-Results are pretty-printed JSON on **stdout**, with one exception:
+Results are pretty-printed JSON on **stdout**, with two exceptions:
 `geni document text get` prints the document's raw text body (it is the
-artifact requested, not a record about it). Diagnostics and errors go to
+artifact requested, not a record about it), and `geni api` prints whatever the
+server sent — HTML for most `-web` paths, and the status line and headers
+first with `-i`. Diagnostics and errors go to
 **stderr**. stdout stays pure JSON, so it pipes cleanly:
 
 ```bash

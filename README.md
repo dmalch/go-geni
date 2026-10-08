@@ -65,12 +65,14 @@ A runnable version of this example lives in
 
 `cmd/geni` is a CLI façade over the library — handy for OAuth login and
 quick read queries (`geni profile get`, `geni profile search`, `geni whoami`,
-…) without writing Go:
+…) without writing Go, and `geni api` calls any endpoint the way `gh api`
+does:
 
 ```bash
 go install github.com/dmalch/go-geni/cmd/geni@latest
 geni login
 geni profile get <id>
+geni api -i profile-<id>/immediate-family
 ```
 
 See [`cmd/geni/README.md`](cmd/geni/README.md) for the full command list,

@@ -12,7 +12,9 @@ import (
 // set when the caller hasn't already done so — multipart upload
 // endpoints (e.g. photo/add) pre-set their own header with the
 // boundary parameter and would otherwise end up with two conflicting
-// Content-Type values.
+// Content-Type values. api_version and only_ids likewise defer to a
+// value the caller put in the URL: appending a second one would not
+// do, as Rails reads the last of a repeated parameter.
 func (c *Client) addStandardHeadersAndQueryParams(req *http.Request) error {
 	query := req.URL.Query()
 
@@ -22,11 +24,15 @@ func (c *Client) addStandardHeadersAndQueryParams(req *http.Request) error {
 	}
 
 	query.Add("access_token", token.AccessToken)
-	query.Add("api_version", APIVersion)
+	if !query.Has("api_version") {
+		query.Set("api_version", APIVersion)
+	}
 	// The returned data structures will contain urls to other objects by
 	// default, unless the request includes 'only_ids=true.' Passing
 	// only_ids will force the system to return ids only.
-	query.Add("only_ids", "true")
+	if !query.Has("only_ids") {
+		query.Set("only_ids", "true")
+	}
 
 	req.URL.RawQuery = query.Encode()
 	req.Header.Add("Accept", "application/json")

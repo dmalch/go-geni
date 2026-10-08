@@ -397,3 +397,130 @@ func TestRequestTimeout(t *testing.T) {
 		Expect(retryErr.statusCode).To(Equal(http.StatusGatewayTimeout))
 	})
 }
+
+// bodyRecordingTransport records the request body and query of every
+// attempt, answering with the queued responses in turn (the last one
+// repeats).
+type bodyRecordingTransport struct {
+	responses []scriptedResponse
+	bodies    []string
+	queries   []url.Values
+}
+
+func (t *bodyRecordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	body := ""
+	if req.Body != nil {
+		b, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		body = string(b)
+	}
+	t.bodies = append(t.bodies, body)
+	t.queries = append(t.queries, req.URL.Query())
+	r := t.responses[min(len(t.bodies)-1, len(t.responses)-1)]
+	return &http.Response{
+		StatusCode: r.status,
+		Body:       io.NopCloser(strings.NewReader(r.body)),
+		Header:     make(http.Header),
+	}, nil
+}
+
+func TestRetryResendsBody(t *testing.T) {
+	RegisterTestingT(t)
+	// An Incapsula block rather than a 429 only because its delay can be
+	// shortened; the body is consumed by the first attempt whatever the
+	// reason for the retry.
+	fastIncapsulaRetries(t)
+	rt := &bodyRecordingTransport{responses: []scriptedResponse{
+		{http.StatusInternalServerError, incapsulaBody},
+		{http.StatusOK, `{"ok":true}`},
+	}}
+	c := newClientWith(rt)
+	c.SetLimiter(rate.NewLimiter(rate.Inf, 1))
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost,
+		"https://www.geni.com/api/profile-1/update", strings.NewReader(`{"first_name":"Ivan"}`))
+	_, err := c.Do(context.Background(), req, nil)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(rt.bodies).To(Equal([]string{`{"first_name":"Ivan"}`, `{"first_name":"Ivan"}`}))
+}
+
+func TestDoRaw(t *testing.T) {
+	t.Run("a non-retryable error status comes back as a response", func(t *testing.T) {
+		RegisterTestingT(t)
+		c := newClientWith(&headerEchoTransport{
+			status: http.StatusNotFound,
+			body:   `{"error":{"message":"not found"}}`,
+		})
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		resp, err := c.DoRaw(context.Background(), req)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
+		Expect(string(resp.Body)).To(Equal(`{"error":{"message":"not found"}}`))
+	})
+
+	t.Run("a retryable status is still retried", func(t *testing.T) {
+		RegisterTestingT(t)
+		fastIncapsulaRetries(t)
+		rt := &scriptedTransport{responses: []scriptedResponse{
+			{http.StatusInternalServerError, incapsulaBody},
+			{http.StatusOK, `{"ok":true}`},
+		}}
+		c := newClientWith(rt)
+		c.SetLimiter(rate.NewLimiter(rate.Inf, 1))
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		resp, err := c.DoRaw(context.Background(), req)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		Expect(rt.calls).To(Equal(2))
+	})
+
+	t.Run("Do still turns the same status into a sentinel", func(t *testing.T) {
+		RegisterTestingT(t)
+		c := newClientWith(&headerEchoTransport{status: http.StatusNotFound})
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		resp, err := c.DoWithResponse(context.Background(), req)
+
+		Expect(resp).To(BeNil())
+		Expect(err).To(MatchError(ErrResourceNotFound))
+	})
+}
+
+func TestStandardQueryParams(t *testing.T) {
+	t.Run("are added when the caller set none", func(t *testing.T) {
+		RegisterTestingT(t)
+		rt := &bodyRecordingTransport{responses: []scriptedResponse{{http.StatusOK, `{}`}}}
+		c := newClientWith(rt)
+
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://www.geni.com/api/profile-1", nil)
+		_, err := c.Do(context.Background(), req, nil)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rt.queries[0]["api_version"]).To(Equal([]string{APIVersion}))
+		Expect(rt.queries[0]["only_ids"]).To(Equal([]string{"true"}))
+		Expect(rt.queries[0]["access_token"]).To(Equal([]string{"test-token"}))
+	})
+
+	t.Run("keep the caller's own api_version and only_ids", func(t *testing.T) {
+		RegisterTestingT(t)
+		rt := &bodyRecordingTransport{responses: []scriptedResponse{{http.StatusOK, `{}`}}}
+		c := newClientWith(rt)
+
+		// Appending a second only_ids would not do: Rails reads the last
+		// value, so the caller's opt-out would silently lose.
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet,
+			"https://www.geni.com/api/profile-1?only_ids=false&api_version=2", nil)
+		_, err := c.Do(context.Background(), req, nil)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rt.queries[0]["api_version"]).To(Equal([]string{"2"}))
+		Expect(rt.queries[0]["only_ids"]).To(Equal([]string{"false"}))
+	})
+}
