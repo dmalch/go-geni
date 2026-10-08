@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"github.com/avast/retry-go/v4"
 	. "github.com/onsi/gomega"
@@ -245,6 +247,25 @@ func TestEscapeStringToUTF(t *testing.T) {
 		RegisterTestingT(t)
 		result := EscapeStringToUTF("Привет")
 		Expect(result).To(Equal("\\u041f\\u0440\\u0438\\u0432\\u0435\\u0442"))
+	})
+
+	t.Run("a rune outside the BMP becomes a surrogate pair", func(t *testing.T) {
+		RegisterTestingT(t)
+		// A JSON escape holds one UTF-16 code unit. Written as one escape
+		// with five hex digits, U+1F600 would read as U+1F60 and a stray "0".
+		hi, lo := utf16.EncodeRune('\U0001F600')
+		Expect(EscapeStringToUTF("hi \U0001F600")).To(Equal(fmt.Sprintf(`hi \u%04x\u%04x`, hi, lo)))
+	})
+
+	t.Run("the result decodes back to the input as a JSON string", func(t *testing.T) {
+		RegisterTestingT(t)
+		for _, s := range []string{"plain", "café", "Привет", "\U0001F600 Иван \U0001D11E", "\U0000FFFF\U00010000"} {
+			escaped := EscapeStringToUTF(s)
+
+			var decoded string
+			Expect(json.Unmarshal([]byte(`"`+escaped+`"`), &decoded)).To(Succeed())
+			Expect(decoded).To(Equal(s), escaped)
+		}
 	})
 }
 
