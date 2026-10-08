@@ -1,7 +1,8 @@
-// Package comment carries the Comment resource's wire types. Comment
-// API methods still live on github.com/dmalch/go-geni's root Client
-// during the pre-1.0 reshape and migrate into the relevant
-// per-resource sub-packages later; this PR lifts only the types.
+// Package comment carries the Comment resource's wire types. Geni has no
+// comment endpoint of its own — comments hang off documents, photos and
+// videos — so the methods that list and add them live on those clients
+// (document.Client.Comments, photo.Client.AddComment, …) and return
+// these types.
 package comment
 
 // Comment is Geni's Comment resource — the body of a single comment

@@ -104,9 +104,10 @@ func NewClient(opts Options) (*Client, error) {
 // BaseURL returns the configured base URL (no trailing slash).
 func (c *Client) BaseURL() string { return c.baseURL }
 
-// Do sends req. It enforces the rate limit, attaches the User-Agent,
-// follows redirects only inside geni.com (a redirect to /login becomes
-// ErrNotLoggedIn), and detects Incapsula block pages.
+// Do sends req. It enforces the rate limit, attaches the User-Agent and
+// detects Incapsula block pages (ErrBlocked). It never follows a
+// redirect: the 3xx response comes back as is, except that a redirect to
+// /login or /signin becomes ErrNotLoggedIn.
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	if err := c.limiter.Wait(req.Context()); err != nil {
 		return nil, err

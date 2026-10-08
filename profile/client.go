@@ -378,14 +378,14 @@ func (c *Client) WipeEvents(ctx context.Context, resourceId string, eventKeys []
 	return nil
 }
 
-// WipeEventDates issues a targeted PATCH against /api/<resourceId>/update
-// that nulls only the `date` sub-object of each named event (e.g. `birth`,
+// WipeEventDates issues a targeted POST against /api/<resourceId>/update
+// that empties only the `date` sub-object of each named event (e.g. `birth`,
 // `baptism`, `death`, `burial` on a profile; `marriage` or `divorce` on a
 // union — resourceId may be either a profile or a union id). Geni's API
 // deep-merges nested objects per-key, which means sending
 // `"end_month": null` inside an otherwise-populated `date` is a no-op —
 // the only way to clear individual date sub-fields is to first wipe the
-// whole `date` and then re-PATCH the desired subset (#94).
+// whole `date` and then re-send the desired subset (#94).
 //
 // The request body is hand-crafted to touch only the named events' `date`
 // keys; it deliberately omits `location`, `name`, and `description` to
