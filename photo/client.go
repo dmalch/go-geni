@@ -218,7 +218,7 @@ func (c *Client) Update(ctx context.Context, photoId string, request *Request) (
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
 
 	url := c.transport.BaseURL() + "api/" + photoId + "/update"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
@@ -417,7 +417,7 @@ func (c *Client) jsonPost(ctx context.Context, profileId, action string, request
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
 
 	url := c.transport.BaseURL() + "api/" + profileId + "/" + action
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))

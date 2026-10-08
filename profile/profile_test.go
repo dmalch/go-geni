@@ -3,6 +3,7 @@ package profile
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -368,4 +369,24 @@ func TestGetBulk_ErrorMapping(t *testing.T) {
 		_, err := c.GetBulk(context.Background(), []string{"profile-1", "profile-2"})
 		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
+}
+
+// backslashText holds a backslash that forms a JSON escape (\t) and one
+// that does not (\o). A body that collapses `\\` to `\` sends the first
+// as a tab and makes the second invalid JSON, which Geni answers with 500.
+const backslashText = `path C:\temp, slash \o/`
+
+func TestCreate_KeepsBackslashes(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"profile-9"}`)
+
+	about := backslashText
+	_, err := c.Create(context.Background(), &Request{AboutMe: &about})
+	Expect(err).ToNot(HaveOccurred())
+
+	body, err := io.ReadAll(ft.lastRequest.Body)
+	Expect(err).ToNot(HaveOccurred())
+	var sent Request
+	Expect(json.Unmarshal(body, &sent)).To(Succeed(), string(body))
+	Expect(*sent.AboutMe).To(Equal(backslashText))
 }

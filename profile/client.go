@@ -35,7 +35,7 @@ func (c *Client) marshalEscaped(request any) (string, error) {
 		slog.Error("Error marshaling request", "error", err)
 		return "", err
 	}
-	return transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\")), nil
+	return transport.EscapeStringToUTF(string(jsonBody)), nil
 }
 
 func (c *Client) decode(body []byte) (*Profile, error) {

@@ -1,3 +1,19 @@
+## 1.31.1
+
+### FIXED
+
+- **A backslash in a request body was corrupted or rejected.** Every
+  create/update collapsed `\\` to `\` in the JSON it sent, a step that came
+  over with the original extraction without a recorded reason. A backslash
+  followed by `t`, `n`, `r`, `b` or `f` was therefore stored as a control
+  character (`C:\temp` saved as `C:`, a tab, `emp`), and any other backslash
+  (`\o/`, a trailing `\`) made the body invalid JSON, which Geni answers with
+  a 500 "Geni will be right back" page. The step is gone from all twelve call
+  sites — profile, union, document, photo, photo album, video and user
+  metadata. Probes against the sandbox show Geni stores a correctly escaped
+  backslash intact, and a new acceptance spec round-trips backslashes and an
+  emoji through a real profile.
+
 ## 1.31.0
 
 ### NEW
