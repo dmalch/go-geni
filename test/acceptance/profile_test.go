@@ -51,6 +51,26 @@ var _ = Describe("Profile API", func() {
 			Expect(*updated.AboutMe).To(Equal(about))
 		})
 
+		It("stores backslashes and characters above U+FFFF intact", func() {
+			// Guards two request-body bugs: collapsing `\\` to `\` sent
+			// "\t" as a tab and made "\o" invalid JSON (a 500), and runes
+			// above U+FFFF were escaped with five hex digits.
+			created := createFixtureProfile(ctx, client, "Backslash")
+			about := `path C:\temp, slash \o/, emoji ` + "\U0001F600"
+
+			_, err := client.Profile().Update(ctx, created.ID, &profile.Request{
+				AboutMe: &about,
+				IsAlive: false,
+				Public:  true,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			got, err := client.Profile().Get(ctx, created.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AboutMe).ToNot(BeNil())
+			Expect(*got.AboutMe).To(Equal(about))
+		})
+
 		It("deletes a profile", func() {
 			// Allocate without the auto-cleanup helper — we want to
 			// observe the post-delete state inside the spec.

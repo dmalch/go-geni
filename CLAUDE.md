@@ -147,10 +147,9 @@ Create/update methods JSON-encode their request struct (`profile.Request`,
 `transport.EscapeStringToUTF`, which writes every non-ASCII rune as a
 `\uXXXX` escape (a surrogate pair above U+FFFF). Geni's API has
 historically mishandled raw UTF-8 in request bodies; the escape pass is a
-workaround, not decoration — don't remove it. Most callers also collapse
-`\\` to `\` before escaping; that came over with the original extraction
-and its purpose is not recorded, so don't copy it into new code without
-finding out.
+workaround, not decoration — don't remove it. Escape the `json.Marshal`
+output as is: the callers used to collapse `\\` to `\` first, which stored
+`\t` as a tab and made `\o` invalid JSON (fixed in 1.31.1).
 
 `profile.Request` and similar request structs use **unusual omitempty
 choices on purpose** (e.g. `Title`, `Occupation`, `Suffix` are scalar

@@ -3,6 +3,7 @@ package union
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -202,4 +203,21 @@ func TestGetBulk_ErrorMapping(t *testing.T) {
 		_, err := c.GetBulk(context.Background(), []string{"union-1", "union-2"})
 		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
+}
+
+func TestUpdate_KeepsBackslashes(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"union-9"}`)
+
+	description := `path C:\temp, slash \o/`
+	_, err := c.Update(context.Background(), "union-9", &Request{
+		Marriage: &profile.EventElement{Description: &description},
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	body, err := io.ReadAll(ft.lastRequest.Body)
+	Expect(err).ToNot(HaveOccurred())
+	var sent Request
+	Expect(json.Unmarshal(body, &sent)).To(Succeed(), string(body))
+	Expect(*sent.Marriage.Description).To(Equal(description))
 }

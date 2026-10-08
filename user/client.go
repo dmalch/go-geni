@@ -294,7 +294,7 @@ func (c *Client) UpdateMetadata(ctx context.Context, data json.RawMessage) (*Met
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
 
 	url := c.transport.BaseURL() + "api/user/update-metadata"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))

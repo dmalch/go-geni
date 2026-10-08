@@ -3,6 +3,7 @@ package document
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -315,4 +316,19 @@ func TestGetBulk_ErrorMapping(t *testing.T) {
 		_, err := c.GetBulk(context.Background(), []string{"document-1", "document-2"})
 		Expect(err).To(MatchError(transport.ErrAccessDenied))
 	})
+}
+
+func TestCreate_KeepsBackslashes(t *testing.T) {
+	RegisterTestingT(t)
+	c, ft := newFakeClient(http.StatusOK, `{"id":"document-9"}`)
+
+	text := `path C:\temp, slash \o/`
+	_, err := c.Create(context.Background(), &Request{Title: "t", Text: &text})
+	Expect(err).ToNot(HaveOccurred())
+
+	body, err := io.ReadAll(ft.lastRequest.Body)
+	Expect(err).ToNot(HaveOccurred())
+	var sent Request
+	Expect(json.Unmarshal(body, &sent)).To(Succeed(), string(body))
+	Expect(*sent.Text).To(Equal(text))
 }

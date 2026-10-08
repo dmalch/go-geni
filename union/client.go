@@ -109,7 +109,7 @@ func (c *Client) Update(ctx context.Context, unionId string, request *Request) (
 		slog.Error("Error marshaling request", "error", err)
 		return nil, err
 	}
-	jsonStr := transport.EscapeStringToUTF(strings.ReplaceAll(string(jsonBody), "\\\\", "\\"))
+	jsonStr := transport.EscapeStringToUTF(string(jsonBody))
 
 	url := c.transport.BaseURL() + "api/" + unionId + "/update"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(jsonStr))
