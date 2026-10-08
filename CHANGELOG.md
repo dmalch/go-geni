@@ -43,6 +43,13 @@
   update with nothing in it. The body is now rewound through `GetBody` before
   each retry. Every mutation in the module builds its body from an in-memory
   buffer, which `http.NewRequest` makes replayable.
+- **An emoji in a request body arrived corrupted.** `EscapeStringToUTF` wrote
+  a rune outside the Basic Multilingual Plane — an emoji, a rarer CJK
+  character, a musical symbol — as one escape with five hex digits. A JSON
+  escape holds four, so U+1F600 was read as U+1F60 followed by a stray `0`,
+  and the field was saved wrong without an error. Such runes are now written
+  as a UTF-16 surrogate pair. Every JSON request body goes through this
+  function: all mutations, and `geni api`.
 
 ## 1.30.0
 
