@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/steipete/sweetcookie v0.1.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/time v0.16.0
 )
